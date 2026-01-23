@@ -1,0 +1,142 @@
+"""Bilibili 直播平台实现"""
+from copy import deepcopy
+from enum import Enum, unique
+from typing import ClassVar, Any
+
+# Core Imports
+from ...core.platform import StatusChangePlatform
+from ...core.types import Post, Target, Category, Tag, RawPost
+from ...core.compat import type_validate_json, type_validate_python
+from ...core.utils import text_similarity
+from ...logger import logger
+
+# Model Imports
+from .models import UserAPI
+from pydantic import BaseModel, Field
+
+class BilibiliLive(StatusChangePlatform):
+    platform_name = "bilibili-live"
+    name = "Bilibili直播"
+    categories: ClassVar[dict[Category, str]] = {1: "开播提醒", 2: "标题更新提醒", 3: "下播提醒"}
+    
+    @unique
+    class LiveStatus(Enum):
+        OFF = 0
+        ON = 1
+        CYCLE = 2
+
+    @unique
+    class LiveAction(Enum):
+        TURN_ON = "turn_on"
+        TURN_OFF = "turn_off"
+        ON = "on"
+        OFF = "off"
+        TITLE_UPDATE = "title_update"
+
+    class Info(BaseModel):
+        title: str
+        room_id: int
+        uid: int
+        live_time: int
+        live_status: int # 使用 int 方便处理
+        area_name: str = Field(alias="area_v2_name")
+        uname: str
+        face: str
+        cover: str = Field(alias="cover_from_user")
+        keyframe: str
+        category: Category = Field(default=Category(0))
+
+        def get_live_action(self, old_info: "BilibiliLive.Info") -> "BilibiliLive.LiveAction":
+            # 状态判定逻辑
+            if old_info.live_status in [0, 2] and self.live_status == 1:
+                return BilibiliLive.LiveAction.TURN_ON
+            elif old_info.live_status == 1 and self.live_status in [0, 2]:
+                return BilibiliLive.LiveAction.TURN_OFF
+            elif old_info.live_status == 1 and self.live_status == 1:
+                if old_info.title != self.title:
+                    return BilibiliLive.LiveAction.TITLE_UPDATE
+                return BilibiliLive.LiveAction.ON
+            else:
+                return BilibiliLive.LiveAction.OFF
+
+    async def get_target_name(self, target: Target) -> str | None:
+        client = await self.get_client()
+        res = await client.get("https://api.live.bilibili.com/live_user/v1/Master/info", params={"uid": target})
+        if res.status_code != 200: return None
+        res_data = type_validate_json(UserAPI, res.content)
+        return res_data.data.info.uname if res_data.data else None
+
+    def _gen_empty_info(self, uid: int) -> Info:
+        return BilibiliLive.Info(
+            title="", room_id=0, uid=uid, live_time=0, live_status=0,
+            area_v2_name="", uname="", face="", cover_from_user="", keyframe=""
+        )
+
+    # 批量获取状态由 Scheduler 调用，这里提供单个或批量方法
+    async def get_status(self, target: Target) -> Info:
+        # 复用 batch 接口
+        infos = await self.batch_get_status([target])
+        return infos[0]
+
+    async def batch_get_status(self, targets: list[Target]) -> list[Info]:
+        client = await self.get_client()
+        res = await client.get(
+            "https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids",
+            params={"uids[]": targets},
+            timeout=10.0,
+        )
+        res_dict = res.json()
+        if res_dict["code"] != 0:
+            raise Exception("API Error")
+            
+        data = res_dict.get("data", {})
+        infos = []
+        for target in targets:
+            if target in data.keys():
+                infos.append(type_validate_python(self.Info, data[target]))
+            else:
+                infos.append(self._gen_empty_info(int(target)))
+        return infos
+
+    def compare_status(self, target: Target, old_status: Info, new_status: Info) -> list[RawPost]:
+        action = new_status.get_live_action(old_status)
+        if action == BilibiliLive.LiveAction.TURN_ON:
+            return [self._gen_current_status(new_status, 1)]
+        elif action == BilibiliLive.LiveAction.TITLE_UPDATE:
+            return [self._gen_current_status(new_status, 2)]
+        elif action == BilibiliLive.LiveAction.TURN_OFF:
+            return [self._gen_current_status(new_status, 3)]
+        return []
+
+    def _gen_current_status(self, new_status: Info, category: int):
+        status = deepcopy(new_status)
+        status.category = Category(category)
+        return status
+
+    async def parse(self, raw_post: Info) -> Post:
+        url = f"https://live.bilibili.com/{raw_post.room_id}"
+        pic = [raw_post.cover] if raw_post.category == Category(1) else [raw_post.keyframe or raw_post.cover]
+        cat_name = self.categories[raw_post.category].replace("提醒", "")
+        title = f"[{cat_name}] {raw_post.title}"
+        
+        return Post(
+            platform=self.platform_name,
+            content=f"{raw_post.area_name}",
+            title=title,
+            timestamp=int(raw_post.live_time),
+            url=url,
+            images=list(pic),
+            nickname=raw_post.uname,
+            avatar=raw_post.face,
+            id=f"live_{raw_post.room_id}_{raw_post.live_time}_{raw_post.live_status}"
+        )
+        
+    def get_tags(self, raw_post) -> list[Tag]:
+        return []
+
+    def get_category(self, raw_post) -> Category:
+        return raw_post.category
+
+    async def fetch_new_post(self, sub_unit):
+        # 实时状态由 Scheduler 维护，这里不实现
+        return []
