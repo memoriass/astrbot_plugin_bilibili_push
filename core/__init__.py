@@ -1,9 +1,9 @@
 """Bilibili 推送插件核心模块"""
 
-from .types import MsgText, MsgImage
 from .http import HttpClient
 from .platform import Platform
-from .utils import text_similarity, decode_unicode_escapes
+from .types import MsgImage, MsgText
+from .utils import decode_unicode_escapes, text_similarity
 
 __all__ = [
     "MsgText",

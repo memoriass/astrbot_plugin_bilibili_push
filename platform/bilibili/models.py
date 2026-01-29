@@ -1,7 +1,8 @@
 from typing import Any, Literal, TypeAlias, TypeVar
 
-from ...core.compat import PYDANTIC_V2, ConfigDict, model_rebuild
 from pydantic import BaseModel
+
+from ...core.compat import PYDANTIC_V2, ConfigDict, model_rebuild
 
 TBaseModel = TypeVar("TBaseModel", bound=type[BaseModel])
 
@@ -12,8 +13,11 @@ def model_rebuild_recurse(cls: TBaseModel) -> TBaseModel:
     """Recursively rebuild all BaseModel subclasses in the class."""
     from inspect import getmembers, isclass
 
-    for _, sub_cls in getmembers(cls, lambda x: isclass(x) and issubclass(x, BaseModel)):
-        if sub_cls is cls: continue
+    for _, sub_cls in getmembers(
+        cls, lambda x: isclass(x) and issubclass(x, BaseModel)
+    ):
+        if sub_cls is cls:
+            continue
         model_rebuild_recurse(sub_cls)
 
     model_rebuild(cls)
@@ -38,11 +42,13 @@ class APIBase(Base):
 
 class UserAPI(APIBase):
     class Info(Base):
-        uname: str
-        face: str
+        uname: str | None = None
+        name: str | None = None  # For card API
+        face: str | None = None
 
     class Data(Base):
-        info: "UserAPI.Info"
+        info: "UserAPI.Info | None" = None
+        card: "UserAPI.Info | None" = None  # For card API
 
     data: Data | None = None
 
@@ -211,7 +217,7 @@ class LiveRecommendMajor(Base):
         """开播时间戳"""
         link: str
         """跳转链接，相对协议(即//开头而不是https://开头)"""
-        live_id: str
+        live_id: str | int
         """直播ID，不知道有什么用"""
         watched_show: "LiveRecommendMajor.WatchedShow"
 
@@ -276,10 +282,12 @@ class DrawMajor(Base):
         """文件大小，KiB（1024）"""
         src: str
         """图片链接"""
+        description: str | None = None
 
     class Draw(Base):
         id: int
         items: "list[DrawMajor.Item]"
+        title: str | None = None
 
     type: Literal["MAJOR_TYPE_DRAW"]
     draw: "DrawMajor.Draw"

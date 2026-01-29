@@ -1,5 +1,6 @@
 """Bilibili 动态平台实现"""
 import re
+import time
 from typing import ClassVar, NamedTuple, Any
 from httpx import AsyncClient
 from yarl import URL
@@ -8,7 +9,7 @@ from pydantic import ValidationError
 # Core Imports
 from ...core.platform import NewMessagePlatform
 from ...core.types import Post, RawPost, Target, Category, Tag, ApiError
-from ...core.utils import text_similarity, decode_unicode_escapes
+from ...core.utils import text_similarity, decode_unicode_escapes, wbi_sign
 from ...core.compat import type_validate_json
 from ...logger import logger
 
@@ -41,42 +42,301 @@ class BilibiliDynamic(NewMessagePlatform):
         6: "直播推送",
     }
     
+    _wbi_keys: tuple[str, str] | None = None
+    _wbi_keys_time: float = 0
+
+    async def _get_wbi_keys(self) -> tuple[str, str]:
+        if self._wbi_keys and time.time() - self._wbi_keys_time < 3600:
+            return self._wbi_keys
+        
+        client = await self.get_client()
+        res = await client.get("https://api.bilibili.com/x/web-interface/nav")
+        res_json = res.json()
+        if res_json["code"] != 0:
+            raise ApiError(f"获取 WBI Keys 失败: {res_json['message']}")
+            
+        data = res_json["data"]["wbi_img"]
+        img_url = data["img_url"]
+        sub_url = data["sub_url"]
+        
+        img_key = img_url.split("/")[-1].split(".")[0]
+        sub_key = sub_url.split("/")[-1].split(".")[0]
+        
+        self._wbi_keys = (img_key, sub_key)
+        self._wbi_keys_time = time.time()
+        return self._wbi_keys
+
     async def get_target_name(self, target: Target) -> str | None:
         client = await self.get_client()
-        res = await client.get("https://api.live.bilibili.com/live_user/v1/Master/info", params={"uid": target})
+        # 使用更稳定的 card 接口
+        res = await client.get("https://api.bilibili.com/x/web-interface/card", params={"mid": target})
         if res.status_code != 200:
-            return None
+            # Fallback to live master info
+            res = await client.get("https://api.live.bilibili.com/live_user/v1/Master/info", params={"uid": target})
+            if res.status_code != 200:
+                return None
+        
         res_data = type_validate_json(UserAPI, res.content)
         if res_data.code != 0:
             return None
-        return res_data.data.info.uname if res_data.data else None
+            
+        if not res_data.data:
+            return None
+            
+        if res_data.data.card:
+            return res_data.data.card.name
+        if res_data.data.info:
+            return res_data.data.info.uname or res_data.data.info.name
+        return None
 
     async def get_sub_list(self, target: Target) -> list[DynRawPost]:
-        client = await self.get_client()
-        params = {"host_mid": target, "timezone_offset": -480, "offset": "", "features": "itemOpusStyle"}
+        posts = []
+        polymer_failed = False
+        
         try:
-            res = await client.get(
-                "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space",
-                params=params,
-                timeout=10.0,
-            )
-            res.raise_for_status()
-            res_obj = type_validate_json(PostAPI, res.content)
-            
-            if res_obj.code == 0:
-                if (data := res_obj.data) and (items := data.items):
-                    # 过滤已删除的动态
-                    return [item for item in items if item.type != "DYNAMIC_TYPE_NONE"]
-                return []
-            elif res_obj.code == -352:
-                # 简单处理风控，不重试
-                logger.warning(f"Bilibili API 352 风控: {target}")
-                raise ApiError(res.request.url.path)
-            else:
-                raise ApiError(f"API Code {res_obj.code}")
+            posts = await self._get_sub_list_polymer(target)
+            if not posts:
+                logger.warning(f"Polymer API returned empty list for {target}, trying fallback...")
+                polymer_failed = True
         except Exception as e:
-            logger.error(f"获取动态列表失败: {e}")
-            raise
+            logger.warning(f"Polymer API failed ({e}), trying fallback...")
+            polymer_failed = True
+
+        if polymer_failed:
+            try:
+                posts = await self._get_sub_list_fallback(target)
+            except Exception as e2:
+                logger.error(f"Fallback API also failed: {e2}")
+                posts = []
+        
+        # Sort by timestamp descending to handle pinned posts (which might be first but old)
+        if posts:
+            posts.sort(key=lambda x: x.modules.module_author.pub_ts, reverse=True)
+            
+        return posts
+
+    async def _get_sub_list_polymer(self, target: Target) -> list[DynRawPost]:
+        client = await self.get_client()
+        # Restore itemOpusStyle to get full Opus data (title/text), otherwise it degrades to empty DrawMajor
+        params = {"host_mid": target, "features": "itemOpusStyle"} 
+        
+        img_key, sub_key = await self._get_wbi_keys()
+        signed_params = wbi_sign(params.copy(), img_key, sub_key)
+        res = await client.get(
+            "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space",
+            params=signed_params,
+            headers={"Referer": f"https://space.bilibili.com/{target}/dynamic"},
+            timeout=10.0,
+        )
+        if res.status_code == 412:
+            raise ApiError("412 Precondition Failed")
+        
+        res.raise_for_status()
+        res_obj = type_validate_json(PostAPI, res.content)
+        
+        if res_obj.code == 0:
+            if (data := res_obj.data) and (items := data.items):
+                return [item for item in items if item.type != "DYNAMIC_TYPE_NONE"]
+            return []
+        elif res_obj.code == -352:
+            raise ApiError(f"Risk Control -352")
+        else:
+            raise ApiError(f"Polymer Code {res_obj.code}")
+
+    async def _get_sub_list_fallback(self, target: Target) -> list[DynRawPost]:
+        client = await self.get_client()
+        res = await client.get(
+            "https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history",
+            params={"host_uid": target, "offset_dynamic_id": 0, "need_top": 0, "platform": "web"}, # Disable top
+            headers={"Referer": f"https://space.bilibili.com/{target}/dynamic"},
+            timeout=10.0
+        )
+        res.raise_for_status()
+        data = res.json()
+        if data["code"] != 0:
+            raise ApiError(f"Fallback Code {data['code']}")
+
+        cards = data.get("data", {}).get("cards", [])
+        converted_posts = []
+        import json
+        for card in cards:
+            try:
+                desc = card.get("desc", {})
+                card_json = json.loads(card.get("card", "{}"))
+                post = self._convert_fallback_card(desc, card_json)
+                if post:
+                    converted_posts.append(post)
+            except Exception as e:
+                logger.debug(f"Failed to convert fallback card: {e}")
+                continue
+        return converted_posts
+
+    def _convert_fallback_card(self, desc: dict, card_json: dict) -> DynRawPost | None:
+        """Convert old API card to Polymer DynRawPost model"""
+        import json
+
+        def get_any(d: dict, *keys):
+            for k in keys:
+                if "." in k:
+                    parts = k.split(".")
+                    v = d
+                    try:
+                        for p in parts:
+                            if isinstance(v, dict): v = v.get(p)
+                            else: v = None; break
+                    except: v = None
+                    if v: return v
+                elif d.get(k): return d[k]
+            return ""
+
+        try:
+            # Basic mapping
+            type_map = {
+                8: "DYNAMIC_TYPE_AV",
+                2: "DYNAMIC_TYPE_DRAW", 
+                11: "DYNAMIC_TYPE_DRAW", 
+                64: "DYNAMIC_TYPE_ARTICLE",
+                12: "DYNAMIC_TYPE_ARTICLE", 
+                1: "DYNAMIC_TYPE_FORWARD",
+                4: "DYNAMIC_TYPE_WORD",
+            }
+            
+            # Type Inference safe-guard
+            try:
+                raw_type = int(desc.get("type", 0))
+            except:
+                raw_type = 0
+
+            if raw_type == 0:
+                if "aid" in card_json: raw_type = 8
+                elif "item" in card_json and "pictures" in card_json["item"]: raw_type = 2
+                elif "item" in card_json and "upload_time" in card_json["item"]: raw_type = 4
+                
+            dyn_type = type_map.get(raw_type, "DYNAMIC_TYPE_WORD") 
+            
+            # Author
+            user_profile = desc.get("user_profile", {}).get("info", {})
+            if not user_profile: user_profile = card_json.get("user", {})
+            
+            author = PostAPI.Modules.Author(
+                face=user_profile.get("face", "") or user_profile.get("head_url", ""),
+                mid=user_profile.get("uid", 0),
+                name=user_profile.get("uname", "") or user_profile.get("name", ""),
+                jump_url=f"https://space.bilibili.com/{user_profile.get('uid', 0)}",
+                pub_ts=desc.get("timestamp", 0) or get_any(card_json, "item.upload_time", "pubdate", "ctime") or 0,
+                type="AUTHOR_TYPE_NORMAL"
+            )
+
+            major = None
+            text_desc = ""
+            orig_item = None
+            
+            if dyn_type == "DYNAMIC_TYPE_AV":
+                major = VideoMajor(
+                    type="MAJOR_TYPE_ARCHIVE",
+                    archive=VideoMajor.Archive(
+                        aid=str(card_json.get("aid", "")),
+                        bvid=desc.get("bvid", "") or card_json.get("bvid", ""),
+                        title=card_json.get("title", ""),
+                        desc=card_json.get("desc", ""),
+                        cover=card_json.get("pic", ""),
+                        jump_url=f"https://www.bilibili.com/video/{desc.get('bvid', '') or card_json.get('bvid', '')}"
+                    )
+                )
+                text_desc = card_json.get("dynamic", "")
+                
+            elif dyn_type == "DYNAMIC_TYPE_DRAW":
+                items = []
+                pics = get_any(card_json, "item.pictures", "item.images", "pics") or []
+                for pic in pics:
+                    items.append(DrawMajor.Item(width=0, height=0, src=pic.get("img_src", "")))
+                    
+                major = DrawMajor(
+                    type="MAJOR_TYPE_DRAW",
+                    # Try to find title (Opus/Album often has title)
+                    draw=DrawMajor.Draw(
+                        id=0, 
+                        items=items,
+                        title=get_any(card_json, "item.title", "title")
+                    )
+                )
+                text_desc = get_any(card_json, "item.description", "item.content", "desc")
+                
+            elif dyn_type == "DYNAMIC_TYPE_WORD":
+                text_desc = get_any(card_json, "item.content", "item.description", "dynamic")
+                
+                # Check for images in word post (upgrade to Draw)
+                pics = get_any(card_json, "item.pictures", "item.images", "pics") or []
+                if pics:
+                    items = []
+                    for pic in pics:
+                        items.append(DrawMajor.Item(width=0, height=0, src=pic.get("img_src", "")))
+                        
+                    if items:
+                        dyn_type = "DYNAMIC_TYPE_DRAW"
+                        major = DrawMajor(
+                            type="MAJOR_TYPE_DRAW",
+                            draw=DrawMajor.Draw(id=0, items=items)
+                        )
+
+            elif dyn_type == "DYNAMIC_TYPE_ARTICLE":
+                major = ArticleMajor(
+                    type="MAJOR_TYPE_ARTICLE",
+                    article=ArticleMajor.Article(
+                        id=desc.get("rid", 0),
+                        title=card_json.get("title", ""),
+                        desc=card_json.get("summary", ""),
+                        covers=card_json.get("image_urls", []),
+                        jump_url=f"https://www.bilibili.com/read/cv{desc.get('rid', '')}"
+                    )
+                )
+            
+            elif dyn_type == "DYNAMIC_TYPE_FORWARD":
+                text_desc = get_any(card_json, "item.content", "dynamic", "desc")
+                
+                import json
+                if "origin" in card_json:
+                    try:
+                        origin_json = json.loads(card_json["origin"])
+                        orig_type = card_json.get("item", {}).get("orig_type")
+                        if not orig_type:
+                            if "aid" in origin_json: orig_type = 8
+                            elif "item" in origin_json and "pictures" in origin_json["item"]: orig_type = 2
+                        
+                        orig_desc = {
+                            "type": orig_type,
+                            "user_profile": {"info": origin_json.get("user", {})},
+                            "timestamp": get_any(origin_json, "item.upload_time", "pubdate", "ctime") or 0,
+                            "rid": origin_json.get("rid", ""),
+                            "bvid": origin_json.get("bvid", "")
+                        }
+                        orig_item = self._convert_fallback_card(orig_desc, origin_json)
+                    except Exception as e:
+                        logger.warning(f"Failed to parse forwarded content: {e}")
+
+            # Fallback for text if empty
+            if not text_desc:
+                text_desc = get_any(card_json, "dynamic", "desc", "summary", "title", "content") # Last resort
+
+            return PostAPI.Item(
+                basic=PostAPI.Basic(rid_str=str(desc.get("rid", ""))),
+                id_str=str(desc.get("dynamic_id_str", "")),
+                type=dyn_type,
+                orig=orig_item,
+                modules=PostAPI.Modules(
+                    module_author=author,
+                    module_dynamic=PostAPI.Modules.Dynamic(
+                        major=major,
+                        desc=PostAPI.Modules.Desc(text=text_desc, rich_text_nodes=[])
+                    )
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Convert logic error ({e}) for card: {str(card_json)[:100]}...")
+            return None
+        except Exception as e:
+            logger.warning(f"Convert logic error ({e}) for card: {str(card_json)[:100]}...")
+            return None
 
     def get_id(self, post: DynRawPost) -> str:
         return post.id_str or str(post.basic.rid_str)
@@ -114,7 +374,6 @@ class BilibiliDynamic(NewMessagePlatform):
                     tags.append(node["text"].strip("#"))
         return tags
 
-    # ... _text_process 和 pre_parse_by_mojar 逻辑较长，直接硬编码在这里 ...
     def _text_process(self, dynamic: str, desc: str, title: str) -> _ProcessedText:
         title_similarity = 0.0 if len(title) == 0 or len(desc) == 0 else text_similarity(title, desc[: len(title)])
         if title_similarity > 0.9:
@@ -127,8 +386,8 @@ class BilibiliDynamic(NewMessagePlatform):
 
     def pre_parse_by_mojar(self, raw_post: DynRawPost) -> _ParsedMojarPost:
         dyn = raw_post.modules.module_dynamic
-        # 简化匹配逻辑，复用原版结构
         major = raw_post.modules.module_dynamic.major
+
         
         if isinstance(major, VideoMajor):
             archive = major.archive
@@ -138,7 +397,6 @@ class BilibiliDynamic(NewMessagePlatform):
                                   str(URL(archive.jump_url).with_scheme("https")))
         elif isinstance(major, LiveRecommendMajor):
             live_rcmd = major.live_rcmd
-            # LiveRecommend content is a JSON string
             content_data = type_validate_json(LiveRecommendMajor.Content, live_rcmd.content)
             live_info = content_data.live_play_info
             return _ParsedMojarPost(
@@ -156,13 +414,36 @@ class BilibiliDynamic(NewMessagePlatform):
                 str(URL(live.jump_url).with_scheme("https"))
             )
         elif isinstance(major, DrawMajor):
-            return _ParsedMojarPost("", dyn.desc.text if dyn.desc else "", 
+            text = dyn.desc.text if dyn.desc else ""
+            
+            # If text is empty, try to get from items description
+            if not text:
+                item_descs = [item.description for item in major.draw.items if item.description]
+                if item_descs:
+                    text = "\n".join(item_descs)
+
+            # Use real title if available (Opus), otherwise generate from text
+            title = major.draw.title or ""
+            if not title and text:
+                first_line = text.split("\n")[0]
+                title = first_line[:30] + "..." if len(first_line) > 30 else first_line
+            
+            return _ParsedMojarPost(title, text, 
                                   [item.src for item in major.draw.items], 
                                   f"https://t.bilibili.com/{raw_post.id_str}")
         elif isinstance(major, ArticleMajor):
             return _ParsedMojarPost(major.article.title, major.article.desc, major.article.covers,
                                   str(URL(major.article.jump_url).with_scheme("https")))
-        # ... 其他类型简化处理，默认 fallback
+        elif isinstance(major, OPUSMajor):
+            opus = major.opus
+            text = opus.summary.text
+            title = opus.title or ""
+            if not title and text:
+                first_line = text.split("\n")[0]
+                title = first_line[:30] + "..." if len(first_line) > 30 else first_line
+            
+            pics = [pic.url for pic in opus.pics]
+            return _ParsedMojarPost(title, text, pics, opus.jump_url)
         
         desc = dyn.desc.text if dyn.desc else ""
         return _ParsedMojarPost("", desc, [], f"https://t.bilibili.com/{raw_post.id_str}")
@@ -170,7 +451,6 @@ class BilibiliDynamic(NewMessagePlatform):
     async def parse(self, raw_post: DynRawPost) -> Post:
         parsed_raw_post = self.pre_parse_by_mojar(raw_post)
         
-        # 处理转发
         repost = None
         if self.get_category(raw_post) == Category(5) and raw_post.orig:
             if isinstance(raw_post.orig, PostAPI.Item):
@@ -196,17 +476,13 @@ class BilibiliDynamic(NewMessagePlatform):
             url=parsed_raw_post.url or "",
             nickname=raw_post.modules.module_author.name,
             avatar=raw_post.modules.module_author.face,
-            repost=repost,
             id=self.get_id(raw_post),
+            type=raw_post.type,
         )
     
-    # 简单的 fetch 实现，调用 get_sub_list
     async def fetch_new_post(self, sub_unit) -> list[Post]:
-        # 这里需要实现 filter 逻辑 (原版 NewMessage.fetch_new_post)
-        # 但我们简化：直接获取，由 Scheduler 根据 ID 去重
         raw_posts = await self.get_sub_list(sub_unit.sub_target)
         posts = []
         for rp in raw_posts:
-            # 过滤 Tags 和 Category (暂略，如果需要可以搬运 filter_user_custom)
             posts.append(await self.parse(rp))
         return posts
