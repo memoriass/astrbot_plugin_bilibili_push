@@ -15,9 +15,11 @@ from astrbot.api.star import Context, Star, register
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
 from .core.http import HttpClient
+from .core.parser import BilibiliParser
 from .core.types import MsgImage, MsgText
 from .scheduler import BilibiliScheduler
 from .sub_manager import DBManager, Subscription
+from .theme.renderer import render_template
 
 
 @register(
@@ -56,9 +58,15 @@ class Main(Star):
             star=self,
         )
 
+        self.temp_cleanup_days = self.config.get("temp_cleanup_days", 1)
+        self.search_cache_expiry_hours = self.config.get("search_cache_expiry_hours", 24)
+        self.enable_link_parser = self.config.get("enable_link_parser", True)
+        self.parser = BilibiliParser()
+
     async def initialize(self):
         await HttpClient.set_star_instance(self)
         await self.scheduler.start()
+        asyncio.create_task(self._cleanup_temp_files())
 
     async def terminate(self):
         await self.scheduler.stop()
@@ -110,6 +118,100 @@ class Main(Star):
         """从事件中提取目标ID (类型:ID)"""
         return f"{event.message_obj.type.value}:{event.session_id}"
 
+    async def _get_bili_user_info(self, uid: str):
+        client = await HttpClient.get_client()
+        try:
+            res = await client.get(
+                "https://api.bilibili.com/x/web-interface/card",
+                params={"mid": uid},
+                timeout=5,
+            )
+            if res.status_code == 200:
+                data = res.json()
+                if data["code"] == 0:
+                    card = data["data"]["card"]
+                    return {
+                        "username": card["name"],
+                        "face": card["face"],
+                        "uid": uid
+                    }
+        except Exception as e:
+            astrbot_logger.warning(f"Fetch user info failed for {uid}: {e}")
+        return None
+
+    async def _cleanup_temp_files(self):
+        """清理过期的临时文件"""
+        try:
+            now = time.time()
+            cutoff = now - (self.temp_cleanup_days * 86400)
+            count = 0
+            for f in self.temp_dir.iterdir():
+                if f.is_file() and f.stat().st_mtime < cutoff:
+                    f.unlink()
+                    count += 1
+            if count > 0:
+                astrbot_logger.info(f"Cleaned up {count} temporary files.")
+        except Exception as e:
+            astrbot_logger.error(f"Cleanup temp files failed: {e}")
+
+    async def _get_background_uri(self) -> dict:
+        """获取并压缩随机背景图 URI"""
+        import base64
+        import mimetypes
+        import random
+        try:
+            from PIL import Image
+        except ImportError:
+            return ""
+
+        bg_files = [
+            f
+            for f in self.bg_dir.iterdir()
+            if f.is_file() and f.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp"]
+        ]
+
+        if not bg_files:
+            return ""
+
+        bg_file = random.choice(bg_files)
+        try:
+            with Image.open(bg_file) as img:
+                # 进一步压缩以提升渲染速度
+                target_width = 1000
+                if img.width > target_width:
+                    ratio = target_width / img.width
+                    new_height = int(img.height * ratio)
+                    img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
+                
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                
+                buffer = io.BytesIO()
+                # 降低质量以换取速度，背景图不需要太清晰
+                img.save(buffer, format="JPEG", quality=40)
+                base64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                return {
+                    "uri": f"data:image/jpeg;base64,{base64_str}",
+                    "width": img.width,
+                    "height": img.height
+                }
+        except Exception as e:
+            astrbot_logger.error(f"Generate background URI failed: {e}")
+            try:
+                mime_type, _ = mimetypes.guess_type(bg_file)
+                from PIL import Image
+                with Image.open(bg_file) as img:
+                    w, h = img.size
+                with open(bg_file, "rb") as f:
+                    return {
+                        "uri": f"data:{mime_type or 'image/jpeg'};base64,{base64.b64encode(f.read()).decode('utf-8')}",
+                        "width": w,
+                        "height": h
+                    }
+            except:
+                return {"uri": "", "width": 1400, "height": 1000}
+        return {"uri": "", "width": 1400, "height": 1000}
+
     @filter.command("添加b站订阅", alias={"bilibili 添加订阅", "add_bili_sub"})
     async def add_subscription(self, event: AstrMessageEvent, uid: str):
         target_id = self._get_target_id(event)
@@ -118,14 +220,13 @@ class Main(Star):
             return
 
         try:
-            platform = self.scheduler.bili_platform
-            username = await platform.get_target_name(uid)
-
-            if not username:
-                yield event.plain_result(
-                    f"❌ 无法获取 UP 主信息: {uid}。可能是 API 限制，请稍后再试。"
-                )
+            user_info = await self._get_bili_user_info(uid)
+            if not user_info:
+                yield event.plain_result(f"❌ 无法获取 UP 主信息: {uid}。")
                 return
+            
+            username = user_info["username"]
+            face = user_info["face"]
 
             sub = Subscription(
                 uid=uid,
@@ -138,7 +239,28 @@ class Main(Star):
             )
 
             if self.db.add_subscription(sub):
-                yield event.plain_result(f"✅ 已添加动态订阅: {username} ({uid})")
+                # Render visual confirmation
+                template_path = Path(__file__).parent / "theme" / "templates"
+                bg_data = await self._get_background_uri()
+                msg = f"✅ 已添加动态订阅: {username} ({uid})"
+                
+                img_bytes = await render_template(
+                    template_path,
+                    "sub_add.html.jinja",
+                    {
+                        "username": username,
+                        "face": face,
+                        "uid": uid,
+                        "sub_type": "dynamic",
+                        "bg_image_uri": bg_data["uri"],
+                        "action": "ADDED"
+                    },
+                    viewport={"width": 400, "height": 400},
+                )
+                yield event.chain_result([
+                    Comp.Plain(msg),
+                    Comp.Image.fromBytes(img_bytes)
+                ])
             else:
                 yield event.plain_result("⚠️ 订阅已存在")
         except Exception as e:
@@ -153,13 +275,13 @@ class Main(Star):
             return
 
         try:
-            platform = self.scheduler.live_platform
-            username = await platform.get_target_name(uid)
-            if not username:
-                yield event.plain_result(
-                    f"❌ 无法获取直播间信息: {uid}。可能是 API 限制，请稍后再试。"
-                )
+            user_info = await self._get_bili_user_info(uid)
+            if not user_info:
+                yield event.plain_result(f"❌ 无法获取 UP 主信息: {uid}。")
                 return
+            
+            username = user_info["username"]
+            face = user_info["face"]
 
             sub = Subscription(
                 uid=uid,
@@ -171,7 +293,28 @@ class Main(Star):
                 enabled=True,
             )
             if self.db.add_subscription(sub):
-                yield event.plain_result(f"✅ 已添加直播订阅: {username} ({uid})")
+                # Render visual confirmation
+                template_path = Path(__file__).parent / "theme" / "templates"
+                bg_data = await self._get_background_uri()
+                msg = f"✅ 已添加直播订阅: {username} ({uid})"
+                
+                img_bytes = await render_template(
+                    template_path,
+                    "sub_add.html.jinja",
+                    {
+                        "username": username,
+                        "face": face,
+                        "uid": uid,
+                        "sub_type": "live",
+                        "bg_image_uri": bg_data["uri"],
+                        "action": "ADDED"
+                    },
+                    viewport={"width": 400, "height": 400},
+                )
+                yield event.chain_result([
+                    Comp.Plain(msg),
+                    Comp.Image.fromBytes(img_bytes)
+                ])
             else:
                 yield event.plain_result("⚠️ 订阅已存在")
         except Exception as e:
@@ -186,8 +329,33 @@ class Main(Star):
         if not target_id:
             return
 
+        user_info = await self._get_bili_user_info(uid)
+        username = user_info["username"] if user_info else uid
+        face = user_info["face"] if user_info else "http://i0.hdslb.com/bfs/face/member/noface.jpg"
+
         if self.db.remove_subscription(uid, "dynamic", target_id):
-            yield event.plain_result(f"✅ 已取消动态订阅: {uid}")
+            # Render visual confirmation
+            template_path = Path(__file__).parent / "theme" / "templates"
+            bg_data = await self._get_background_uri()
+            msg = f"🗑️ 已取消动态订阅: {username} ({uid})"
+            
+            img_bytes = await render_template(
+                template_path,
+                "sub_add.html.jinja",
+                {
+                    "username": username,
+                    "face": face,
+                    "uid": uid,
+                    "sub_type": "dynamic",
+                    "bg_image_uri": bg_data["uri"],
+                    "action": "REMOVED"
+                },
+                viewport={"width": 400, "height": 400},
+            )
+            yield event.chain_result([
+                Comp.Plain(msg),
+                Comp.Image.fromBytes(img_bytes)
+            ])
         else:
             yield event.plain_result(f"❌ 动态订阅不存在: {uid}")
 
@@ -200,8 +368,33 @@ class Main(Star):
         if not target_id:
             return
 
+        user_info = await self._get_bili_user_info(uid)
+        username = user_info["username"] if user_info else uid
+        face = user_info["face"] if user_info else "http://i0.hdslb.com/bfs/face/member/noface.jpg"
+
         if self.db.remove_subscription(uid, "live", target_id):
-            yield event.plain_result(f"✅ 已取消直播订阅: {uid}")
+            # Render visual confirmation
+            template_path = Path(__file__).parent / "theme" / "templates"
+            bg_data = await self._get_background_uri()
+            msg = f"🗑️ 已取消直播订阅: {username} ({uid})"
+            
+            img_bytes = await render_template(
+                template_path,
+                "sub_add.html.jinja",
+                {
+                    "username": username,
+                    "face": face,
+                    "uid": uid,
+                    "sub_type": "live",
+                    "bg_image_uri": bg_data["uri"],
+                    "action": "REMOVED"
+                },
+                viewport={"width": 400, "height": 400},
+            )
+            yield event.chain_result([
+                Comp.Plain(msg),
+                Comp.Image.fromBytes(img_bytes)
+            ])
         else:
             yield event.plain_result(f"❌ 直播订阅不存在: {uid}")
 
@@ -256,19 +449,39 @@ class Main(Star):
                 if code == 0:
                     # 获取最新 Response 中的 Set-Cookie
                     new_cookies = dict(check_res.cookies)
+                    
+                    # 优先从 cookie 获取 UID (DedeUserID)
+                    uid = new_cookies.get("DedeUserID")
+                    if not uid and check_data.get("mid"):
+                        uid = str(check_data.get("mid"))
+                    
+                    # 使用新 Cookie 调用 nav 接口获取完整的用户信息 (uname/face)
+                    try:
+                        nav_res = await client.get("https://api.bilibili.com/x/web-interface/nav", cookies=new_cookies, timeout=5)
+                        nav_data = nav_res.json()
+                        if nav_data["code"] == 0:
+                            n = nav_data["data"]
+                            uid = str(n.get("mid") or uid)
+                            uname = n.get("uname", "未知用户")
+                            face = n.get("face", "")
+                        else:
+                            uname = check_data.get("uname", "未知用户")
+                            face = check_data.get("face", "")
+                    except Exception as e:
+                        astrbot_logger.warning(f"Fetch nav info after login failed: {e}")
+                        uname = check_data.get("uname", "未知用户")
+                        face = check_data.get("face", "")
 
                     # Persist via new Account Pool logic
                     await HttpClient.add_account(
-                        uid=str(check_data.get("mid")),
-                        name=str(check_data.get("uname", "未知用户")),
-                        face=str(
-                            check_data.get("face", "")
-                        ),  # Face is often empty in poll response, might default locally
+                        uid=str(uid),
+                        name=str(uname),
+                        face=str(face),
                         cookies=new_cookies,
                     )
 
                     yield event.plain_result(
-                        f"✅ 登录成功！已添加账号：{check_data.get('uname', '用户')} (UID: {check_data.get('mid')})"
+                        f"✅ 登录成功！已添加账号：{uname} (UID: {uid})"
                     )
                     return
                 elif code == 86038:
@@ -309,205 +522,156 @@ class Main(Star):
                 }
             )
 
-        # Reuse Background Logic
-        import base64
-        import mimetypes
-        import random
-
-        bg_dir = self.data_dir / "backgrounds"
-        bg_dir.mkdir(parents=True, exist_ok=True)
-
-        bg_files = [
-            f
-            for f in bg_dir.iterdir()
-            if f.is_file() and f.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp"]
-        ]
-
-        bg_image_uri = ""
-        if bg_files:
-            bg_file = random.choice(bg_files)
-            try:
-                # Compression Logic
-                try:
-                    import io
-
-                    from PIL import Image
-
-                    with Image.open(bg_file) as img:
-                        # Resize if too large (e.g. width > 1200)
-                        if img.width > 1200:
-                            ratio = 1200 / img.width
-                            new_height = int(img.height * ratio)
-                            img = img.resize(
-                                (1200, new_height), Image.Resampling.LANCZOS
-                            )
-
-                        # Convert to RGB (in case of PNG with transparency) for JPEG saving
-                        if img.mode in ("RGBA", "P"):
-                            img = img.convert("RGB")
-
-                        buffer = io.BytesIO()
-                        img.save(
-                            buffer, format="JPEG", quality=60
-                        )  # Compress heavily since it's blurred
-                        base64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
-                        bg_image_uri = f"data:image/jpeg;base64,{base64_str}"
-                        astrbot_logger.info(
-                            f"Using compressed background: {bg_file.name}"
-                        )
-                except ImportError:
-                    # Fallback if Pillow not installed
-                    astrbot_logger.warning(
-                        "Pillow not installed, using original image."
-                    )
-                    mime_type, _ = mimetypes.guess_type(bg_file)
-                    if not mime_type:
-                        mime_type = "image/jpeg"
-                    with open(bg_file, "rb") as f:
-                        bg_image_uri = f"data:{mime_type};base64,{base64.b64encode(f.read()).decode('utf-8')}"
-                except Exception as e:
-                    astrbot_logger.error(
-                        f"Image compression failed: {e}, using original."
-                    )
-                    mime_type, _ = mimetypes.guess_type(bg_file)
-                    if not mime_type:
-                        mime_type = "image/jpeg"
-                    with open(bg_file, "rb") as f:
-                        bg_image_uri = f"data:{mime_type};base64,{base64.b64encode(f.read()).decode('utf-8')}"
-
-            except Exception:
-                pass
+        bg_data = await self._get_background_uri()
 
         # Render
         # Render using sub_list template
-        from .theme.renderer import render_template
         template_path = Path(__file__).parent / "theme" / "templates"
-        
-        # Override title for login status
-        # Note: The sub_list template might hardcode "SUBSCRIPTION LIST". 
-        # Since we can't easily change the template title dynamically without modifying the template 
-        # (unless we pass a title variable), we use it as is or pass a custom variable if supported.
-        # For now, we just pass the single user as subs.
         
         img_bytes = await render_template(
             template_path,
             "sub_list.html.jinja",
             {
                 "subs": display_list, 
-                "bg_image_uri": bg_image_uri,
-                "page_title": "登录状态" # We might need to handle this in template
+                "bg_image_uri": bg_data["uri"],
+                "page_title": "登录状态"
             },
-            viewport={"width": 1400, "height": 1000}, # Keep same viewport
+            viewport={"width": bg_data["width"], "height": 10}, # Height will auto-expand
             selector="body",
         )
-        yield event.chain_result([MsgImage(data=img_bytes)])
+        yield event.chain_result([Comp.Image.fromBytes(img_bytes)])
 
         
-    @filter.command("测试直播推送")
-    async def test_live_push(self, event: AstrMessageEvent, uid: str = None):
-        """测试直播推送: /测试直播推送 [uid]"""
-        target_id = self._get_target_id(event)
-        if not target_id: return
-
-        if not uid:
-            # 如果没提供 UID，检查当前群的所有订阅
-            count = await self.scheduler.manual_live_check(target_id)
-            yield event.plain_result(f"已触发 {count} 个直播推送测试")
-        else:
-            # 针对特定 UID 测试
-            # 这里我们需要临时构造一个订阅关系来触发推送，或者直接利用 manual_live_check 的逻辑
-            # 但 manual_live_check 是基于订阅的。
-            # 简单起见，我们只能测试已订阅的 UID
-            subs = self.db.get_subscriptions(target_id)
-            if not any(s.uid == uid for s in subs):
-                yield event.plain_result(f"⚠️ 必须先订阅 {uid} 才能测试")
-                return
+    @filter.event_message_type(filter.EventMessageType.ALL)
+    async def handle_bilibili_links(self, event: AstrMessageEvent):
+        """自动解析消息中的 B站 链接"""
+        if not self.enable_link_parser:
+            return
             
-            # 手动触发逻辑
-            try:
-                platform = self.scheduler.live_platform
-                new_status = await platform.get_status(uid)
-                # 强制认为正在直播
-                if new_status.live_status != 1:
-                     yield event.plain_result(f"⚠️用户 {uid} ({new_status.title}) 未开播，尝试模拟开播推送...")
-                     new_status.live_status = 1 # Mock
-                     
-                raw_post = platform._gen_current_status(new_status, 1)
-                parsed_post = await platform.parse(raw_post)
-                
-                # Render directly
-                # Find the theme
-                if self.scheduler.image_template == "movie_card":
-                    theme = self.scheduler.themes["movie_card"]
-                else:
-                    theme = self.scheduler.themes["dynamic_card"]
-                    
-                msgs = await theme.render(parsed_post)
-                if self.on_new_post:
-                    await self.on_new_post(self.platform_name, target_id, msgs)
-                yield event.plain_result(f"✅ 直播测试推送已发送")
-                
-            except Exception as e:
-                import traceback
-                astrbot_logger.error(traceback.format_exc())
-                yield event.plain_result(f"❌ 测试失败: {e}")
+        # 如果消息是指令，跳过解析以避免重复操作
+        if event.message_str.startswith("/"):
+            return
 
-    async def _test_dynamic_render(self, event: AstrMessageEvent, uid: str, type_filter: str):
-        target_id = self._get_target_id(event)
-        platform = self.scheduler.bili_platform
-        yield event.plain_result(f"⏳ 正在获取 {uid} 的 {type_filter} 动态...")
-        
+        info = await self.parser.parse_message(event.message_str)
+        if not info:
+            return
+
+        # Render
+        template_path = Path(__file__).parent / "theme" / "templates"
         try:
-            raw_posts = await platform.get_sub_list(uid)
-            if not raw_posts:
-                 yield event.plain_result(f"❌ 未获取到动态 (可能是风控或无数据)")
-                 return
-                 
-            found_post = None
-            for raw_post in raw_posts:
-                # 简单判断类型
-                # type_filter: "video" or "image"
-                is_video = raw_post.type == "DYNAMIC_TYPE_AV"
-                if type_filter == "video" and is_video:
-                    found_post = await platform.parse(raw_post)
-                    break
-                elif type_filter == "image" and not is_video:
-                    found_post = await platform.parse(raw_post)
-                    break
-            
-            if not found_post and raw_posts:
-                # Fallback to first if not found specific type
-                yield event.plain_result(f"⚠️ 未找到指定类型动态，使用最新一条测试")
-                found_post = await platform.parse(raw_posts[0])
-                
-            if found_post:
-                if self.scheduler.image_template == "movie_card":
-                    theme = self.scheduler.themes["movie_card"]
-                else:
-                    theme = self.scheduler.themes["dynamic_card"]
-                msgs = await theme.render(found_post)
-                if self.on_new_post:
-                    await self.on_new_post(self.platform_name, target_id, msgs)
-                yield event.plain_result(f"✅ 动态测试推送已发送")
-            else:
-                yield event.plain_result(f"❌ 未找到有效动态")
-                
+            img_bytes = await render_template(
+                template_path,
+                "parser_bili.html.jinja",
+                info,
+                viewport={"width": 640, "height": 800},
+                selector=".card"
+            )
+            yield event.chain_result([Comp.Image.fromBytes(img_bytes)])
         except Exception as e:
-            import traceback
-            astrbot_logger.error(traceback.format_exc())
-            yield event.plain_result(f"❌ 测试失败: {e}")
+            astrbot_logger.error(f"Render parsed link failed: {e}")
 
-    @filter.command("测试图文动态")
-    async def test_dynamic_draw(self, event: AstrMessageEvent, uid: str):
-        """测试图文动态: /测试图文动态 [uid]"""
-        async for res in self._test_dynamic_render(event, uid, "image"):
-            yield res
+    @filter.command("b站搜索", alias={"bilibili 搜索", "search_bili"})
+    async def bilibili_search(self, event: AstrMessageEvent, keyword: str):
+        """b站搜索 xxx"""
+        # 1. Check Cache
+        cache_key = f"search_cache_{keyword}"
+        cached_data = await self.get_kv_data(cache_key, None)
+        now = time.time()
 
-    @filter.command("测试视频动态")
-    async def test_dynamic_video(self, event: AstrMessageEvent, uid: str):
-        """测试视频动态: /测试视频动态 [uid]"""
-        async for res in self._test_dynamic_render(event, uid, "video"):
-            yield res
+        if cached_data:
+            ts = cached_data.get("timestamp", 0)
+            if now - ts < self.search_cache_expiry_hours * 3600:
+                astrbot_logger.info(f"Using cached search result for: {keyword}")
+                search_results = cached_data.get("results", [])
+            else:
+                search_results = None
+        else:
+            search_results = None
+
+        if not search_results:
+            yield event.plain_result(f"⏳ 正在 B站 搜索: {keyword}...")
+            client = await HttpClient.get_client()
+            search_results = []
+            try:
+                res = await client.get(
+                    "https://api.bilibili.com/x/web-interface/search/type",
+                    params={
+                        "search_type": "bili_user",
+                        "keyword": keyword,
+                        "page": 1
+                    },
+                    timeout=10
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    if data["code"] == 0:
+                        items = data["data"].get("result", [])
+                        for item in items:
+                            search_results.append({
+                                "uid": str(item["mid"]),
+                                "username": item["uname"],
+                                "face": "https:" + item["upic"] if not item["upic"].startswith("http") else item["upic"],
+                                "is_live": False, # Search result doesn't guarantee live status
+                                "has_live": True,
+                                "has_dynamic": True
+                            })
+                
+                # Update Cache
+                if search_results:
+                    await self.put_kv_data(cache_key, {
+                        "results": search_results,
+                        "timestamp": now
+                    })
+            except Exception as e:
+                astrbot_logger.error(f"Search failed: {e}")
+                yield event.plain_result(f"❌ 搜索失败: {e}")
+                return
+
+        if not search_results:
+            yield event.plain_result(f"🔍 未找到名为 '{keyword}' 的 UP 主")
+            return
+
+        yield event.plain_result(f"🔍 为您找到 {len(search_results)} 位相关 UP 主")
+
+        # 2. Render Card with Adaptive Count
+        bg_data = await self._get_background_uri()
+        bg_uri = bg_data["uri"]
+        bg_w = bg_data["width"]
+        bg_h = bg_data["height"]
+
+        # Calculate max cards based on area or row/col
+        # Card size is approx 280x280 + 25px gap
+        # Approximate cols = bg_w // 305
+        # Approximate rows = (bg_h - header_h) // 305
+        cols = max(1, bg_w // 305)
+        rows = max(1, (bg_h - 150) // 305)
+        max_cards = cols * rows
+
+        astrbot_logger.info(f"Viewport size: {bg_w}x{bg_h}, calculated max cards: {max_cards}")
+        
+        display_results = search_results[:max_cards]
+        
+        # 3. Render
+        template_path = Path(__file__).parent / "theme" / "templates"
+        try:
+            img_bytes = await render_template(
+                template_path,
+                "sub_list.html.jinja",
+                {
+                    "subs": display_results,
+                    "bg_image_uri": bg_uri,
+                    "page_title": f"搜索结果: {keyword}"
+                },
+                viewport={"width": bg_w, "height": 10},
+                selector="body",
+            )
+            yield event.chain_result([Comp.Image.fromBytes(img_bytes)])
+        except Exception as e:
+            astrbot_logger.error(f"Render search results failed: {e}")
+            yield event.plain_result(f"❌ 搜索结果渲染失败")
+
+        # After search, trigger a cleanup check
+        asyncio.create_task(self._cleanup_temp_files())
 
     @filter.command("b站订阅列表", alias={"bilibili 订阅列表", "list_bili_sub"})
     async def list_subscriptions(self, event: AstrMessageEvent):
@@ -591,62 +755,18 @@ class Main(Star):
             all_subs.append(info)
 
         # 4. Render
-        from .theme.renderer import render_template
-
         template_path = Path(__file__).parent / "theme" / "templates"
-
-        # 5. Background Image Logic
-        import base64
-        import mimetypes
-        import random
-
-        bg_dir = self.data_dir / "backgrounds"
-        bg_dir.mkdir(parents=True, exist_ok=True)
-
-        bg_files = [
-            f
-            for f in bg_dir.iterdir()
-            if f.is_file() and f.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp"]
-        ]
-
-        bg_image_uri = ""
-        if bg_files:
-            bg_file = random.choice(bg_files)
-            try:
-                mime_type, _ = mimetypes.guess_type(bg_file)
-                if not mime_type:
-                    mime_type = "image/jpeg"
-
-                with open(bg_file, "rb") as f:
-                    data = f.read()
-                    base64_str = base64.b64encode(data).decode("utf-8")
-                    bg_image_uri = f"data:{mime_type};base64,{base64_str}"
-                astrbot_logger.info(f"Using background image: {bg_file.name}")
-            except Exception as e:
-                astrbot_logger.error(f"Failed to load background image {bg_file}: {e}")
-        else:
-            astrbot_logger.info(f"No background images found in {bg_dir}")
+        bg_data = await self._get_background_uri()
 
         try:
             img_bytes = await render_template(
                 template_path,
                 "sub_list.html.jinja",
-                {"subs": all_subs, "bg_image_uri": bg_image_uri},
-                viewport={"width": 1400, "height": 1000},
+                {"subs": all_subs, "bg_image_uri": bg_data["uri"]},
+                viewport={"width": bg_data["width"], "height": 10},
                 selector="body",
             )
-
-            # Fix: Save bytes to temp file because fromFileSystem needs a path
-            temp_dir = self.data_dir / "temp"
-            temp_dir.mkdir(parents=True, exist_ok=True)
-            temp_file = temp_dir / f"sub_list_{int(time.time())}.jpg"
-
-            with open(temp_file, "wb") as f:
-                f.write(img_bytes)
-
-            yield event.chain_result(
-                [Comp.Image.fromFileSystem(str(temp_file.absolute()))]
-            )
+            yield event.chain_result([Comp.Image.fromBytes(img_bytes)])
 
         except Exception as e:
             astrbot_logger.error(f"Render sub list failed: {e}")

@@ -27,11 +27,15 @@ class HttpClient:
     async def load_accounts(cls):
         if cls._star_instance:
             cls._accounts = await cls._star_instance.get_kv_data(
-                "bili_accounts_pool", []
+                "bilibili_push_accounts", []
             )
             # Migrate old single cookie if exists and pool is empty
             if not cls._accounts:
                 old_cookies = await cls._star_instance.get_kv_data("bili_cookies", {})
+                if not old_cookies:
+                    # Try another common key from previous versions if any
+                    old_cookies = await cls._star_instance.get_kv_data("bilibili_cookies", {})
+                
                 if old_cookies:
                     # Generic migration entry
                     cls._accounts.append(
@@ -51,7 +55,7 @@ class HttpClient:
     @classmethod
     async def save_accounts(cls):
         if cls._star_instance:
-            await cls._star_instance.put_kv_data("bili_accounts_pool", cls._accounts)
+            await cls._star_instance.put_kv_data("bilibili_push_accounts", cls._accounts)
 
     @classmethod
     async def add_account(cls, uid: str, name: str, face: str, cookies: dict):

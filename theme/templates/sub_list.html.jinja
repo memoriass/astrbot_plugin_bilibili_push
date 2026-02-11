@@ -6,158 +6,179 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: transparent; /* Transparent background */
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #1a1a1a;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             display: flex;
             flex-direction: column;
-            width: fit-content;    /* Remove fixed width */
+            align-items: center;
             min-height: 100vh;
-            /* Dynamic Background Logic - Keeping it but it might be transparent */
+            width: 100%; /* Will be constrained by viewport width in main.py */
+            position: relative;
+        }
+
+        /* Full page background */
+        .bg-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
             {% if bg_image_uri %}
             background-image: url('{{ bg_image_uri }}');
+            {% endif %}
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
-            {% endif %}
+            background-repeat: no-repeat;
         }
-        
-        /* Glassmorphism Background Overlay - Make transparent or remove based on request */
-        /* User asked for transparent background, so we hide the white overlay */
-        .glass-overlay {
-            display: none; 
+
+        /* Dark overlay and blur */
+        .bg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(8px);
         }
 
         .container {
-            width: fit-content; /* Auto adjust width */
-            max-width: 1400px;  /* Max width constraint */
+            width: 100%;
+            padding: 40px;
+            box-sizing: border-box;
             display: flex;
             flex-wrap: wrap; 
-            gap: 20px;
-            justify-content: flex-start;
+            gap: 25px;
+            justify-content: center;
         }
         
         .header {
             width: 100%;
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-            /* Removed background bar */
-            text-shadow: 0 1px 2px rgba(255,255,255,1);
-            padding: 10px 0; /* Removed side padding since no box */
-            /* border-radius: 8px; Removed */
-            /* backdrop-filter: blur(5px); Removed */
+            font-size: 32px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            letter-spacing: 2px;
+            padding-bottom: 15px;
         }
 
-        /* Material Card Style - Larger */
         .card {
-            width: 300px;  /* Increased from 180px */
-            height: 300px; 
+            width: 280px;
+            height: 280px;
             position: relative;
-            background-color: #fff;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            border-radius: 16px; /* Slightly more rounded */
-            transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(.25,.8,.25,1);
             overflow: hidden;
         }
         
         .card:hover {
-            box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
-            transform: translateY(-5px);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 45px rgba(0,0,0,0.4);
+            border-color: rgba(255, 255, 255, 0.4);
         }
 
-        /* Avatar occupies full card */
         .card-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border-radius: 16px; /* Match card radius */
-            transition: filter 0.3s;
+            transition: transform 0.5s ease;
         }
 
-        /* Gradient overlay at bottom for text readability */
+        .card:hover .card-image {
+            transform: scale(1.1);
+        }
+
         .card-overlay {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 90px; /* Increased from 60px */
-            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
-            border-bottom-left-radius: 16px;
-            border-bottom-right-radius: 16px;
+            height: 100px;
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            padding: 0 20px; /* Increased padding */
+            justify-content: flex-end;
+            padding: 0 20px 15px 20px;
             box-sizing: border-box;
         }
 
         .username {
             color: white;
-            font-size: 20px; /* Increased from 14px */
+            font-size: 22px;
             font-weight: bold;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-            margin-bottom: 4px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
         .uid {
-            color: #ddd;
-            font-size: 13px; /* Increased from 11px */
-            font-family: monospace;
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            font-family: 'Consolas', monospace;
         }
         
-        /* Badges Container - Top Left */
         .badges-wrapper {
             position: absolute;
             top: 15px;
             left: 15px;
             display: flex;
             gap: 8px;
+            z-index: 2;
         }
 
         .status-badge {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px; /* Increased */
-            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 800;
             color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(255,255,255,0.2);
         }
         
-        .badge-live-on { background-color: #4caf50; } /* Green for Live ON */
-        .badge-live-off { background-color: #fb7299; } /* Pink for Live Sub */
-        .badge-dyn { background-color: #00a1d6; } /* Blue for Dynamic */
+        .badge-live-on { background: linear-gradient(135deg, #43a047, #66bb6a); }
+        .badge-live-off { background: linear-gradient(135deg, #fb7299, #ff8da1); }
+        .badge-dyn { background: linear-gradient(135deg, #00a1d6, #33b5e5); }
 
-        /* Live Indicator - Top Right Green Dot */
         .live-dot {
             position: absolute;
             top: 15px;
             right: 15px;
-            width: 16px;
-            height: 16px;
-            background-color: #4caf50; /* Green */
+            width: 12px;
+            height: 12px;
+            background-color: #4caf50;
             border-radius: 50%;
             border: 2px solid white;
-            box-shadow: 0 0 5px #4caf50;
+            box-shadow: 0 0 10px #4caf50;
             animation: pulse 2s infinite;
+            z-index: 2;
         }
 
         @keyframes pulse {
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(76, 175, 80, 0); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
         }
 
     </style>
 </head>
 <body>
-    <div class="glass-overlay"></div>
+    <div class="bg-container"></div>
+    <div class="bg-overlay"></div>
+    
     <div class="container">
         <div class="header">
             {{ page_title | default('订阅列表') }}
