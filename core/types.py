@@ -36,6 +36,7 @@ class Post:
     id: str  # 唯一标识符
     avatar: str | None = None
     repost: Optional["Post"] = None
+    category: Optional[int] = None
     type: Any = None
 
     async def get_content(self) -> str:

@@ -1,5 +1,5 @@
 """Bilibili 推送插件"""
 
-from .main import Main
+from .main import BilibiliPush
 
-__all__ = ["Main"]
+__all__ = ["BilibiliPush"]

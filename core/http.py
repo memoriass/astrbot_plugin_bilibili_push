@@ -106,7 +106,7 @@ class HttpClient:
                 if cls._client:
                     cls._client.cookies.clear()
                     cls._client.cookies.update(acc["cookies"])
-                from ..logger import logger
+                from ..utils.logger import logger
 
                 logger.info(
                     f"Switched to Bilibili account: {acc.get('name')} (UID: {acc.get('uid')})"
@@ -117,15 +117,24 @@ class HttpClient:
         return False
 
     @classmethod
-    async def invalidate_current_account(cls):
+    async def set_current_account_status(cls, valid: bool = True, status_code: int = None):
+        if not cls._accounts: return
+        acc = cls._accounts[cls._current_account_index]
+        acc["valid"] = valid
+        acc["status_code"] = status_code
+        await cls.save_accounts()
+
+    @classmethod
+    async def invalidate_current_account(cls, status_code: int = None):
         if not cls._accounts:
             return
         acc = cls._accounts[cls._current_account_index]
         acc["valid"] = False
-        from ..logger import logger
+        acc["status_code"] = status_code
+        from ..utils.logger import logger
 
         logger.warning(
-            f"Marking account invalid: {acc.get('name')} (UID: {acc.get('uid')})"
+            f"Marking account invalid (Code {status_code}): {acc.get('name')} (UID: {acc.get('uid')})"
         )
         await cls.save_accounts()
         await cls.rotate_account()
@@ -171,7 +180,7 @@ class HttpClient:
                 )
                 cls._buvid_initialized = True
             except Exception as e:
-                from ..logger import logger
+                from ..utils.logger import logger
 
                 logger.warning(f"初始化 B站 Cookies 失败: {e}")
 

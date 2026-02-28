@@ -4,23 +4,22 @@ import asyncio
 from collections.abc import Awaitable, Callable
 
 from ..core.types import Category, MessageSegment, SubUnit, Tag, UserSubInfo
-from ..logger import logger
-from ..platform.bilibili.bilibili_dynamic import BilibiliDynamic
-from ..platform.bilibili.bilibili_live import BilibiliLive
-from ..sub_manager import DBManager, Subscription
-from ..theme.dynamic_card import DynamicCardTheme
-from ..theme.movie_card import MovieCardTheme
-from ..theme.renderer import BrowserManager
+from ..utils.logger import logger
+from ..dynamic.bilibili import BilibiliDynamic
+from ..live.bilibili import BilibiliLive
+from ..database.db_manager import DatabaseManager, Subscription
+from ..utils.renderers.dynamic_card import DynamicCardTheme
+from ..utils.renderers.movie_card import MovieCardTheme
+from ..utils.html_renderer import BrowserManager
 
 
 class BilibiliScheduler:
     def __init__(
         self,
-        db: DBManager,
+        db: DatabaseManager,
         check_interval: int = 30,
         push_on_startup: bool = False,
         render_type: str = "image",
-        image_template: str = "dynamic_card",
         on_new_post: Callable[[str, str, list[MessageSegment]], Awaitable[None]]
         | None = None,
         star: "Star" = None,
@@ -29,16 +28,19 @@ class BilibiliScheduler:
         self.check_interval = check_interval
         self.push_on_startup = push_on_startup
         self.render_type = render_type
-        self.image_template = image_template
         self.on_new_post = on_new_post
         self.star = star
 
         self.bili_platform = BilibiliDynamic()
         self.live_platform = BilibiliLive()
 
+        from ..utils.html_renderer import HtmlRenderer
+        from ..utils.resource import get_template_path
+        renderer = HtmlRenderer(get_template_path())
         self.themes = {
-            "dynamic_card": DynamicCardTheme(),
-            "movie_card": MovieCardTheme(),
+            "dynamic_card": DynamicCardTheme(renderer),
+            "movie_card": MovieCardTheme(renderer),
+            "dynamic_movie_card": MovieCardTheme(renderer, template_name="dynamic_movie_card.html.jinja"),
         }
 
         self.running = False
@@ -46,6 +48,7 @@ class BilibiliScheduler:
         self.seen_posts: dict[str, set[str]] = {}  # uid -> set of post ids
         self.live_status_cache: dict[str, Any] = {}  # uid -> status info
         self._live_cache_loaded = False
+        self._is_first_check = True
 
     async def start(self):
         if self.running:
@@ -55,11 +58,16 @@ class BilibiliScheduler:
         self.task = asyncio.create_task(self._run_loop())
         logger.info(f"Bilibili 调度器启动，间隔 {self.check_interval}s")
 
-    async def stop(self):
+    async def terminate(self):
         self.running = False
         if self.task:
             self.task.cancel()
+            try:
+                await self.task
+            except asyncio.CancelledError:
+                pass
         await BrowserManager.close()
+        logger.info("Bilibili 调度器已终止")
 
     async def _run_loop(self):
         while self.running:
@@ -137,10 +145,8 @@ class BilibiliScheduler:
             if not self._live_cache_loaded:
                 if self.star:
                     try:
-                        # 假设整个 cached map 存为一个大的 dict 可能太大，或者按 uid 存
-                        # 这里为了简单，先按 uid 存取，或加载所有订阅的
-                        # 考虑到 KV 接口，我们可以按 uid_live_status 来存
-                        for sub_unit in self._group_subs(live_subs):
+                        grouped_subs = self._group_subs(live_subs)
+                        for sub_unit in grouped_subs:
                             uid = sub_unit.sub_target
                             raw_data = await self.star.get_kv_data(
                                 f"live_status_{uid}", None
@@ -148,7 +154,6 @@ class BilibiliScheduler:
                             if raw_data:
                                 # 恢复对象
                                 from ..core.compat import type_validate_python
-
                                 try:
                                     self.live_status_cache[uid] = type_validate_python(
                                         self.live_platform.Info, raw_data
@@ -159,13 +164,16 @@ class BilibiliScheduler:
                         logger.warning(f"加载直播状态缓存出错: {e}")
                 self._live_cache_loaded = True
 
-            for sub_unit in self._group_subs(live_subs):
+            current_is_first = self._is_first_check # 记录本次循环是否为启动首次
+            grouped_live_subs = self._group_subs(live_subs)
+            for sub_unit in grouped_live_subs:
                 uid = sub_unit.sub_target
                 try:
                     new_status = await self.live_platform.get_status(uid)
                     old_status = self.live_status_cache.get(uid)
 
                     should_push = False
+                    posts = []
 
                     if old_status:
                         # 有缓存，对比状态
@@ -175,40 +183,44 @@ class BilibiliScheduler:
                         if posts:
                             should_push = True
                     else:
-                        # 无缓存（首次运行）
-                        # 此时 old_status 仍为 None，不推送，仅作为基准
-                        if self.push_on_startup and new_status.live_status == 1:
-                            # 模拟一个关播的旧状态，触发 TURN_ON
-                            fake_old = self.live_platform._gen_empty_info(int(uid))
-                            posts = self.live_platform.compare_status(
-                                uid, fake_old, new_status
-                            )
-                            if posts:
-                                should_push = True
+                        # 完全没有缓存（新添加，或KV里也没数据）
+                        if new_status.live_status == 1:
+                            # 既然是新号且正在直播，我们倾向于推送一次“直播中”
+                            should_push = True
+                            posts = [self.live_platform._gen_current_status(new_status, 1)]
+                    
+                    # 启动强推逻辑：如果有老缓存且状态没变(should_push=False)，但在启动时需要强推
+                    if current_is_first and self.push_on_startup and new_status.live_status == 1:
+                        if not should_push:
+                            should_push = True
+                            posts = [self.live_platform._gen_current_status(new_status, 1)]
 
                     if should_push:
-                        # 有状态变更，需要发送
-                        # compare_status 返回的是 RawPost (Info)，需要 parse
+                        logger.info(f"直播状态更新 [UID:{uid}] - 准备分发推送消息 (状态: {new_status.live_status})")
                         parsed_posts = []
                         for raw in posts:
-                            parsed_posts.append(await self.live_platform.parse(raw))
+                            parsed_post = await self.live_platform.parse(raw)
+                            logger.info(f"  已解析直播 Post: {parsed_post.title}")
+                            parsed_posts.append(parsed_post)
 
                         await self._dispatch_posts(
                             self.live_platform.platform_name,
                             parsed_posts,
                             sub_unit.user_sub_infos,
                         )
+                    else:
+                        logger.debug(f"直播状态无需推送 [UID:{uid}] (LiveStatus:{new_status.live_status})")
 
-                    # 更新缓存 (内存 + KV)
+                    # 更新缓存
                     self.live_status_cache[uid] = new_status
                     if self.star:
-                        # Pydantic 转 dict 存 KV
                         await self.star.put_kv_data(
                             f"live_status_{uid}", new_status.model_dump()
                         )
-
                 except Exception as e:
                     logger.error(f"直播检查失败 {uid}: {e}")
+
+            self._is_first_check = False
 
     async def manual_live_check(self, target_id: str) -> int:
         """手动触发直播检测，返回触发推送的数量"""
@@ -271,31 +283,34 @@ class BilibiliScheduler:
                 # 过滤逻辑 (Category/Tag)
                 # 直播消息特殊处理：不过滤，因为 Post 对象丢失了 Category 信息，且直播推送由 compare_status 控制
                 if post.platform != "bilibili-live":
-                    if (
-                        self.bili_platform.get_category(post)
-                        not in user_info.categories
-                    ):
+                    if post.category not in user_info.categories:
+                        continue
+                else:
+                    # 直播过滤逻辑：1.开播 2.标题更新 3.下播
+                    if post.category not in user_info.categories:
+                        logger.info(f"  [DISCARD] 直播分类不匹配: Post.cat={post.category} not in UserInfo.cats={user_info.categories}")
                         continue
 
                 try:
-                    logger.debug(f"准备推送: {post.title} -> {target_id}")
-                    theme = self.themes["dynamic_card"]
-                    if self.image_template == "movie_card":
+                    logger.info(f"  正在处理推送给 {target_id} | Platform: {post.platform} | Category: {post.category}")
+                    
+                    # 严格场景映射
+                    if post.platform == "bilibili-live":
                         theme = self.themes["movie_card"]
+                    else:
+                        theme = self.themes["dynamic_movie_card"]
 
                     is_supported = await theme.is_support_render(post)
-                    logger.debug(
-                        f"主题 {type(theme).__name__} 支持渲染: {is_supported}"
-                    )
-
                     if not is_supported:
-                        logger.warning("主题不支持渲染该类型的推文，跳过")
+                        logger.warning(f"  主题 {type(theme).__name__} 不支持渲染该推文，跳过")
                         continue
 
-                    msgs = await theme.render(post)
-                    logger.debug(f"渲染完成，消息段数量: {len(msgs)}")
-
                     if self.on_new_post:
+                        logger.info(f"  使用主题 {type(theme).__name__} 开始渲染并调用推送回调...")
+                        msgs = await theme.render(post)
                         await self.on_new_post(platform_name, target_id, msgs)
+                        logger.info(f"  回调调用完成")
+                    else:
+                        logger.warning(f"  未配置推送回调 (on_new_post is None)，消息已丢弃")
                 except Exception as e:
                     logger.error(f"推送失败: {e}")
