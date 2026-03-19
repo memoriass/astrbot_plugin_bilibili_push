@@ -62,7 +62,7 @@ class BilibiliPush(Star):
         )
 
         # 指令处理器初始化 (解耦)
-        self.help_handler = HelpHandler(context, self.bg_dir)
+        self.help_handler = HelpHandler(context)
         self.sub_handler = SubscriptionHandler(context, self.db, self.bg_dir)
         self.login_handler = LoginHandler(context, self.temp_dir, self.bg_dir)
         self.search_handler = SearchHandler(context, self.bg_dir)
