@@ -1,1 +1,1 @@
-﻿# auto-generated init for Bilibili Push plugin structure
+# auto-generated init for Bilibili Push plugin structure

@@ -3,6 +3,7 @@ import jinja2
 from playwright.async_api import Browser, Page, async_playwright
 from .logger import logger
 
+
 class BrowserManager:
     _playwright = None
     _browser: Browser | None = None
@@ -37,6 +38,7 @@ class BrowserManager:
             await cls._playwright.stop()
             cls._playwright = None
 
+
 class PageContext:
     def __init__(self, viewport=None, device_scale_factor=1, **kwargs):
         self.viewport = viewport or {"width": 800, "height": 600}
@@ -58,6 +60,7 @@ class PageContext:
         if self.page:
             await self.page.close()
             await self.page.context.close()
+
 
 async def render_template(
     template_path: Path,
@@ -86,11 +89,15 @@ async def render_template(
             await page.wait_for_timeout(2000)
 
             if selector == "body":
-                screenshot = await page.screenshot(type="jpeg", full_page=True, quality=90)
+                screenshot = await page.screenshot(
+                    type="jpeg", full_page=True, quality=90
+                )
             else:
                 logger.debug(f"等待选择器 {selector} 可见...")
                 try:
-                    await page.wait_for_selector(selector, state="visible", timeout=3000)
+                    await page.wait_for_selector(
+                        selector, state="visible", timeout=3000
+                    )
                 except Exception as e:
                     logger.warning(f"选择器 {selector} 等待超时: {e}")
                 locator = page.locator(selector)
@@ -102,15 +109,22 @@ async def render_template(
             logger.error(f"[{template_name}] 页面渲染/截图失败: {e}")
             raise
 
+
 class HtmlRenderer:
     def __init__(self, template_path: Path):
         self.template_path = template_path
-    
-    async def render(self, template_name: str, templates: dict, viewport: dict = None, selector: str = "body") -> bytes:
+
+    async def render(
+        self,
+        template_name: str,
+        templates: dict,
+        viewport: dict = None,
+        selector: str = "body",
+    ) -> bytes:
         return await render_template(
             template_path=self.template_path,
             template_name=template_name,
             templates=templates,
             viewport=viewport,
-            selector=selector
+            selector=selector,
         )

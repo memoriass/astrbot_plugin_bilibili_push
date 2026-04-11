@@ -1,5 +1,6 @@
-﻿from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod
 from ...core.types import MessageSegment, Post
+
 
 class Theme(ABC):
     @abstractmethod

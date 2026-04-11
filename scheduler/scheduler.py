@@ -36,11 +36,14 @@ class BilibiliScheduler:
 
         from ..utils.html_renderer import HtmlRenderer
         from ..utils.resource import get_template_path
+
         renderer = HtmlRenderer(get_template_path())
         self.themes = {
             "dynamic_card": DynamicCardTheme(renderer),
             "movie_card": MovieCardTheme(renderer),
-            "dynamic_movie_card": MovieCardTheme(renderer, template_name="dynamic_movie_card.html.jinja"),
+            "dynamic_movie_card": MovieCardTheme(
+                renderer, template_name="dynamic_movie_card.html.jinja"
+            ),
         }
 
         self.running = False
@@ -154,6 +157,7 @@ class BilibiliScheduler:
                             if raw_data:
                                 # 恢复对象
                                 from ..core.compat import type_validate_python
+
                                 try:
                                     self.live_status_cache[uid] = type_validate_python(
                                         self.live_platform.Info, raw_data
@@ -164,7 +168,7 @@ class BilibiliScheduler:
                         logger.warning(f"加载直播状态缓存出错: {e}")
                 self._live_cache_loaded = True
 
-            current_is_first = self._is_first_check # 记录本次循环是否为启动首次
+            current_is_first = self._is_first_check  # 记录本次循环是否为启动首次
             grouped_live_subs = self._group_subs(live_subs)
             for sub_unit in grouped_live_subs:
                 uid = sub_unit.sub_target
@@ -187,16 +191,26 @@ class BilibiliScheduler:
                         if new_status.live_status == 1:
                             # 既然是新号且正在直播，我们倾向于推送一次“直播中”
                             should_push = True
-                            posts = [self.live_platform._gen_current_status(new_status, 1)]
-                    
+                            posts = [
+                                self.live_platform._gen_current_status(new_status, 1)
+                            ]
+
                     # 启动强推逻辑：如果有老缓存且状态没变(should_push=False)，但在启动时需要强推
-                    if current_is_first and self.push_on_startup and new_status.live_status == 1:
+                    if (
+                        current_is_first
+                        and self.push_on_startup
+                        and new_status.live_status == 1
+                    ):
                         if not should_push:
                             should_push = True
-                            posts = [self.live_platform._gen_current_status(new_status, 1)]
+                            posts = [
+                                self.live_platform._gen_current_status(new_status, 1)
+                            ]
 
                     if should_push:
-                        logger.info(f"直播状态更新 [UID:{uid}] - 准备分发推送消息 (状态: {new_status.live_status})")
+                        logger.info(
+                            f"直播状态更新 [UID:{uid}] - 准备分发推送消息 (状态: {new_status.live_status})"
+                        )
                         parsed_posts = []
                         for raw in posts:
                             parsed_post = await self.live_platform.parse(raw)
@@ -209,7 +223,9 @@ class BilibiliScheduler:
                             sub_unit.user_sub_infos,
                         )
                     else:
-                        logger.debug(f"直播状态无需推送 [UID:{uid}] (LiveStatus:{new_status.live_status})")
+                        logger.debug(
+                            f"直播状态无需推送 [UID:{uid}] (LiveStatus:{new_status.live_status})"
+                        )
 
                     # 更新缓存
                     self.live_status_cache[uid] = new_status
@@ -288,12 +304,16 @@ class BilibiliScheduler:
                 else:
                     # 直播过滤逻辑：1.开播 2.标题更新 3.下播
                     if post.category not in user_info.categories:
-                        logger.info(f"  [DISCARD] 直播分类不匹配: Post.cat={post.category} not in UserInfo.cats={user_info.categories}")
+                        logger.info(
+                            f"  [DISCARD] 直播分类不匹配: Post.cat={post.category} not in UserInfo.cats={user_info.categories}"
+                        )
                         continue
 
                 try:
-                    logger.info(f"  正在处理推送给 {target_id} | Platform: {post.platform} | Category: {post.category}")
-                    
+                    logger.info(
+                        f"  正在处理推送给 {target_id} | Platform: {post.platform} | Category: {post.category}"
+                    )
+
                     # 严格场景映射
                     if post.platform == "bilibili-live":
                         theme = self.themes["movie_card"]
@@ -302,15 +322,21 @@ class BilibiliScheduler:
 
                     is_supported = await theme.is_support_render(post)
                     if not is_supported:
-                        logger.warning(f"  主题 {type(theme).__name__} 不支持渲染该推文，跳过")
+                        logger.warning(
+                            f"  主题 {type(theme).__name__} 不支持渲染该推文，跳过"
+                        )
                         continue
 
                     if self.on_new_post:
-                        logger.info(f"  使用主题 {type(theme).__name__} 开始渲染并调用推送回调...")
+                        logger.info(
+                            f"  使用主题 {type(theme).__name__} 开始渲染并调用推送回调..."
+                        )
                         msgs = await theme.render(post)
                         await self.on_new_post(platform_name, target_id, msgs)
                         logger.info(f"  回调调用完成")
                     else:
-                        logger.warning(f"  未配置推送回调 (on_new_post is None)，消息已丢弃")
+                        logger.warning(
+                            f"  未配置推送回调 (on_new_post is None)，消息已丢弃"
+                        )
                 except Exception as e:
                     logger.error(f"推送失败: {e}")

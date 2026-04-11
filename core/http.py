@@ -12,6 +12,7 @@ class HttpClient:
     _client: httpx.AsyncClient | None = None
     _buvid_initialized: bool = False
     _star_instance: Optional["Star"] = None
+    _verify_ssl: bool = True
 
     # Account Pool
     # Structure: [{"uid": str, "name": str, "face": str, "cookies": dict, "valid": bool}]
@@ -21,6 +22,21 @@ class HttpClient:
     @classmethod
     async def set_star_instance(cls, star: "Star"):
         cls._star_instance = star
+
+        conf = {}
+        context = getattr(star, "context", None)
+        if context is not None:
+            get_config = getattr(context, "get_config", None)
+            if callable(get_config):
+                try:
+                    conf = get_config() or {}
+                except Exception:
+                    conf = {}
+
+        if not conf:
+            conf = getattr(star, "config", {}) or {}
+
+        cls._verify_ssl = conf.get("verify_ssl", True)
         await cls.load_accounts()
 
     @classmethod
@@ -34,8 +50,10 @@ class HttpClient:
                 old_cookies = await cls._star_instance.get_kv_data("bili_cookies", {})
                 if not old_cookies:
                     # Try another common key from previous versions if any
-                    old_cookies = await cls._star_instance.get_kv_data("bilibili_cookies", {})
-                
+                    old_cookies = await cls._star_instance.get_kv_data(
+                        "bilibili_cookies", {}
+                    )
+
                 if old_cookies:
                     # Generic migration entry
                     cls._accounts.append(
@@ -55,7 +73,9 @@ class HttpClient:
     @classmethod
     async def save_accounts(cls):
         if cls._star_instance:
-            await cls._star_instance.put_kv_data("bilibili_push_accounts", cls._accounts)
+            await cls._star_instance.put_kv_data(
+                "bilibili_push_accounts", cls._accounts
+            )
 
     @classmethod
     async def add_account(cls, uid: str, name: str, face: str, cookies: dict):
@@ -93,7 +113,6 @@ class HttpClient:
     @classmethod
     async def rotate_account(cls) -> bool:
         """Switch to next valid account. Returns True if successful, False if no valid accounts."""
-        start_index = cls._current_account_index
         attempts = 0
         total = len(cls._accounts)
         if total == 0:
@@ -117,8 +136,11 @@ class HttpClient:
         return False
 
     @classmethod
-    async def set_current_account_status(cls, valid: bool = True, status_code: int = None):
-        if not cls._accounts: return
+    async def set_current_account_status(
+        cls, valid: bool = True, status_code: int = None
+    ):
+        if not cls._accounts:
+            return
         acc = cls._accounts[cls._current_account_index]
         acc["valid"] = valid
         acc["status_code"] = status_code
@@ -152,7 +174,7 @@ class HttpClient:
                 timeout=20.0,
                 follow_redirects=True,
                 cookies={},
-                verify=False,
+                verify=cls._verify_ssl,
             )
             cls._buvid_initialized = False
 

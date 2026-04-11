@@ -4,9 +4,12 @@
 
 ## ⚡ 快速开始
 
-1. **添加订阅**：使用 `/添加b站订阅 <UID>` 即可订阅动态，使用 `/添加b站直播 <UID>` 订阅直播。
-2. **搜索并订阅**：如果不记得 UID，可以使用 `/b站搜索 <关键词>` 查找 UP 主。
-3. **查看列表**：发送 `/b站订阅列表` 查看并管理当前群组的所有订阅。
+1. **添加订阅**：使用 `<wake_prefix> 添加b站订阅 <UID>` 即可订阅动态，使用 `<wake_prefix> 添加b站直播 <UID>` 订阅直播。
+2. **搜索并订阅**：如果不记得 UID，可以使用 `<wake_prefix> b站搜索 <关键词>` 查找 UP 主。
+3. **查看列表**：发送 `<wake_prefix> b站订阅列表` 查看并管理当前会话的所有订阅。
+
+> 示例（以生产配置为例）：`plana 添加b站订阅 946974`
+> 实际前缀以 AstrBot 的 `wake_prefix` 配置为准。
 
 ---
 
@@ -14,13 +17,30 @@
 
 | 指令 | 别名示例 | 说明 |
 | :--- | :--- | :--- |
-| `/添加b站订阅 <UID>` | `/bilibili 添加订阅` | 订阅指定 UP 主的动态（支持视频、专栏、图文等） |
-| `/添加b站直播 <UID>` | `/bilibili 添加直播` | 订阅指定 UP 主的直播状态（开播/下播提醒） |
-| `/取消b站订阅 <UID>` | `/删除b站订阅` | 删除指定 UP 主的动态订阅 |
-| `/取消b站直播 <UID>` | `/删除b站直播` | 删除指定 UP 主的直播订阅 |
-| `/b站订阅列表` | `/bilibili 订阅列表` | 以精美卡片形式查看当前群组的所有订阅 |
-| `/b站搜索 <关键词>` | `/search_bili` | 在 B站 搜索 UP 主并展示详情卡片 |
-| `/b站登录` | `/bilibili 扫码登录` | 扫码登录 B站 账号（建议登录以提升稳定性） |
+| `<wake_prefix> 添加b站订阅 <UID>` | `<wake_prefix> bilibili 添加订阅` | 订阅指定 UP 主的动态（支持视频、专栏、图文等） |
+| `<wake_prefix> 添加b站直播 <UID>` | `<wake_prefix> bilibili 添加直播` | 订阅指定 UP 主的直播状态（开播/下播提醒） |
+| `<wake_prefix> 取消b站订阅 <UID>` | `<wake_prefix> 删除b站订阅` | 删除指定 UP 主的动态订阅 |
+| `<wake_prefix> 取消b站直播 <UID>` | `<wake_prefix> 删除b站直播` | 删除指定 UP 主的直播订阅 |
+| `<wake_prefix> b站订阅列表` | `<wake_prefix> bilibili 订阅列表` | 以精美卡片形式查看当前会话的所有订阅 |
+| `<wake_prefix> b站搜索 <关键词>` | `<wake_prefix> search_bili` | 在 B站 搜索 UP 主并展示详情卡片 |
+| `<wake_prefix> b站登录` | `<wake_prefix> bilibili 登录` | 扫码登录 B站 账号（建议登录以提升稳定性） |
+| `<wake_prefix> b站登录状态` | - | 查看登录账号池状态 |
+| `<wake_prefix> b站帮助` | `<wake_prefix> bilibili 帮助` | 显示帮助图卡 |
+| `<wake_prefix> b站助手 <自然语言>` | `<wake_prefix> bili 助手` | 显式触发 Agent 编排（可选入口） |
+
+---
+
+## 🤖 AI 工具（Function Calling）
+
+插件已提供以下可被 LLM 调用的工具：
+
+- `bili_search_up`
+- `bili_add_dynamic_sub`
+- `bili_add_live_sub`
+- `bili_list_subs`
+- `bili_remove_sub`
+
+可通过 `<wake_prefix> tool ls` 查看当前会话可用工具列表。
 
 ---
 
@@ -36,9 +56,13 @@
 ## ⚙️ 配置项详解
 
 - **`enable_link_parser`**: 开启/关闭链接自动解析（默认开启）。
-- **`image_template`**: 可选 `dynamic_card` (沉浸式卡片) 或 `movie_card` (海报风格)。
 - **`check_interval`**: 检查间隔（秒），建议 30-60 秒。
-- **`temp_cleanup_days`**: 临时文件保留天数（默认 1 天）。
+- **`search_cache_expiry_hours`**: 搜索缓存有效期（小时）。
+- **`enable_ai_tools`**: 开启/关闭 AI 工具调用。
+- **`enable_ai_agent_entry`**: 开启/关闭 `b站助手` 显式 Agent 命令入口。
+- **`ai_tool_timeout_sec`**: Agent 工具调用超时（秒）。
+- **`ai_max_steps`**: Agent 最大执行步数。
+- **`verify_ssl`**: HTTPS 请求是否校验证书（建议保持开启）。
 
 ---
 

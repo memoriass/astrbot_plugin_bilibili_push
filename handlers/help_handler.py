@@ -1,8 +1,9 @@
-﻿from pathlib import Path
+from pathlib import Path
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api.star import Context
 from astrbot.api import logger
 import astrbot.api.message_components as Comp
+
 
 class HelpHandler:
     def __init__(self, context: Context):
@@ -16,6 +17,7 @@ class HelpHandler:
 
             # 使用 importlib.util 动态加载配置文件
             import importlib.util
+
             config_file = plugin_dir / "resources" / "help" / "help_config.py"
             spec = importlib.util.spec_from_file_location("help_config", config_file)
             help_config_module = importlib.util.module_from_spec(spec)
@@ -26,6 +28,7 @@ class HelpHandler:
 
             # 导入渲染器
             import sys
+
             sys.path.insert(0, str(plugin_dir))
             from help_renderer import MiaoHelpRenderer
 
