@@ -183,7 +183,7 @@ async function submitSubscription(data) {
     target_id: data.target_id,
     categories: data.categories,
     tags: data.tags,
-    enabled: data.enabled === "true",
+    enabled: data.enabled === true || data.enabled === "true",
   };
   try {
     if (data.mode === "edit") {

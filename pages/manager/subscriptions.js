@@ -73,14 +73,26 @@ export function renderSubscriptionCards(
       actions.onSubmit(editorPayload(form));
     });
     panel.querySelector("[data-cancel-subscription]").addEventListener("click", actions.onCancel);
-    form.querySelector("[name='sub_type']").addEventListener("change", (event) => {
-      const type = event.target.value;
-      form.querySelector(".category-options").innerHTML = categoryControls(
-        type,
-        defaultCategories(type),
-      );
+    form.querySelectorAll("[name='sub_type']").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        const type = event.target.value;
+        form.querySelector(".category-options").innerHTML = categoryControls(
+          type,
+          defaultCategories(type),
+        );
+        updatePreviewType(form, type);
+      });
     });
   }
+}
+
+function updatePreviewType(form, type) {
+  const badge = form.querySelector(".subscription-editor-preview .media-badge");
+  if (!badge) {
+    return;
+  }
+  badge.className = `media-badge ${type === "live" ? "live" : "dyn"}`;
+  badge.textContent = type === "live" ? "LIVE" : "DYNAMIC";
 }
 
 function paginationBar(page, totalPages, total) {
@@ -160,28 +172,34 @@ function subscriptionCard(sub) {
 function editorForm(editor) {
   const item = editor.item || {};
   const subType = item.sub_type || "dynamic";
+  const isCreate = editor.mode === "create";
   return `
     <form class="subscription-editor" id="subscriptionEditorForm" role="dialog" aria-modal="true">
       <input type="hidden" name="mode" value="${escapeAttribute(editor.mode || "create")}" />
       <input type="hidden" name="original_uid" value="${escapeAttribute(item.original_uid || item.uid || "")}" />
       <input type="hidden" name="original_sub_type" value="${escapeAttribute(item.original_sub_type || item.sub_type || "")}" />
       <input type="hidden" name="original_target_id" value="${escapeAttribute(item.original_target_id || item.target_id || "")}" />
+      <input type="hidden" name="target_id" value="${escapeAttribute(item.target_id || "")}" />
+      ${isCreate ? "" : `<input type="hidden" name="uid" value="${escapeAttribute(item.uid || "")}" />`}
+      ${isCreate ? "" : `<input type="hidden" name="username" value="${escapeAttribute(item.username || "")}" />`}
       <div class="editor-heading">
         <div>
           <h2>${editor.mode === "edit" ? "编辑订阅" : "新增订阅"}</h2>
-          <p>选择订阅类型后勾选需要推送的通知类别；Cookie 和账号不在这里处理。</p>
+          <p>${isCreate ? "填写 UID 后选择订阅类型和通知类别；Cookie 和账号不在这里处理。" : "左侧卡片已包含 UID 和 UP 主信息，这里只调整订阅类型、通知类别和标签。"}</p>
         </div>
         <button class="ghost-button" type="button" data-cancel-subscription="1">取消</button>
       </div>
       <div class="subscription-editor-layout">
         ${editorPreview(item, editor.mode)}
         <div class="subscription-editor-fields">
-          <div class="editor-grid">
-            ${field("UID", "uid", item.uid || "", "text", true)}
-            ${field("UP 主", "username", item.username || "", "text", false)}
-            ${selectField("类型", "sub_type", subType)}
-            ${field("会话 ID", "target_id", item.target_id || "", "text", true)}
-          </div>
+          ${isCreate ? createIdentityFields(item) : ""}
+          <section class="type-panel">
+            <div>
+              <h3>订阅类型</h3>
+              <p>动态与直播可在这里快速切换，保存后会更新当前订阅记录。</p>
+            </div>
+            ${typeControls(subType)}
+          </section>
           <section class="category-panel">
             <div>
               <h3>通知类别</h3>
@@ -205,6 +223,33 @@ function editorForm(editor) {
         <button class="ghost-button" type="submit">${editor.mode === "edit" ? "保存修改" : "创建订阅"}</button>
       </div>
     </form>
+  `;
+}
+
+function createIdentityFields(item) {
+  return `
+    <div class="editor-grid">
+      ${field("UID", "uid", item.uid || "", "text", true)}
+      ${field("UP 主", "username", item.username || "", "text", false)}
+    </div>
+  `;
+}
+
+function typeControls(value) {
+  return `
+    <div class="type-switch">
+      ${typeChip("dynamic", "动态", value)}
+      ${typeChip("live", "直播", value)}
+    </div>
+  `;
+}
+
+function typeChip(value, label, current) {
+  return `
+    <label class="type-chip ${value}">
+      <input type="radio" name="sub_type" value="${escapeAttribute(value)}" ${current === value ? "checked" : ""} />
+      <span>${escapeHtml(label)}</span>
+    </label>
   `;
 }
 
@@ -251,18 +296,6 @@ function field(label, name, value, type, required) {
       <span>${escapeHtml(label)}</span>
       <input name="${escapeAttribute(name)}" type="${escapeAttribute(type)}"
         value="${escapeAttribute(value)}" ${required ? "required" : ""} />
-    </label>
-  `;
-}
-
-function selectField(label, name, value) {
-  return `
-    <label>
-      <span>${escapeHtml(label)}</span>
-      <select name="${escapeAttribute(name)}">
-        <option value="dynamic" ${value === "dynamic" ? "selected" : ""}>动态</option>
-        <option value="live" ${value === "live" ? "selected" : ""}>直播</option>
-      </select>
     </label>
   `;
 }
