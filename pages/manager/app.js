@@ -2,7 +2,6 @@ import { createApi, getBridge } from "./api.js";
 import { renderOverview } from "./overview.js";
 import {
   renderAccounts,
-  renderDiagnostics,
   renderEmptyError,
   renderMetrics,
   renderPending,
@@ -88,12 +87,6 @@ function render() {
   renderPending(document.getElementById("pendingPanel"), overview.pending_tasks || [], {
     onClear: clearPending,
   });
-  renderDiagnostics(
-    document.getElementById("diagnosticsPanel"),
-    overview.diagnostics || {},
-    overview.subscriptions || [],
-    { onManualLive: manualLiveCheck },
-  );
   renderTemplates(
     document.getElementById("templatesPanel"),
     state.previews,

@@ -1,4 +1,3 @@
-.action-panel,
 .template-actions {
   display: flex;
   align-items: center;
@@ -9,43 +8,6 @@
   background: var(--surface);
   padding: 14px;
   box-shadow: var(--shadow);
-}
-
-.action-panel p {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.target-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.diagnostic-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.diagnostic-item {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 14px;
-}
-
-.diagnostic-item span {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.diagnostic-item strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 18px;
 }
 
 .template-layout {
@@ -104,8 +66,6 @@
 }
 
 @media (max-width: 860px) {
-  .action-panel,
-  .target-actions,
   .template-layout {
     align-items: stretch;
     grid-template-columns: 1fr;

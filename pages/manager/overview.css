@@ -90,26 +90,108 @@
   margin-bottom: 12px;
 }
 
-.session-grid {
+.mini-sub-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+  gap: 10px;
   min-width: 0;
 }
 
-.session-card {
-  display: grid;
-  gap: 12px;
+.mini-sub-card {
+  position: relative;
   min-width: 0;
+  aspect-ratio: 1.34;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 14px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  overflow: hidden;
+  box-shadow: 0 8px 18px rgb(16 24 40 / 12%);
 }
 
-.session-card-head,
-.session-actions,
-.subscription-line,
+.mini-sub-card.is-disabled {
+  opacity: 0.72;
+}
+
+.mini-sub-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--surface-muted);
+  object-fit: cover;
+}
+
+.mini-sub-card::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 58%;
+  background: linear-gradient(to top, rgb(0 0 0 / 86%), rgb(0 0 0 / 38%), transparent);
+  content: "";
+}
+
+.mini-badges {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: calc(100% - 16px);
+}
+
+.mini-badge {
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 6px;
+  color: #fff;
+  padding: 3px 6px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.mini-badge.live-on {
+  background: linear-gradient(135deg, #43a047, #66bb6a);
+}
+
+.mini-badge.live-off {
+  background: linear-gradient(135deg, #fb7299, #ff8da1);
+}
+
+.mini-badge.dyn {
+  background: linear-gradient(135deg, #00a1d6, #33b5e5);
+}
+
+.mini-sub-overlay {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  left: 10px;
+  z-index: 2;
+  color: #fff;
+}
+
+.mini-sub-overlay h3 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 6px rgb(0 0 0 / 55%);
+  white-space: nowrap;
+}
+
+.mini-sub-overlay p {
+  margin-top: 3px;
+  overflow: hidden;
+  color: rgb(255 255 255 / 78%);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .issue-row,
 .template-brief,
 .capability-list div {
@@ -119,69 +201,19 @@
   gap: 10px;
 }
 
-.session-card h3 {
-  max-width: 100%;
-  margin: 0;
-  overflow-wrap: anywhere;
-  color: var(--text);
-  font-size: 13px;
-}
-
-.session-card p,
 .template-brief p,
-.issue-row p,
-.muted-line {
+.issue-row p {
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
-.session-stat-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.session-stat-row span {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-muted);
-  padding: 10px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.session-stat-row strong {
-  display: block;
-  color: var(--text);
-  font-size: 18px;
-}
-
-.subscription-lines,
 .issue-list,
 .capability-list {
   display: grid;
   gap: 8px;
   min-width: 0;
-}
-
-.subscription-line {
-  min-height: 30px;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 8px;
-}
-
-.subscription-line:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-
-.subscription-line span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .issue-row,
@@ -220,6 +252,17 @@
   white-space: nowrap;
 }
 
+.overview-live-check {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.overview-live-check select {
+  min-width: 0;
+}
+
 .side-section .empty {
   min-height: 120px;
 }
@@ -227,10 +270,9 @@
 @media (max-width: 980px) {
   .overview-layout,
   .workbench-summary,
-  .session-card-head,
-  .session-actions,
   .issue-row,
-  .template-brief {
+  .template-brief,
+  .overview-live-check {
     align-items: stretch;
     grid-template-columns: 1fr;
     flex-direction: column;
@@ -242,8 +284,7 @@
 }
 
 @media (max-width: 560px) {
-  .workbench-facts,
-  .session-stat-row {
+  .workbench-facts {
     grid-template-columns: 1fr;
   }
 }

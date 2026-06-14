@@ -1,21 +1,21 @@
 # manager 页面
 
-`manager` 是 AstrBot WebUI 中的插件管理页，用于集中查看 Bilibili Push 的运行状态。
+`manager` 是 AstrBot WebUI 中的插件管理页，用于集中查看和操作 Bilibili Push。
 
 ## 文件职责
 
 - `index.html`: 页面结构和静态资源引用。
 - `app.js`: Bridge 初始化、状态管理和页面动作编排。
 - `api.js`: bridge API endpoint 封装和响应解包。
-- `overview.js`: 概览工作台渲染，会话聚合、待处理项、模板入口和能力摘要。
+- `overview.js`: 概览工作台渲染，小型订阅预览、待处理项、模板入口和能力摘要。
 - `subscriptions.js`: 订阅卡片渲染、筛选和启停/删除动作绑定。
 - `renderers.js`: 各标签页渲染函数。
 - `utils.js`: HTML 转义、格式化和通用 UI 片段。
 - `mock_bridge.js`: 本地预览 fallback 数据。
 - `style.css`: 亮暗主题、响应式布局和通用组件样式。
-- `overview.css`: 概览工作台布局和卡片样式。
+- `overview.css`: 概览工作台布局和小型订阅预览样式。
 - `subscriptions.css`: 订阅卡片、订阅摘要和移动端布局样式。
-- `views.css`: 诊断和模板预览标签页样式。
+- `views.css`: 模板预览标签页样式。
 
 ## 数据来源
 
@@ -33,7 +33,8 @@
 ## 边界
 
 - 当前页面不新增订阅。
-- 概览页只聚合已有 API 数据，不直接新增后端状态。
+- 概览页承载运行能力和手动直播检查，不再单独提供诊断标签页。
+- 概览小卡按 UID 聚合订阅，复用插件订阅列表的头像和 LIVE/DYNAMIC 展示逻辑。
 - 手动直播检查会向目标会话发送当前正在直播的启用订阅。
 - 模板预览重新生成会启动浏览器渲染，并可能访问 Bilibili 热门接口取样例数据。
 - 启停和删除订阅必须传完整 `uid + sub_type + target_id`。

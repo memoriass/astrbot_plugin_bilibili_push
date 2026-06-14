@@ -5,16 +5,17 @@ import {
   escapeHtml,
   formatBytes,
   formatTime,
-  statusPill,
-  typeBadge,
 } from "./utils.js";
+
+const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
 
 export function renderOverview(panel, overview, previews, actions) {
   const diagnostics = overview.diagnostics || {};
   const subscriptions = overview.subscriptions || [];
   const accounts = overview.accounts || [];
   const pendingTasks = overview.pending_tasks || [];
-  const sessions = buildSessions(subscriptions);
+  const targets = Array.from(new Set(subscriptions.map((sub) => sub.target_id))).filter(Boolean);
+  const subscriptionPreviews = buildSubscriptionPreviews(subscriptions);
   const issues = buildIssues(subscriptions, accounts, pendingTasks, previews);
 
   panel.innerHTML = `
@@ -24,25 +25,30 @@ export function renderOverview(panel, overview, previews, actions) {
         <section class="overview-section">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">会话</p>
-              <h2>会话工作台</h2>
+              <p class="section-kicker">预览</p>
+              <h2>订阅卡片</h2>
             </div>
             <button class="ghost-button" type="button" data-jump="subscriptions">订阅管理</button>
           </div>
-          ${sessionGrid(sessions)}
+          ${subscriptionPreviewGrid(subscriptionPreviews)}
         </section>
       </div>
       <aside class="overview-side">
         ${issuePanel(issues)}
         ${templatePanel(previews)}
-        ${capabilityPanel(diagnostics)}
+        ${capabilityPanel(diagnostics, targets)}
       </aside>
     </section>
   `;
 
   bindDataset(panel, "[data-jump]", (dataset) => actions.onNavigate(dataset.jump));
-  bindDataset(panel, "[data-live]", (dataset) => actions.onManualLive(dataset.targetId));
   bindDataset(panel, "[data-preview]", actions.onPreview);
+  const liveButton = panel.querySelector("[data-live-selected]");
+  if (liveButton) {
+    liveButton.addEventListener("click", () => {
+      actions.onManualLive(panel.querySelector("#overviewManualTargetSelect").value);
+    });
+  }
   const generateButton = panel.querySelector("[data-generate]");
   if (generateButton) {
     generateButton.addEventListener("click", actions.onGenerate);
@@ -75,37 +81,24 @@ function workbenchSummary(diagnostics, issues) {
   `;
 }
 
-function sessionGrid(sessions) {
-  if (!sessions.length) {
-    return emptyState("暂无会话订阅");
+function subscriptionPreviewGrid(previews) {
+  if (!previews.length) {
+    return emptyState("暂无订阅预览");
   }
-  return `<div class="session-grid">${sessions.map(sessionCard).join("")}</div>`;
+  return `<div class="mini-sub-grid">${previews.map(miniSubscriptionCard).join("")}</div>`;
 }
 
-function sessionCard(session) {
-  const topSubscriptions = session.subscriptions.slice(0, 4).map(subscriptionLine).join("");
-  const more = Math.max(session.subscriptions.length - 4, 0);
+function miniSubscriptionCard(sub) {
   return `
-    <article class="session-card">
-      <div class="session-card-head">
-        <div>
-          <h3 class="mono">${escapeHtml(session.target_id)}</h3>
-          <p>${escapeHtml(session.enabled)} 启用 / ${escapeHtml(session.disabled)} 停用</p>
-        </div>
-        ${statusPill(`${session.enabled}/${session.total}`, session.enabled > 0)}
+    <article class="mini-sub-card ${sub.enabled ? "" : "is-disabled"}">
+      <img src="${escapeAttribute(sub.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+      <div class="mini-badges">
+        ${sub.has_live ? liveBadge(sub.is_live) : ""}
+        ${sub.has_dynamic ? `<span class="mini-badge dyn">DYNAMIC</span>` : ""}
       </div>
-      <div class="session-stat-row">
-        ${miniStat("动态", session.dynamic)}
-        ${miniStat("直播", session.live)}
-        ${miniStat("总数", session.total)}
-      </div>
-      <div class="subscription-lines">
-        ${topSubscriptions}
-        ${more ? `<p class="muted-line">另有 ${escapeHtml(more)} 个订阅</p>` : ""}
-      </div>
-      <div class="session-actions">
-        <button class="ghost-button" type="button" data-live="1" data-target-id="${escapeAttribute(session.target_id)}">直播检查</button>
-        <button class="ghost-button" type="button" data-jump="subscriptions">查看订阅</button>
+      <div class="mini-sub-overlay">
+        <h3>${escapeHtml(sub.username || "未命名 UP 主")}</h3>
+        <p>UID: ${escapeHtml(sub.uid || "-")}</p>
       </div>
     </article>
   `;
@@ -161,7 +154,7 @@ function templatePanel(previews) {
   `;
 }
 
-function capabilityPanel(diagnostics) {
+function capabilityPanel(diagnostics, targets) {
   return `
     <section class="overview-section side-section">
       <div class="section-heading">
@@ -177,32 +170,38 @@ function capabilityPanel(diagnostics) {
         ${capabilityItem("AI 工具", diagnostics.enable_ai_tools ? "启用" : "停用")}
         ${capabilityItem("Agent", diagnostics.enable_ai_agent_entry ? "启用" : "停用")}
       </div>
+      <div class="overview-live-check">
+        <select id="overviewManualTargetSelect" aria-label="目标会话">
+          ${targets.map((target) => `<option value="${escapeAttribute(target)}">${escapeHtml(target)}</option>`).join("")}
+        </select>
+        <button class="ghost-button" type="button" data-live-selected="1" ${targets.length ? "" : "disabled"}>直播检查</button>
+      </div>
     </section>
   `;
 }
 
-function buildSessions(subscriptions) {
-  const sessions = new Map();
+function buildSubscriptionPreviews(subscriptions) {
+  const previews = new Map();
   for (const sub of subscriptions) {
-    const targetId = sub.target_id || "-";
-    const session = sessions.get(targetId) || {
-      target_id: targetId,
-      total: 0,
-      enabled: 0,
-      disabled: 0,
-      dynamic: 0,
-      live: 0,
-      subscriptions: [],
+    const uid = sub.uid || "-";
+    const preview = previews.get(uid) || {
+      uid,
+      username: sub.username || "",
+      face: sub.face || NO_FACE,
+      enabled: false,
+      has_dynamic: false,
+      has_live: false,
+      is_live: false,
     };
-    session.total += 1;
-    session.enabled += sub.enabled ? 1 : 0;
-    session.disabled += sub.enabled ? 0 : 1;
-    session.dynamic += sub.sub_type === "dynamic" ? 1 : 0;
-    session.live += sub.sub_type === "live" ? 1 : 0;
-    session.subscriptions.push(sub);
-    sessions.set(targetId, session);
+    preview.username = preview.username || sub.username || "";
+    preview.face = preview.face || sub.face || NO_FACE;
+    preview.enabled = preview.enabled || Boolean(sub.enabled);
+    preview.has_dynamic = preview.has_dynamic || sub.sub_type === "dynamic";
+    preview.has_live = preview.has_live || sub.sub_type === "live";
+    preview.is_live = preview.is_live || Boolean(sub.is_live);
+    previews.set(uid, preview);
   }
-  return Array.from(sessions.values()).sort((a, b) => b.total - a.total);
+  return Array.from(previews.values()).sort((a, b) => Number(b.enabled) - Number(a.enabled));
 }
 
 function buildIssues(subscriptions, accounts, pendingTasks, previews) {
@@ -256,21 +255,12 @@ function issueRow(issue) {
   `;
 }
 
-function subscriptionLine(sub) {
-  return `
-    <div class="subscription-line">
-      <span>${escapeHtml(sub.username || sub.uid || "-")}</span>
-      ${typeBadge(sub.sub_type)}
-    </div>
-  `;
-}
-
 function factItem(label, value) {
   return `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`;
 }
 
-function miniStat(label, value) {
-  return `<span><strong>${escapeHtml(value)}</strong>${escapeHtml(label)}</span>`;
+function liveBadge(isLive) {
+  return `<span class="mini-badge ${isLive ? "live-on" : "live-off"}">LIVE</span>`;
 }
 
 function capabilityItem(label, value) {

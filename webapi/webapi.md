@@ -12,7 +12,7 @@
 
 注册前缀固定为 `/astrbot_plugin_bilibili_push/`，由 AstrBot Dashboard 转发为 `/api/plug/<plugin>/<endpoint>`。
 
-- `GET overview`: 返回订阅、账号、pending task 和诊断统计。
+- `GET overview`: 返回订阅、账号、pending task 和运行统计；订阅会补充头像和直播状态用于卡片预览。
 - `POST checks/live`: 对指定会话执行手动直播检查。
 - `POST subscriptions/delete`: 按 `uid + sub_type + target_id` 删除订阅。
 - `POST subscriptions/enabled`: 按 `uid + sub_type + target_id` 启用或停用订阅。

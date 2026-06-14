@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+
 from ..core.http import HttpClient
 from .template_preview import TemplatePreviewService
 
 
 PLUGIN_NAME = "astrbot_plugin_bilibili_push"
+NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg"
 
 
 def register_bilibili_web_apis(context, plugin):
@@ -66,10 +69,10 @@ class BilibiliManagerApi:
         self.templates = TemplatePreviewService(plugin)
 
     async def overview(self):
-        subscriptions = [
+        subscriptions = await self._enrich_subscriptions([
             _serialize_subscription(sub)
             for sub in self.plugin.db.get_subscriptions()
-        ]
+        ])
         accounts = [_serialize_account(acc) for acc in await HttpClient.get_accounts()]
         pending_tasks = [
             _serialize_pending_task(task)
@@ -181,6 +184,55 @@ class BilibiliManagerApi:
             "valid_accounts": valid_accounts,
             "pending_tasks": len(pending_tasks),
         }
+
+    async def _enrich_subscriptions(self, subscriptions: list[dict]) -> list[dict]:
+        uids = sorted({sub["uid"] for sub in subscriptions if sub.get("uid")})
+        face_map, live_status_map = await asyncio.gather(
+            self._fetch_face_map(uids),
+            self._fetch_live_status_map(subscriptions),
+        )
+        for sub in subscriptions:
+            uid = sub.get("uid") or ""
+            sub["face"] = face_map.get(uid, NO_FACE)
+            sub["is_live"] = live_status_map.get(uid, False)
+        return subscriptions
+
+    async def _fetch_face_map(self, uids: list[str]) -> dict[str, str]:
+        if not uids:
+            return {}
+        client = await HttpClient.get_client()
+
+        async def fetch_face(uid: str) -> tuple[str, str]:
+            face = NO_FACE
+            try:
+                res = await client.get(
+                    "https://api.bilibili.com/x/web-interface/card",
+                    params={"mid": uid},
+                    timeout=5,
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    if data.get("code") == 0:
+                        face = data.get("data", {}).get("card", {}).get("face") or face
+            except Exception:
+                pass
+            return uid, face
+
+        return dict(await asyncio.gather(*[fetch_face(uid) for uid in uids]))
+
+    async def _fetch_live_status_map(self, subscriptions: list[dict]) -> dict[str, bool]:
+        live_uids = sorted({
+            sub["uid"]
+            for sub in subscriptions
+            if sub.get("uid") and sub.get("sub_type") == "live"
+        })
+        if not live_uids:
+            return {}
+        try:
+            live_infos = await self.plugin.scheduler.live_platform.batch_get_status(live_uids)
+            return {str(info.uid): info.live_status == 1 for info in live_infos}
+        except Exception:
+            return {}
 
 
 def _serialize_subscription(sub) -> dict:

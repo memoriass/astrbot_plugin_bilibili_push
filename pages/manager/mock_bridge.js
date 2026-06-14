@@ -53,6 +53,18 @@ function mockPreviews() {
   ];
 }
 
+function mockFace(label, color) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="320" height="240">
+      <rect width="320" height="240" fill="${color}"/>
+      <circle cx="160" cy="92" r="44" fill="rgba(255,255,255,.86)"/>
+      <rect x="86" y="146" width="148" height="72" rx="36" fill="rgba(255,255,255,.72)"/>
+      <text x="160" y="224" text-anchor="middle" font-size="26" font-family="Segoe UI" font-weight="800" fill="#fff">${label}</text>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 function mockOverview() {
   return {
     diagnostics: {
@@ -76,6 +88,8 @@ function mockOverview() {
         username: "哔哩哔哩番剧",
         sub_type: "dynamic",
         target_id: "aiocqhttp:GroupMessage:10001",
+        face: mockFace("番剧", "#3b82f6"),
+        is_live: false,
         categories: ["番剧", "追番"],
         tags: ["官方"],
         enabled: true,
@@ -85,6 +99,8 @@ function mockOverview() {
         username: "哔哩哔哩直播",
         sub_type: "live",
         target_id: "aiocqhttp:GroupMessage:10001",
+        face: mockFace("直播", "#ef476f"),
+        is_live: false,
         categories: ["直播"],
         tags: ["官方"],
         enabled: false,
@@ -94,6 +110,8 @@ function mockOverview() {
         username: "哔哩哔哩纪录片",
         sub_type: "dynamic",
         target_id: "aiocqhttp:GroupMessage:10001",
+        face: mockFace("纪录", "#8b5cf6"),
+        is_live: false,
         categories: ["纪录片"],
         tags: ["更新"],
         enabled: true,
@@ -103,6 +121,8 @@ function mockOverview() {
         username: "国创动画作品发布",
         sub_type: "dynamic",
         target_id: "aiocqhttp:GroupMessage:10002",
+        face: mockFace("国创", "#f97316"),
+        is_live: false,
         categories: ["国创"],
         tags: ["作品"],
         enabled: true,
@@ -112,6 +132,8 @@ function mockOverview() {
         username: "哔哩哔哩电竞",
         sub_type: "live",
         target_id: "aiocqhttp:GroupMessage:10002",
+        face: mockFace("电竞", "#16a34a"),
+        is_live: true,
         categories: ["电竞"],
         tags: ["赛事"],
         enabled: true,
@@ -121,6 +143,8 @@ function mockOverview() {
         username: "哔哩哔哩漫画",
         sub_type: "dynamic",
         target_id: "aiocqhttp:GroupMessage:10003",
+        face: mockFace("漫画", "#64748b"),
+        is_live: false,
         categories: ["漫画"],
         tags: ["停用"],
         enabled: false,
