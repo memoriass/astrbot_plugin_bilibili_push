@@ -36,8 +36,24 @@ export function renderTabs(activeTab) {
   document.getElementById("subscriptionToolbar").hidden = activeTab !== "subscriptions";
 }
 
-export function renderSubscriptions(panel, subscriptions, filters, actions, editor, deleteConfirm) {
-  renderSubscriptionCards(panel, subscriptions, filters, actions, editor, deleteConfirm);
+export function renderSubscriptions(
+  panel,
+  subscriptions,
+  filters,
+  actions,
+  editor,
+  deleteConfirm,
+  pagination,
+) {
+  renderSubscriptionCards(
+    panel,
+    subscriptions,
+    filters,
+    actions,
+    editor,
+    deleteConfirm,
+    pagination,
+  );
 }
 
 export function renderAccounts(panel, accounts, actions, editor, deleteConfirm) {

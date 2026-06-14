@@ -72,6 +72,9 @@ export function createLocalBridge() {
         return ok({ updated: true, valid: Boolean(payload.valid) });
       }
       if (endpoint === "checks/live") {
+        if (payload.target_id === "__all__") {
+          return ok({ pushed: 2, targets: 2 });
+        }
         return ok({ pushed: 1 });
       }
       return ok({ removed: true, updated: true, cleared: 1 });

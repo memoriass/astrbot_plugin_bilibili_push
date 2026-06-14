@@ -6,35 +6,24 @@ import {
   formatTime,
 } from "./utils.js";
 
-const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
+const ALL_TARGETS = "__all__";
 
 export function renderOverview(panel, overview, actions) {
   const diagnostics = overview.diagnostics || {};
   const subscriptions = overview.subscriptions || [];
   const accounts = overview.accounts || [];
   const pendingTasks = overview.pending_tasks || [];
-  const targets = Array.from(new Set(subscriptions.map((sub) => sub.target_id))).filter(Boolean);
-  const subscriptionPreviews = buildSubscriptionPreviews(subscriptions);
+  const liveTargets = buildLiveTargetOptions(subscriptions);
   const issues = buildIssues(subscriptions, accounts, pendingTasks);
 
   panel.innerHTML = `
     <section class="overview-layout">
       <div class="overview-main">
         ${workbenchSummary(diagnostics, issues)}
-        <section class="overview-section">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">预览</p>
-              <h2>订阅卡片</h2>
-            </div>
-            <button class="ghost-button" type="button" data-jump="subscriptions">订阅管理</button>
-          </div>
-          ${subscriptionPreviewGrid(subscriptionPreviews)}
-        </section>
       </div>
       <aside class="overview-side">
         ${issuePanel(issues)}
-        ${capabilityPanel(diagnostics, targets)}
+        ${capabilityPanel(diagnostics, liveTargets)}
       </aside>
     </section>
   `;
@@ -43,7 +32,8 @@ export function renderOverview(panel, overview, actions) {
   const liveButton = panel.querySelector("[data-live-selected]");
   if (liveButton) {
     liveButton.addEventListener("click", () => {
-      actions.onManualLive(panel.querySelector("#overviewManualTargetSelect").value);
+      const select = panel.querySelector("#overviewManualTargetSelect");
+      actions.onManualLive(select.value, select.options[select.selectedIndex]?.textContent || select.value);
     });
   }
 }
@@ -71,29 +61,6 @@ function workbenchSummary(diagnostics, issues) {
         ${factItem("待处理", issueCount)}
       </div>
     </section>
-  `;
-}
-
-function subscriptionPreviewGrid(previews) {
-  if (!previews.length) {
-    return emptyState("暂无订阅预览");
-  }
-  return `<div class="mini-sub-grid">${previews.map(miniSubscriptionCard).join("")}</div>`;
-}
-
-function miniSubscriptionCard(sub) {
-  return `
-    <article class="mini-sub-card ${sub.enabled ? "" : "is-disabled"}">
-      <img src="${escapeAttribute(sub.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
-      <div class="mini-badges">
-        ${sub.has_live ? liveBadge(sub.is_live) : ""}
-        ${sub.has_dynamic ? `<span class="mini-badge dyn">DYNAMIC</span>` : ""}
-      </div>
-      <div class="mini-sub-overlay">
-        <h3>${escapeHtml(sub.username || "未命名 UP 主")}</h3>
-        <p>UID: ${escapeHtml(sub.uid || "-")}</p>
-      </div>
-    </article>
   `;
 }
 
@@ -129,36 +96,13 @@ function capabilityPanel(diagnostics, targets) {
       </div>
       <div class="overview-live-check">
         <select id="overviewManualTargetSelect" aria-label="目标会话">
-          ${targets.map((target) => `<option value="${escapeAttribute(target)}">${escapeHtml(target)}</option>`).join("")}
+          <option value="${ALL_TARGETS}">全部检查</option>
+          ${targets.map((target) => `<option value="${escapeAttribute(target.value)}">${escapeHtml(target.label)}</option>`).join("")}
         </select>
         <button class="ghost-button" type="button" data-live-selected="1" ${targets.length ? "" : "disabled"}>直播检查</button>
       </div>
     </section>
   `;
-}
-
-function buildSubscriptionPreviews(subscriptions) {
-  const previews = new Map();
-  for (const sub of subscriptions) {
-    const uid = sub.uid || "-";
-    const preview = previews.get(uid) || {
-      uid,
-      username: sub.username || "",
-      face: sub.face || NO_FACE,
-      enabled: false,
-      has_dynamic: false,
-      has_live: false,
-      is_live: false,
-    };
-    preview.username = preview.username || sub.username || "";
-    preview.face = preview.face || sub.face || NO_FACE;
-    preview.enabled = preview.enabled || Boolean(sub.enabled);
-    preview.has_dynamic = preview.has_dynamic || sub.sub_type === "dynamic";
-    preview.has_live = preview.has_live || sub.sub_type === "live";
-    preview.is_live = preview.is_live || Boolean(sub.is_live);
-    previews.set(uid, preview);
-  }
-  return Array.from(previews.values()).sort((a, b) => Number(b.enabled) - Number(a.enabled));
 }
 
 function buildIssues(subscriptions, accounts, pendingTasks) {
@@ -208,12 +152,50 @@ function factItem(label, value) {
   return `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`;
 }
 
-function liveBadge(isLive) {
-  return `<span class="mini-badge ${isLive ? "live-on" : "live-off"}">LIVE</span>`;
-}
-
 function capabilityItem(label, value) {
   return `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
+function buildLiveTargetOptions(subscriptions) {
+  const targets = new Map();
+  for (const sub of subscriptions) {
+    if (!sub.enabled || sub.sub_type !== "live" || !sub.target_id) {
+      continue;
+    }
+    targets.set(sub.target_id, formatTargetLabel(sub.target_id));
+  }
+  return Array.from(targets, ([value, label]) => ({ value, label })).sort((a, b) =>
+    a.label.localeCompare(b.label, "zh-CN"),
+  );
+}
+
+function formatTargetLabel(targetId) {
+  const [platform, kind, id] = String(targetId).split(":");
+  if (!id) {
+    return compactTargetId(targetId);
+  }
+  const channel = channelName(platform);
+  const targetKind = kind === "GroupMessage" ? "群" : kind === "FriendMessage" ? "私聊" : "会话";
+  return `${channel}${targetKind} ${id}`;
+}
+
+function channelName(platform = "") {
+  const key = platform.toLowerCase();
+  if (key.includes("cqhttp") || key === "aiohttp" || key === "qq") {
+    return "QQ";
+  }
+  if (key.includes("telegram") || key === "tg") {
+    return "TG";
+  }
+  if (key.includes("wechat") || key.includes("wx")) {
+    return "WX";
+  }
+  return platform.toUpperCase() || "群";
+}
+
+function compactTargetId(targetId) {
+  const value = String(targetId || "");
+  return value.length > 24 ? `${value.slice(0, 12)}...${value.slice(-8)}` : value;
 }
 
 function ratioText(value, total) {

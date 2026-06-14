@@ -24,10 +24,22 @@ const CATEGORY_OPTIONS = {
     [3, "下播提醒"],
   ],
 };
+const PAGE_SIZE = 12;
 
-export function renderSubscriptionCards(panel, subscriptions, filters, actions, editor, deleteConfirm) {
+export function renderSubscriptionCards(
+  panel,
+  subscriptions,
+  filters,
+  actions,
+  editor,
+  deleteConfirm,
+  pagination = {},
+) {
   const filtered = filterSubscriptions(subscriptions, filters);
   const enabledCount = filtered.filter((sub) => sub.enabled).length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = clamp(Number(pagination.page || 1), 1, totalPages);
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   panel.innerHTML = `
     <section class="subscription-summary">
       <div>
@@ -41,8 +53,9 @@ export function renderSubscriptionCards(panel, subscriptions, filters, actions, 
       </div>
     </section>
     <section class="subscription-card-grid">
-      ${filtered.length ? filtered.map(subscriptionCard).join("") : emptyState("没有匹配的订阅")}
+      ${pageItems.length ? pageItems.map(subscriptionCard).join("") : emptyState("没有匹配的订阅")}
     </section>
+    ${paginationBar(page, totalPages, filtered.length)}
     ${editor ? `<div class="manager-modal-backdrop">${editorForm(editor)}</div>` : ""}
     ${deleteConfirm ? deleteModal(deleteConfirm.item || deleteConfirm) : ""}
   `;
@@ -52,6 +65,7 @@ export function renderSubscriptionCards(panel, subscriptions, filters, actions, 
   bindDataset(panel, "[data-delete]", actions.onDelete);
   bindDataset(panel, "[data-confirm-delete]", actions.onConfirmDelete);
   bindDataset(panel, "[data-cancel-delete]", actions.onCancelDelete);
+  bindDataset(panel, "[data-page]", actions.onPage);
   const form = panel.querySelector("#subscriptionEditorForm");
   if (form) {
     form.addEventListener("submit", (event) => {
@@ -67,6 +81,23 @@ export function renderSubscriptionCards(panel, subscriptions, filters, actions, 
       );
     });
   }
+}
+
+function paginationBar(page, totalPages, total) {
+  return `
+    <nav class="subscription-pagination" aria-label="订阅分页">
+      <button class="ghost-button" type="button" data-page="${escapeAttribute(page - 1)}" ${page <= 1 ? "disabled" : ""}>上一页</button>
+      <span>第 ${escapeHtml(page)} / ${escapeHtml(totalPages)} 页 · 共 ${escapeHtml(total)} 个</span>
+      <button class="ghost-button" type="button" data-page="${escapeAttribute(page + 1)}" ${page >= totalPages ? "disabled" : ""}>下一页</button>
+    </nav>
+  `;
+}
+
+function clamp(value, min, max) {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(max, Math.max(min, value));
 }
 
 function filterSubscriptions(subscriptions, filters) {

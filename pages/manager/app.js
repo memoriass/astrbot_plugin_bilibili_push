@@ -18,6 +18,7 @@ const state = {
   overview: null,
   subscriptionEditor: null,
   subscriptionDelete: null,
+  subscriptionPage: 1,
   accountEditor: null,
   accountDelete: null,
   query: "",
@@ -34,10 +35,12 @@ const typeFilter = document.getElementById("typeFilter");
 document.getElementById("refreshButton").addEventListener("click", refreshAll);
 searchInput.addEventListener("input", () => {
   state.query = searchInput.value.trim().toLowerCase();
+  state.subscriptionPage = 1;
   render();
 });
 typeFilter.addEventListener("change", () => {
   state.type = typeFilter.value;
+  state.subscriptionPage = 1;
   render();
 });
 document.querySelectorAll(".tab").forEach((button) => {
@@ -85,9 +88,11 @@ function render() {
       onDelete: startDeleteSubscription,
       onConfirmDelete: deleteSubscription,
       onCancelDelete: cancelSubscriptionDelete,
+      onPage: setSubscriptionPage,
     },
     state.subscriptionEditor,
     state.subscriptionDelete,
+    { page: state.subscriptionPage },
   );
   renderAccounts(
     document.getElementById("accountsPanel"),
@@ -112,6 +117,11 @@ function render() {
 
 function switchTab(tab) {
   state.tab = VALID_TABS.has(tab) ? tab : "overview";
+  render();
+}
+
+function setSubscriptionPage(dataset) {
+  state.subscriptionPage = Math.max(1, Number(dataset.page || 1));
   render();
 }
 
@@ -326,13 +336,16 @@ async function clearPending() {
   }
 }
 
-async function manualLiveCheck(targetId) {
-  if (!targetId || !window.confirm(`对 ${targetId} 执行手动直播检查？`)) {
+async function manualLiveCheck(targetId, displayName) {
+  const isAll = targetId === "__all__";
+  const label = displayName || (isAll ? "全部群" : targetId);
+  if (!targetId || !window.confirm(`对 ${label} 执行手动直播检查？`)) {
     return;
   }
   try {
     const result = await api.manualLiveCheck(targetId);
-    showToast(`手动检查完成，推送 ${result.pushed || 0} 条`);
+    const targetText = isAll ? `检查 ${result.targets || 0} 个群，` : "";
+    showToast(`手动检查完成，${targetText}推送 ${result.pushed || 0} 条`);
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));
