@@ -1,17 +1,12 @@
-import asyncio
-import os
-import time
 from pathlib import Path
 
-from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
-from astrbot.core.agent.tool import ToolSet
 from astrbot.core.star.filter.command import GreedyStr
 
-from .core.http import HttpClient
+from .core.runtime import PluginRuntime
 from .database.db_manager import DatabaseManager
-from .handlers.help_handler import HelpHandler
+from .handlers.ai_handler import AiToolHandler
 from .handlers.link_handler import LinkParserHandler
 from .handlers.login_handler import LoginHandler
 from .handlers.search_handler import SearchHandler
@@ -19,7 +14,6 @@ from .handlers.subscription_handler import SubscriptionHandler
 from .parser.bilibili_parser import BilibiliParser
 from .rendering import HtmlRendererAdapter
 from .scheduler import BilibiliScheduler
-from .utils.html_renderer import BrowserManager
 from .utils.resource import get_template_path
 
 
@@ -45,9 +39,6 @@ class BilibiliPush(Star):
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.bg_dir = self.data_dir / "backgrounds"
         self.bg_dir.mkdir(parents=True, exist_ok=True)
-
-        # 初始化资源与原始数据库
-        self._init_resources()
 
         # 获取插件配置
         config = context.get_config() or {}
@@ -77,7 +68,6 @@ class BilibiliPush(Star):
 
         # 渲染器与指令处理器初始化 (解耦)
         self.renderer = HtmlRendererAdapter(get_template_path())
-        self.help_handler = HelpHandler(context)
         self.sub_handler = SubscriptionHandler(
             context,
             self.db,
@@ -100,45 +90,15 @@ class BilibiliPush(Star):
             renderer=self.renderer,
             template_name="parser_bili",
         )
-
-    def _init_resources(self):
-        import os
-        import shutil
-
-        from astrbot.api import logger
-
-        # 复制初始背景图片
-        default_bg_dir = self.plugin_dir / "utils" / "resources" / "backgrounds"
-        if default_bg_dir.exists():
-            for root, dirs, files in os.walk(default_bg_dir):
-                for file in files:
-                    if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                        src_file = Path(root) / file
-                        rel_path = src_file.relative_to(default_bg_dir)
-                        dst_file = self.bg_dir / rel_path
-
-                        dst_file.parent.mkdir(parents=True, exist_ok=True)
-                        if not dst_file.exists():
-                            try:
-                                shutil.copy2(src_file, dst_file)
-                                logger.debug(f"已复制初始背景图: {rel_path}")
-                            except Exception as e:
-                                logger.warning(f"复制初始背景图失败 {file}: {e}")
+        self.ai_handler = AiToolHandler(self)
+        self.runtime = PluginRuntime(self)
+        self.runtime.init_resources()
 
     async def initialize(self):
         """插件启动入口"""
-        await HttpClient.set_star_instance(self)
-        await BrowserManager.init()
-        asyncio.create_task(self.scheduler.start())
-        asyncio.create_task(self._cleanup_temp_files())
+        await self.runtime.start()
 
     # --- 指令入口 ---
-
-    @filter.command("b站帮助", alias={"bilibili 帮助", "bili_help"})
-    async def bilibili_help(self, event: AstrMessageEvent):
-        """显示帮助菜单图卡"""
-        async for ret in self.help_handler.handle_help(event):
-            yield ret
 
     @filter.command("添加b站订阅", alias={"bilibili 添加订阅", "add_bili_sub"})
     async def add_sub(self, event: AstrMessageEvent, uid: str):
@@ -210,50 +170,7 @@ class BilibiliPush(Star):
     @filter.command("b站助手", alias={"bilibili 助手", "bili 助手"})
     async def bilibili_agent(self, event: AstrMessageEvent, query: GreedyStr):
         """显式 Agent 入口（可选）"""
-        prompt = query.strip()
-        if not self.enable_ai_agent_entry:
-            yield event.plain_result("⚠️ AI Agent 入口已关闭")
-            return
-        if not prompt:
-            yield event.plain_result(
-                "❌ 请输入问题，例如：b站助手 帮我搜索影视飓风并订阅动态"
-            )
-            return
-
-        tool_names = [
-            "bili_search_up",
-            "bili_add_dynamic_sub",
-            "bili_add_live_sub",
-            "bili_list_subs",
-            "bili_remove_sub",
-        ]
-        tool_mgr = self.context.get_llm_tool_manager()
-        selected_tools = ToolSet()
-        for name in tool_names:
-            tool = tool_mgr.get_func(name)
-            if tool:
-                selected_tools.add_tool(tool)
-
-        if selected_tools.empty():
-            yield event.plain_result("❌ 当前会话没有可用的 B站 AI 工具")
-            return
-
-        try:
-            provider_id = await self.context.get_current_chat_provider_id(
-                umo=event.unified_msg_origin,
-            )
-            llm_resp = await self.context.tool_loop_agent(
-                event=event,
-                chat_provider_id=provider_id,
-                prompt=prompt,
-                tools=selected_tools,
-                max_steps=self.ai_max_steps,
-                tool_call_timeout=self.ai_tool_timeout_sec,
-            )
-            yield event.plain_result(llm_resp.completion_text or "已完成")
-        except Exception as exc:
-            logger.error(f"Bilibili Agent 调用失败: {exc}", exc_info=True)
-            yield event.plain_result(f"❌ Agent 调用失败: {exc}")
+        yield await self.ai_handler.run_agent(event, query.strip())
 
     @filter.llm_tool(name="bili_search_up")
     async def bili_search_up_tool(self, event: AstrMessageEvent, keyword: str) -> str:
@@ -262,9 +179,7 @@ class BilibiliPush(Star):
         Args:
             keyword(string): 搜索关键词。
         """
-        if not self.enable_ai_tools:
-            return "AI 工具已关闭。"
-        return await self._ai_search_up(keyword)
+        return await self.ai_handler.search_up(keyword)
 
     @filter.llm_tool(name="bili_add_dynamic_sub")
     async def bili_add_dynamic_sub_tool(self, event: AstrMessageEvent, uid: str) -> str:
@@ -273,9 +188,7 @@ class BilibiliPush(Star):
         Args:
             uid(string): UP 主 UID。
         """
-        if not self.enable_ai_tools:
-            return "AI 工具已关闭。"
-        return await self._ai_add_subscription(event, uid, "dynamic")
+        return await self.ai_handler.add_subscription(event, uid, "dynamic")
 
     @filter.llm_tool(name="bili_add_live_sub")
     async def bili_add_live_sub_tool(self, event: AstrMessageEvent, uid: str) -> str:
@@ -284,9 +197,7 @@ class BilibiliPush(Star):
         Args:
             uid(string): UP 主 UID。
         """
-        if not self.enable_ai_tools:
-            return "AI 工具已关闭。"
-        return await self._ai_add_subscription(event, uid, "live")
+        return await self.ai_handler.add_subscription(event, uid, "live")
 
     @filter.llm_tool(name="bili_list_subs")
     async def bili_list_subs_tool(
@@ -299,9 +210,7 @@ class BilibiliPush(Star):
         Args:
             placeholder(string): 预留参数，可留空。
         """
-        if not self.enable_ai_tools:
-            return "AI 工具已关闭。"
-        return self._ai_list_subscriptions(event)
+        return self.ai_handler.list_subscriptions(event)
 
     @filter.llm_tool(name="bili_remove_sub")
     async def bili_remove_sub_tool(
@@ -316,134 +225,12 @@ class BilibiliPush(Star):
             uid(string): UP 主 UID。
             sub_type(string): 订阅类型，dynamic 或 live。
         """
-        if not self.enable_ai_tools:
-            return "AI 工具已关闭。"
-        return self._ai_remove_subscription(event, uid, sub_type)
-
-    async def _ai_search_up(self, keyword: str) -> str:
-        if not keyword.strip():
-            return "搜索关键词不能为空。"
-        client = await HttpClient.get_client()
-        try:
-            response = await client.get(
-                "https://api.bilibili.com/x/web-interface/search/type",
-                params={"search_type": "bili_user", "keyword": keyword, "page": 1},
-                timeout=10,
-            )
-            if response.status_code != 200:
-                return f"搜索失败，HTTP {response.status_code}。"
-            data = response.json()
-            if data.get("code") != 0:
-                return f"搜索失败，code={data.get('code')}。"
-            results = data.get("data", {}).get("result", [])
-            if not results:
-                return f"未找到关键词“{keyword}”对应的 UP 主。"
-            lines = [f"搜索结果（关键词：{keyword}）:"]
-            for idx, item in enumerate(results[:8], start=1):
-                lines.append(
-                    f"{idx}. {item.get('uname', '')} | UID={item.get('mid', '')}"
-                )
-            return "\n".join(lines)
-        except Exception as exc:
-            logger.error(f"AI 搜索 UP 失败: {exc}", exc_info=True)
-            return f"搜索失败：{exc}"
-
-    async def _ai_add_subscription(
-        self,
-        event: AstrMessageEvent,
-        uid: str,
-        sub_type: str,
-    ) -> str:
-        if sub_type not in {"dynamic", "live"}:
-            return "sub_type 仅支持 dynamic 或 live。"
-        user_info = await self.parser.get_user_info(uid)
-        if not user_info:
-            return f"无法获取 UID={uid} 的用户信息。"
-
-        target_id = event.unified_msg_origin
-        existing = self.db.get_subscriptions(target_id)
-        if any(sub.uid == str(uid) and sub.sub_type == sub_type for sub in existing):
-            return f"订阅已存在：{user_info['username']} ({uid}) [{sub_type}]"
-
-        from .database.db_manager import Subscription
-
-        categories = [1, 2, 3, 4, 5, 6] if sub_type == "dynamic" else [1, 2, 3]
-        sub = Subscription(
-            uid=uid,
-            username=user_info["username"],
-            sub_type=sub_type,
-            target_id=target_id,
-            categories=categories,
-            tags=[],
-            enabled=True,
-        )
-        ok = self.db.add_subscription(sub)
-        if not ok:
-            return "写入订阅失败，请稍后重试。"
-        return f"已添加订阅：{user_info['username']} ({uid}) [{sub_type}]"
-
-    def _ai_remove_subscription(
-        self,
-        event: AstrMessageEvent,
-        uid: str,
-        sub_type: str,
-    ) -> str:
-        if sub_type not in {"dynamic", "live"}:
-            return "sub_type 仅支持 dynamic 或 live。"
-        target_id = event.unified_msg_origin
-        ok = self.db.remove_subscription(uid, sub_type, target_id)
-        if not ok:
-            return f"未找到订阅：UID={uid}, type={sub_type}"
-        return f"已删除订阅：UID={uid}, type={sub_type}"
-
-    def _ai_list_subscriptions(self, event: AstrMessageEvent) -> str:
-        target_id = event.unified_msg_origin
-        subs = self.db.get_subscriptions(target_id)
-        if not subs:
-            return "当前会话暂无订阅。"
-
-        grouped: dict[str, set[str]] = {}
-        names: dict[str, str] = {}
-        for sub in subs:
-            grouped.setdefault(sub.uid, set()).add(sub.sub_type)
-            names[sub.uid] = sub.username
-
-        lines = ["当前会话订阅列表："]
-        for uid in sorted(grouped.keys()):
-            sub_types = "/".join(sorted(grouped[uid]))
-            lines.append(f"- {names.get(uid, uid)} | UID={uid} | type={sub_types}")
-        return "\n".join(lines)
-
-    # --- 工具方法 ---
-
-    async def _cleanup_temp_files(self):
-        """定期清理扫描登录用的临时二维码"""
-        while True:
-            try:
-                now = time.time()
-                for f in self.temp_dir.iterdir():
-                    if f.is_file() and now - f.stat().st_mtime > 3600:
-                        os.remove(f)
-            except Exception as exc:
-                logger.warning(f"临时文件清理失败: {exc}")
-            await asyncio.sleep(1800)
+        return self.ai_handler.remove_subscription(event, uid, sub_type)
 
     async def _handle_new_post(self, platform: str, target_id: str, msgs: list):
         """处理来自调度器的新动态/直播推送"""
-        from astrbot.api import logger
-        from astrbot.api.event import MessageChain
-
-        try:
-            logger.info(f"Bilibili 正在执行最终推送: {target_id} | 消息段: {len(msgs)}")
-            # 直接通过构造函数初始化，msgs 应为 BaseMessageComponent 列表
-            chain = MessageChain(chain=msgs)
-
-            # target_id 已经是 platform:type:id 格式
-            await self.context.send_message(target_id, chain)
-            logger.info(f"Bilibili 推送任务已提交给框架: {target_id}")
-        except Exception as e:
-            logger.error(f"Bilibili 推送消息失败 ({target_id}): {e}")
+        await self.runtime.handle_new_post(platform, target_id, msgs)
 
     async def terminate(self):
         """插件终止时回收浏览器资源"""
-        await self.scheduler.terminate()
+        await self.runtime.stop()

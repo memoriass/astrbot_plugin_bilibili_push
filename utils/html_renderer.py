@@ -25,9 +25,31 @@ class BrowserManager:
                     headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"]
                 )
                 logger.info("内嵌浏览器启动成功")
-            except Exception as e:
-                logger.error(f"启动浏览器失败: {e}")
-                raise
+            except Exception as exc:
+                browser_path = cls._find_system_browser()
+                if not browser_path:
+                    logger.error(f"启动浏览器失败: {exc}")
+                    raise
+                logger.warning(f"内嵌浏览器启动失败，尝试系统浏览器: {browser_path}")
+                cls._browser = await cls._playwright.chromium.launch(
+                    headless=True,
+                    executable_path=str(browser_path),
+                    args=["--no-sandbox", "--disable-setuid-sandbox"],
+                )
+                logger.info("系统浏览器启动成功")
+
+    @staticmethod
+    def _find_system_browser() -> Path | None:
+        candidates = [
+            Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),
+            Path(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"),
+            Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"),
+            Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return None
 
     @classmethod
     async def close(cls):
@@ -90,7 +112,7 @@ async def render_template(
 
             if selector == "body":
                 screenshot = await page.screenshot(
-                    type="jpeg", full_page=True, quality=90
+                    type="png", full_page=True, omit_background=True
                 )
             else:
                 logger.debug(f"等待选择器 {selector} 可见...")
@@ -101,7 +123,9 @@ async def render_template(
                 except Exception as e:
                     logger.warning(f"选择器 {selector} 等待超时: {e}")
                 locator = page.locator(selector)
-                screenshot = await locator.screenshot(type="jpeg", quality=90)
+                screenshot = await locator.screenshot(
+                    type="png", omit_background=True
+                )
 
             return screenshot
 

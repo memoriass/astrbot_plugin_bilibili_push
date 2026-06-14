@@ -12,7 +12,6 @@ from astrbot.api.star import Context
 
 from ..core.http import HttpClient
 from ..rendering import RendererPort
-from ..utils.resource import get_random_background
 
 
 class LoginHandler:
@@ -144,15 +143,14 @@ class LoginHandler:
             )
 
         try:
-            bg_data = get_random_background(self.bg_dir)
             img_bytes = await self.renderer.render(
                 "sub_list.html.jinja",
                 {
                     "subs": display_list,
-                    "bg_image_uri": bg_data["uri"],
                     "page_title": "登录账号状态",
                 },
                 viewport={"width": 1000, "height": 800},
+                selector=".card-board",
             )
             yield event.chain_result([Comp.Image.fromBytes(img_bytes)])
         except Exception as e:

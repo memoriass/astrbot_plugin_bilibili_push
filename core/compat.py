@@ -6,7 +6,7 @@ IS_V1 = PYDANTIC_VERSION.startswith("1.")
 PYDANTIC_V2 = not IS_V1
 
 if IS_V1:
-    from pydantic import parse_obj_as  # type: ignore
+    from pydantic import parse_obj_as, parse_raw_as  # type: ignore
 
     def model_rebuild(model):
         model.update_forward_refs()
@@ -15,7 +15,10 @@ if IS_V1:
         return parse_obj_as(type_, data)
 
     def type_validate_json(type_, json_data):
-        return parse_obj_as(type_, json_data)
+        return parse_raw_as(type_, json_data)
+
+    def model_dump(model):
+        return model.dict()
 
     class ConfigDict:
         pass
@@ -30,3 +33,6 @@ else:
 
     def type_validate_json(type_, json_data):
         return TypeAdapter(type_).validate_json(json_data)
+
+    def model_dump(model):
+        return model.model_dump()

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import List, Optional
 from ..core.types import Category
+from ..utils.logger import logger
 
 
 class Subscription:
@@ -57,7 +58,7 @@ class DatabaseManager:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
-                    "INSERT OR REPLACE INTO subscriptions (uid, username, sub_type, target_id, categories, tags, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO subscriptions (uid, username, sub_type, target_id, categories, tags, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
                         sub.uid,
                         sub.username,
@@ -70,7 +71,10 @@ class DatabaseManager:
                 )
                 conn.commit()
                 return True
-        except:
+        except sqlite3.IntegrityError:
+            return False
+        except Exception as exc:
+            logger.error(f"添加订阅失败: {exc}")
             return False
 
     def remove_subscription(self, uid: str, sub_type: str, target_id: str) -> bool:

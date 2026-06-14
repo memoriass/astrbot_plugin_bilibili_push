@@ -147,9 +147,9 @@ class HttpClient:
         await cls.save_accounts()
 
     @classmethod
-    async def invalidate_current_account(cls, status_code: int = None):
+    async def invalidate_current_account(cls, status_code: int = None) -> bool:
         if not cls._accounts:
-            return
+            return False
         acc = cls._accounts[cls._current_account_index]
         acc["valid"] = False
         acc["status_code"] = status_code
@@ -159,7 +159,7 @@ class HttpClient:
             f"Marking account invalid (Code {status_code}): {acc.get('name')} (UID: {acc.get('uid')})"
         )
         await cls.save_accounts()
-        await cls.rotate_account()
+        return await cls.rotate_account()
 
     @classmethod
     async def get_client(cls) -> httpx.AsyncClient:

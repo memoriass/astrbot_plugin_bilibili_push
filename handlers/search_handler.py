@@ -8,7 +8,6 @@ from astrbot.api.star import Context
 
 from ..core.http import HttpClient
 from ..rendering import RendererPort
-from ..utils.resource import get_random_background
 
 
 class SearchHandler:
@@ -72,11 +71,10 @@ class SearchHandler:
                 "sub_list.html.jinja",
                 {
                     "subs": search_results[:12],
-                    "bg_image_uri": get_random_background(self.bg_dir)["uri"],
                     "page_title": f"搜索结果: {keyword}",
                 },
-                viewport={"width": 1200, "height": 10},
-                selector="body",
+                viewport={"width": 1000, "height": 800},
+                selector=".card-board",
             )
             yield event.chain_result([Comp.Image.fromBytes(img_bytes)])
         except Exception as e:
