@@ -17,7 +17,9 @@ const state = {
   tab: "overview",
   overview: null,
   subscriptionEditor: null,
+  subscriptionDelete: null,
   accountEditor: null,
+  accountDelete: null,
   query: "",
   type: "all",
 };
@@ -80,9 +82,12 @@ function render() {
       onSubmit: submitSubscription,
       onCancel: cancelSubscriptionEdit,
       onToggle: toggleSubscription,
-      onDelete: deleteSubscription,
+      onDelete: startDeleteSubscription,
+      onConfirmDelete: deleteSubscription,
+      onCancelDelete: cancelSubscriptionDelete,
     },
     state.subscriptionEditor,
+    state.subscriptionDelete,
   );
   renderAccounts(
     document.getElementById("accountsPanel"),
@@ -93,9 +98,12 @@ function render() {
       onSubmit: submitAccount,
       onCancel: cancelAccountEdit,
       onToggleValid: toggleAccountValid,
-      onDelete: deleteAccount,
+      onDelete: startDeleteAccount,
+      onConfirmDelete: deleteAccount,
+      onCancelDelete: cancelAccountDelete,
     },
     state.accountEditor,
+    state.accountDelete,
   );
   renderPending(document.getElementById("pendingPanel"), overview.pending_tasks || [], {
     onClear: clearPending,
@@ -113,6 +121,7 @@ function startCreateSubscription() {
     mode: "create",
     item: { sub_type: "dynamic", target_id: targetId, enabled: true },
   };
+  state.subscriptionDelete = null;
   render();
 }
 
@@ -131,11 +140,28 @@ function startEditSubscription(dataset) {
       original_target_id: item.target_id,
     },
   };
+  state.subscriptionDelete = null;
   render();
 }
 
 function cancelSubscriptionEdit() {
   state.subscriptionEditor = null;
+  render();
+}
+
+function startDeleteSubscription(dataset) {
+  const item = findSubscription(dataset);
+  if (!item) {
+    showToast("未找到订阅");
+    return;
+  }
+  state.subscriptionDelete = { item };
+  state.subscriptionEditor = null;
+  render();
+}
+
+function cancelSubscriptionDelete() {
+  state.subscriptionDelete = null;
   render();
 }
 
@@ -163,6 +189,7 @@ async function submitSubscription(data) {
       showToast("订阅已创建");
     }
     state.subscriptionEditor = null;
+    state.subscriptionDelete = null;
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));
@@ -178,8 +205,15 @@ function findSubscription(dataset) {
   );
 }
 
+function findAccount(dataset) {
+  return (state.overview?.accounts || []).find(
+    (account) => String(account.uid) === String(dataset.uid),
+  );
+}
+
 function startCreateAccount() {
   state.accountEditor = { mode: "create", item: { valid: true } };
+  state.accountDelete = null;
   render();
 }
 
@@ -192,11 +226,28 @@ function startEditAccount(dataset) {
     return;
   }
   state.accountEditor = { mode: "edit", item };
+  state.accountDelete = null;
   render();
 }
 
 function cancelAccountEdit() {
   state.accountEditor = null;
+  render();
+}
+
+function startDeleteAccount(dataset) {
+  const item = findAccount(dataset);
+  if (!item) {
+    showToast("未找到账号");
+    return;
+  }
+  state.accountDelete = { item };
+  state.accountEditor = null;
+  render();
+}
+
+function cancelAccountDelete() {
+  state.accountDelete = null;
   render();
 }
 
@@ -211,6 +262,7 @@ async function submitAccount(data) {
     });
     showToast("账号已保存");
     state.accountEditor = null;
+    state.accountDelete = null;
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));
@@ -229,12 +281,10 @@ async function toggleSubscription(dataset) {
 }
 
 async function deleteSubscription(dataset) {
-  if (!window.confirm(`删除 ${dataset.uid} / ${dataset.subType} 订阅？`)) {
-    return;
-  }
   try {
     await api.deleteSubscription(subscriptionPayload(dataset));
     showToast("订阅已删除");
+    state.subscriptionDelete = null;
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));
@@ -253,12 +303,10 @@ async function toggleAccountValid(dataset) {
 }
 
 async function deleteAccount(dataset) {
-  if (!window.confirm(`删除 UID ${dataset.uid} 账号？`)) {
-    return;
-  }
   try {
     await api.deleteAccount({ uid: dataset.uid });
     showToast("账号已删除");
+    state.accountDelete = null;
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));

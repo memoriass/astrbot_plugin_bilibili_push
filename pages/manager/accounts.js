@@ -3,12 +3,13 @@ import {
   emptyState,
   escapeAttribute,
   escapeHtml,
+  icon,
   statusPill,
 } from "./utils.js";
 
 const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
 
-export function renderAccountManager(panel, accounts, actions, editor) {
+export function renderAccountManager(panel, accounts, actions, editor, deleteConfirm) {
   panel.innerHTML = `
     <section class="account-summary">
       <div>
@@ -17,13 +18,16 @@ export function renderAccountManager(panel, accounts, actions, editor) {
       </div>
       <button class="ghost-button" type="button" data-create-account="1">新增账号</button>
     </section>
-    ${editor ? editorForm(editor) : ""}
     ${accounts.length ? `<div class="account-grid">${accounts.map(accountCard).join("")}</div>` : emptyState("暂无登录账号")}
+    ${editor ? `<div class="manager-modal-backdrop">${editorForm(editor)}</div>` : ""}
+    ${deleteConfirm ? deleteModal(deleteConfirm.item || deleteConfirm) : ""}
   `;
 
   panel.querySelector("[data-create-account]").addEventListener("click", actions.onCreate);
   bindDataset(panel, "[data-edit-account]", actions.onEdit);
   bindDataset(panel, "[data-delete-account]", actions.onDelete);
+  bindDataset(panel, "[data-confirm-delete-account]", actions.onConfirmDelete);
+  bindDataset(panel, "[data-cancel-delete-account]", actions.onCancelDelete);
   bindDataset(panel, "[data-valid-account]", actions.onToggleValid);
   const form = panel.querySelector("#accountEditorForm");
   if (form) {
@@ -40,6 +44,12 @@ function accountCard(account) {
     <article class="account-card">
       <div class="account-media">
         <img src="${escapeAttribute(account.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+        <div class="card-icon-actions">
+          <button class="icon-button" type="button" data-edit-account="1"
+            data-uid="${escapeAttribute(account.uid)}" aria-label="编辑账号">${icon("settings")}</button>
+          <button class="icon-button danger" type="button" data-delete-account="1"
+            data-uid="${escapeAttribute(account.uid)}" aria-label="删除账号">${icon("trash")}</button>
+        </div>
         <div class="account-media-overlay">
           <h2>${escapeHtml(account.name || "Bilibili 账号")}</h2>
           <p>UID: ${escapeHtml(account.uid || "-")}</p>
@@ -50,14 +60,10 @@ function accountCard(account) {
         ${account.status_code ? `<span>状态码 ${escapeHtml(account.status_code)}</span>` : `<span>Cookie ${account.valid ? "可用" : "需检查"}</span>`}
       </div>
       <div class="account-actions">
-        <button class="ghost-button" type="button" data-edit-account="1"
-          data-uid="${escapeAttribute(account.uid)}">编辑</button>
         <button class="ghost-button" type="button" data-valid-account="1"
           data-uid="${escapeAttribute(account.uid)}" data-valid="${escapeAttribute(String(!account.valid))}">
           ${account.valid ? "标记失效" : "标记有效"}
         </button>
-        <button class="danger-button" type="button" data-delete-account="1"
-          data-uid="${escapeAttribute(account.uid)}">删除</button>
       </div>
     </article>
   `;
@@ -66,7 +72,7 @@ function accountCard(account) {
 function editorForm(editor) {
   const item = editor.item || {};
   return `
-    <form class="account-editor" id="accountEditorForm">
+    <form class="account-editor" id="accountEditorForm" role="dialog" aria-modal="true">
       <div class="editor-heading">
         <div>
           <h2>${editor.mode === "edit" ? "编辑账号" : "新增账号"}</h2>
@@ -102,6 +108,24 @@ function editorForm(editor) {
         <button class="ghost-button" type="submit">${editor.mode === "edit" ? "保存账号" : "创建账号"}</button>
       </div>
     </form>
+  `;
+}
+
+function deleteModal(account) {
+  return `
+    <div class="manager-modal-backdrop">
+      <section class="manager-modal confirm-modal" role="dialog" aria-modal="true" aria-label="删除账号">
+        <div>
+          <h2>删除账号</h2>
+          <p>确认删除 ${escapeHtml(account.name || "Bilibili 账号")}（UID: ${escapeHtml(account.uid || "-")}）？</p>
+        </div>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-cancel-delete-account="1">取消</button>
+          <button class="danger-button" type="button" data-confirm-delete-account="1"
+            data-uid="${escapeAttribute(account.uid)}">删除</button>
+        </div>
+      </section>
+    </div>
   `;
 }
 

@@ -242,6 +242,97 @@ select {
   color: var(--danger);
 }
 
+.card-icon-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+}
+
+.icon-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 72%);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 84%);
+  color: var(--text);
+  padding: 0;
+  box-shadow: 0 5px 14px rgb(15 23 42 / 18%);
+}
+
+.icon-button:hover {
+  background: #fff;
+}
+
+.icon-button.danger {
+  color: var(--danger);
+}
+
+.icon-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.manager-modal-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  background: rgb(15 23 42 / 48%);
+  padding: 20px;
+}
+
+.manager-modal,
+.manager-modal-backdrop > .account-editor,
+.manager-modal-backdrop > .subscription-editor {
+  width: min(920px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgb(15 23 42 / 30%);
+}
+
+.manager-modal-backdrop > .account-editor,
+.manager-modal-backdrop > .subscription-editor {
+  margin: 0;
+}
+
+.confirm-modal {
+  display: grid;
+  max-width: 440px;
+  gap: 14px;
+  padding: 18px;
+}
+
+.confirm-modal p {
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.modal-muted {
+  font-size: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

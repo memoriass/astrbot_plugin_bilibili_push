@@ -3,6 +3,7 @@ import {
   emptyState,
   escapeAttribute,
   escapeHtml,
+  icon,
   statusPill,
   typeBadge,
 } from "./utils.js";
@@ -24,7 +25,7 @@ const CATEGORY_OPTIONS = {
   ],
 };
 
-export function renderSubscriptionCards(panel, subscriptions, filters, actions, editor) {
+export function renderSubscriptionCards(panel, subscriptions, filters, actions, editor, deleteConfirm) {
   const filtered = filterSubscriptions(subscriptions, filters);
   const enabledCount = filtered.filter((sub) => sub.enabled).length;
   panel.innerHTML = `
@@ -39,15 +40,18 @@ export function renderSubscriptionCards(panel, subscriptions, filters, actions, 
         <button class="ghost-button" type="button" data-create-subscription="1">新增订阅</button>
       </div>
     </section>
-    ${editor ? editorForm(editor) : ""}
     <section class="subscription-card-grid">
       ${filtered.length ? filtered.map(subscriptionCard).join("") : emptyState("没有匹配的订阅")}
     </section>
+    ${editor ? `<div class="manager-modal-backdrop">${editorForm(editor)}</div>` : ""}
+    ${deleteConfirm ? deleteModal(deleteConfirm.item || deleteConfirm) : ""}
   `;
   panel.querySelector("[data-create-subscription]").addEventListener("click", actions.onCreate);
   bindDataset(panel, "[data-edit]", actions.onEdit);
   bindDataset(panel, "[data-toggle]", actions.onToggle);
   bindDataset(panel, "[data-delete]", actions.onDelete);
+  bindDataset(panel, "[data-confirm-delete]", actions.onConfirmDelete);
+  bindDataset(panel, "[data-cancel-delete]", actions.onCancelDelete);
   const form = panel.querySelector("#subscriptionEditorForm");
   if (form) {
     form.addEventListener("submit", (event) => {
@@ -83,6 +87,14 @@ function subscriptionCard(sub) {
           ${sub.sub_type === "live" ? `<span class="media-badge live">LIVE</span>` : ""}
           ${sub.sub_type === "dynamic" ? `<span class="media-badge dyn">DYNAMIC</span>` : ""}
         </div>
+        <div class="card-icon-actions">
+          <button class="icon-button" type="button" data-edit="1"
+            data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
+            data-target-id="${escapeAttribute(sub.target_id)}" aria-label="编辑订阅">${icon("settings")}</button>
+          <button class="icon-button danger" type="button" data-delete="1"
+            data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
+            data-target-id="${escapeAttribute(sub.target_id)}" aria-label="删除订阅">${icon("trash")}</button>
+        </div>
         <div class="subscription-media-overlay">
           <h2>${escapeHtml(sub.username || "未命名 UP 主")}</h2>
           <p>UID: ${escapeHtml(sub.uid || "-")}</p>
@@ -104,17 +116,11 @@ function subscriptionCard(sub) {
       </div>
       ${labelsBlock(sub)}
       <div class="subscription-actions">
-        <button class="ghost-button" type="button" data-edit="1"
-          data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
-          data-target-id="${escapeAttribute(sub.target_id)}">编辑</button>
         <button class="ghost-button" type="button" data-toggle="1"
           data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
           data-target-id="${escapeAttribute(sub.target_id)}" data-enabled="${escapeAttribute(String(!sub.enabled))}">
           ${sub.enabled ? "停用" : "启用"}
         </button>
-        <button class="danger-button" type="button" data-delete="1"
-          data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
-          data-target-id="${escapeAttribute(sub.target_id)}">删除</button>
       </div>
     </article>
   `;
@@ -124,7 +130,7 @@ function editorForm(editor) {
   const item = editor.item || {};
   const subType = item.sub_type || "dynamic";
   return `
-    <form class="subscription-editor" id="subscriptionEditorForm">
+    <form class="subscription-editor" id="subscriptionEditorForm" role="dialog" aria-modal="true">
       <input type="hidden" name="mode" value="${escapeAttribute(editor.mode || "create")}" />
       <input type="hidden" name="original_uid" value="${escapeAttribute(item.original_uid || item.uid || "")}" />
       <input type="hidden" name="original_sub_type" value="${escapeAttribute(item.original_sub_type || item.sub_type || "")}" />
@@ -184,6 +190,26 @@ function editorPreview(item, mode) {
         <h2>${escapeHtml(item.username || "待选择 UP 主")}</h2>
         <p>UID: ${escapeHtml(item.uid || "-")}</p>
       </div>
+    </div>
+  `;
+}
+
+function deleteModal(sub) {
+  return `
+    <div class="manager-modal-backdrop">
+      <section class="manager-modal confirm-modal" role="dialog" aria-modal="true" aria-label="删除订阅">
+        <div>
+          <h2>删除订阅</h2>
+          <p>确认删除 ${escapeHtml(sub.username || sub.uid || "未命名 UP 主")} 的 ${escapeHtml(sub.sub_type || "-")} 订阅？</p>
+          <p class="modal-muted">UID: ${escapeHtml(sub.uid || "-")} / 会话: ${escapeHtml(sub.target_id || "-")}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-cancel-delete="1">取消</button>
+          <button class="danger-button" type="button" data-confirm-delete="1"
+            data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
+            data-target-id="${escapeAttribute(sub.target_id)}">删除</button>
+        </div>
+      </section>
     </div>
   `;
 }
