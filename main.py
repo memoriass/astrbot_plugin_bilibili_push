@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
@@ -15,6 +16,12 @@ from .parser.bilibili_parser import BilibiliParser
 from .rendering import HtmlRendererAdapter
 from .scheduler import BilibiliScheduler
 from .utils.resource import get_template_path
+from .workflows import (
+    BiliPendingShortcutFilter,
+    run_bili_workflow,
+    workflow_from_cli,
+    workflow_from_pending_shortcut,
+)
 
 
 @register(
@@ -53,6 +60,8 @@ class BilibiliPush(Star):
         self.enable_ai_agent_entry = config.get("enable_ai_agent_entry", True)
         self.ai_tool_timeout_sec = int(config.get("ai_tool_timeout_sec", 20))
         self.ai_max_steps = int(config.get("ai_max_steps", 8))
+        self.ai_pending_timeout_sec = int(config.get("ai_pending_timeout_sec", 300))
+        self._bili_pending_tasks: dict[str, dict] = {}
 
         # 核心组件初始化
         self.db = DatabaseManager(self.data_dir / "data.db")
@@ -172,6 +181,61 @@ class BilibiliPush(Star):
         """显式 Agent 入口（可选）"""
         yield await self.ai_handler.run_agent(event, query.strip())
 
+    @filter.command("b站工作流", alias={"bili workflow", "biliwf"})
+    async def bilibili_workflow_command(
+        self,
+        event: AstrMessageEvent,
+        workflow: str = "list_subscriptions",
+        args: GreedyStr = GreedyStr,
+    ):
+        """显式执行 Bilibili workflow。"""
+        actual_args = args if isinstance(args, str) else ""
+        request = workflow_from_cli(workflow, actual_args)
+        result = await run_bili_workflow(self, event, request)
+        yield event.plain_result(result)
+
+    @filter.custom_filter(BiliPendingShortcutFilter)
+    async def bilibili_pending_shortcut(self, event: AstrMessageEvent):
+        """继续 Bilibili workflow pending task。"""
+        request = workflow_from_pending_shortcut(event.get_message_str())
+        if request is None:
+            return
+        result = await run_bili_workflow(self, event, request)
+        yield event.plain_result(result)
+
+    @filter.llm_tool(name="bili_workflow")
+    async def bili_workflow_tool(
+        self,
+        event: AstrMessageEvent,
+        workflow: str,
+        target: str = "",
+        params: object = "",
+    ) -> str:
+        """Bilibili 推送插件的统一 workflow 工具。
+
+        当用户提到 Bilibili、B站、UP 主、动态订阅、直播订阅、账号状态、
+        搜索 UP、删除订阅或查看订阅时，优先使用本工具。
+        模糊 UP 名称会生成候选 pending task，不会直接写入订阅。
+
+        常用 workflow：
+        - search_up：搜索 UP 主并返回候选。
+        - add_subscription：按明确 UID 添加订阅；按关键词时生成候选任务。
+        - remove_subscription：删除当前会话订阅。
+        - list_subscriptions：查看当前会话订阅。
+        - account_status：查看登录账号池状态。
+        - check_status：诊断插件状态。
+        - continue_pending：继续候选选择或确认添加。
+
+        Args:
+            workflow(string): workflow id，例如 search_up、add_subscription、
+                remove_subscription、list_subscriptions、account_status、
+                check_status、continue_pending。
+            target(string): UID、关键词或 task id。
+            params(object): 可选 JSON，例如 {"sub_type":"dynamic"}、
+                {"sub_type":"live"}、{"task_id":"bili1a2b3c4d","choice":"1"}。
+        """
+        return await self.ai_handler.run_workflow(event, workflow, target, params)
+
     @filter.llm_tool(name="bili_search_up")
     async def bili_search_up_tool(self, event: AstrMessageEvent, keyword: str) -> str:
         """搜索 B站 UP 主并返回 UID 列表。
@@ -179,7 +243,7 @@ class BilibiliPush(Star):
         Args:
             keyword(string): 搜索关键词。
         """
-        return await self.ai_handler.search_up(keyword)
+        return await self.ai_handler.search_up(event, keyword)
 
     @filter.llm_tool(name="bili_add_dynamic_sub")
     async def bili_add_dynamic_sub_tool(self, event: AstrMessageEvent, uid: str) -> str:
@@ -210,7 +274,7 @@ class BilibiliPush(Star):
         Args:
             placeholder(string): 预留参数，可留空。
         """
-        return self.ai_handler.list_subscriptions(event)
+        return await self.ai_handler.list_subscriptions(event)
 
     @filter.llm_tool(name="bili_remove_sub")
     async def bili_remove_sub_tool(
@@ -225,11 +289,57 @@ class BilibiliPush(Star):
             uid(string): UP 主 UID。
             sub_type(string): 订阅类型，dynamic 或 live。
         """
-        return self.ai_handler.remove_subscription(event, uid, sub_type)
+        return await self.ai_handler.remove_subscription(event, uid, sub_type)
 
     async def _handle_new_post(self, platform: str, target_id: str, msgs: list):
         """处理来自调度器的新动态/直播推送"""
         await self.runtime.handle_new_post(platform, target_id, msgs)
+
+    def create_bili_pending_task(self, task: dict) -> str:
+        self._cleanup_bili_pending_tasks()
+        task_id = str(task["task_id"])
+        task["expires_at"] = time.time() + self.ai_pending_timeout_sec
+        self._bili_pending_tasks[task_id] = task
+        return task_id
+
+    def get_bili_pending_task(self, task_id: str) -> dict | None:
+        self._cleanup_bili_pending_tasks()
+        return self._bili_pending_tasks.get(task_id)
+
+    def delete_bili_pending_task(self, task_id: str):
+        self._bili_pending_tasks.pop(task_id, None)
+
+    def resolve_bili_pending_task_id(
+        self,
+        task_ref: str,
+        origin: str = "",
+    ) -> tuple[str, list[str]]:
+        self._cleanup_bili_pending_tasks()
+        ref = str(task_ref or "").lower()
+        fragment = ref.removeprefix("bili")
+        matches = []
+        for task_id, task in self._bili_pending_tasks.items():
+            if origin and task.get("origin") != origin:
+                continue
+            if task_id == ref or task_id.startswith(ref):
+                matches.append(task_id)
+            elif len(fragment) >= 3 and task_id.removeprefix("bili").endswith(fragment):
+                matches.append(task_id)
+        if len(matches) == 1:
+            return matches[0], []
+        if len(matches) > 1:
+            return "", matches
+        return "", []
+
+    def _cleanup_bili_pending_tasks(self):
+        now = time.time()
+        expired = [
+            task_id
+            for task_id, task in self._bili_pending_tasks.items()
+            if float(task.get("expires_at") or 0) < now
+        ]
+        for task_id in expired:
+            self._bili_pending_tasks.pop(task_id, None)
 
     async def terminate(self):
         """插件终止时回收浏览器资源"""

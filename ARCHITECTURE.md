@@ -42,11 +42,11 @@ flowchart LR
 - `live/`: Bilibili 直播状态抓取、状态对比、直播 Post 构造，详见 `live/live.md`。
 - `scheduler/`: 周期任务、去重、状态缓存、推送分发，详见 `scheduler/scheduler.md`。
 - `handlers/`: 用户命令和链接事件处理，详见 `handlers/handlers.md`。
+- `workflows/`: AI workflow 编排、pending task、工具参数解析，详见 `workflows/workflows.md`。
 - `parser/`: 聊天消息中的 Bilibili 链接解析，详见 `parser/parser.md`。
 - `rendering/`: 渲染端口和适配器，详见 `rendering/rendering.md`。
 - `utils/renderers/`: 具体卡片主题，详见 `utils/renderers/renderers.md`。
 - `resources/` 和 `utils/resources/`: 静态资源与模板，详见对应目录下的模块文档。
-- 计划新增 `workflows/`: AI workflow 编排、pending task、工具参数解析；落地前参考 `AI_WORKFLOW_REFACTOR_PLAN.md`。
 - 计划新增 `pages/`: AstrBot Plugin Pages 前端页面；只放 WebUI 静态页面，不承载聊天 help。
 
 ## 维护约束
@@ -69,7 +69,7 @@ flowchart LR
 - 调整直播状态判断：改 `live/bilibili.py`。
 - 调整卡片样式：改 `utils/resources/templates/` 和 `utils/renderers/`。
 - 调整账号或 Cookie 行为：改 `core/http.py` 和 `handlers/login_handler.py`。
-- 调整 AI 接入：先看 `AI_WORKFLOW_REFACTOR_PLAN.md`；落地后以 `workflows/` 为主，`handlers/ai_handler.py` 只做入口适配。
+- 调整 AI 接入：以 `workflows/` 为主，`handlers/ai_handler.py` 只做入口适配；背景计划见 `AI_WORKFLOW_REFACTOR_PLAN.md`。
 - 调整 WebUI 管理页：新增 `pages/` 和 Web API 适配层，避免把页面逻辑写进命令 handler。
 
 ## 文档命名

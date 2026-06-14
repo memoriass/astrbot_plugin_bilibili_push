@@ -2,6 +2,23 @@
 
 本文档记录 2026-06-15 的本地接入测试、评审结论和后续改造计划。目标是让 Bilibili 推送插件能更稳定地接入 AstrBot AI，同时为后续 Plugin Pages 管理页预留边界。
 
+## 当前落地状态
+
+已完成：
+
+- 新增 `workflows/` 编排层。
+- 新增统一 LLM tool `bili_workflow`。
+- 旧 5 个 LLM tools 保留为兼容入口，并转发到 workflow。
+- 新增 `b站工作流` 显式命令。
+- 新增 `bili<任务ID>` pending task 选择和确认流程。
+- `handlers/ai_handler.py` 已退化为 Agent 入口和旧工具适配层。
+
+未完成：
+
+- Plugin Pages 管理页。
+- workflow 卡片化展示。
+- pending task 持久化到 KV。
+
 ## 当前接入测试
 
 已完成的本地验证：

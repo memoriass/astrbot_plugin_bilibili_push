@@ -26,6 +26,7 @@
 | `<wake_prefix> b站登录` | `<wake_prefix> bilibili 登录` | 扫码登录 B站 账号（建议登录以提升稳定性） |
 | `<wake_prefix> b站登录状态` | - | 查看登录账号池状态 |
 | `<wake_prefix> b站助手 <自然语言>` | `<wake_prefix> bili 助手` | 显式触发 Agent 编排（可选入口） |
+| `<wake_prefix> b站工作流 <workflow> [参数]` | `<wake_prefix> biliwf` | 直接执行 Bilibili workflow |
 
 ---
 
@@ -33,11 +34,16 @@
 
 插件已提供以下可被 LLM 调用的工具：
 
+- `bili_workflow`
 - `bili_search_up`
 - `bili_add_dynamic_sub`
 - `bili_add_live_sub`
 - `bili_list_subs`
 - `bili_remove_sub`
+
+推荐 Agent 优先使用 `bili_workflow`。旧工具保留为兼容入口，会转发到 workflow。
+当只提供 UP 名称或模糊关键词时，workflow 会生成 `bili<任务ID>` pending task；
+用户选择候选并确认后才会写入订阅。
 
 可通过 `<wake_prefix> tool ls` 查看当前会话可用工具列表。
 
@@ -61,6 +67,7 @@
 - **`enable_ai_agent_entry`**: 开启/关闭 `b站助手` 显式 Agent 命令入口。
 - **`ai_tool_timeout_sec`**: Agent 工具调用超时（秒）。
 - **`ai_max_steps`**: Agent 最大执行步数。
+- **`ai_pending_timeout_sec`**: AI workflow pending task 有效期（秒）。
 - **`verify_ssl`**: HTTPS 请求是否校验证书（建议保持开启）。
 
 ---
