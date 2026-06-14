@@ -11,6 +11,7 @@
 ## 数据来源
 
 - `bridge.apiGet("overview")`
+- `bridge.apiPost("subscriptions/enabled", body)`
 - `bridge.apiPost("subscriptions/delete", body)`
 - `bridge.apiPost("pending/clear", body)`
 
@@ -19,6 +20,6 @@
 ## 边界
 
 - 当前页面不新增订阅，不触发手动推送检查。
-- 删除订阅必须传完整 `uid + sub_type + target_id`。
+- 启停和删除订阅必须传完整 `uid + sub_type + target_id`。
 - 本地直接打开页面时使用 `app.js` 内的假数据 fallback，仅用于布局预览。
 - 账号卡片不展示 cookies。

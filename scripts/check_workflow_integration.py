@@ -29,6 +29,7 @@ PLUGIN_NAME = "astrbot_plugin_bilibili_push"
 EXPECTED_WEB_ENDPOINTS = {
     "overview",
     "subscriptions/delete",
+    "subscriptions/enabled",
     "pending/clear",
 }
 

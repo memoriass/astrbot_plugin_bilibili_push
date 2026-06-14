@@ -221,12 +221,20 @@ tr:last-child td {
   border-bottom: 0;
 }
 
+tr.disabled-row td {
+  color: var(--muted);
+}
+
 .strong {
   font-weight: 700;
 }
 
 .right {
   text-align: right;
+}
+
+.right button + button {
+  margin-left: 8px;
 }
 
 .mono {

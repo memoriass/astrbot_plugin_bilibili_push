@@ -51,7 +51,7 @@ class LiveSubscriptionChecker:
         self.is_first_check = False
 
     async def manual_check(self, target_id: str) -> int:
-        subs = self.db.get_subscriptions(target_id)
+        subs = self.db.get_enabled_subscriptions(target_id)
         live_subs = [sub for sub in subs if sub.sub_type == "live"]
         logger.info(f"手动检查开始 | Target: {target_id} | LiveSubs: {len(live_subs)}")
         count = 0

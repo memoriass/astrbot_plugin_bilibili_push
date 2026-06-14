@@ -21,6 +21,12 @@ def register_bilibili_web_apis(context, plugin):
         "Delete Bilibili subscription",
     )
     context.register_web_api(
+        f"/{PLUGIN_NAME}/subscriptions/enabled",
+        api.set_subscription_enabled,
+        ["POST"],
+        "Enable or disable Bilibili subscription",
+    )
+    context.register_web_api(
         f"/{PLUGIN_NAME}/pending/clear",
         api.clear_pending,
         ["POST"],
@@ -69,6 +75,25 @@ class BilibiliManagerApi:
             return _error("未找到匹配订阅。")
         return _ok({"removed": True})
 
+    async def set_subscription_enabled(self):
+        payload = await _request_json()
+        uid = str(payload.get("uid") or "").strip()
+        sub_type = str(payload.get("sub_type") or "").strip()
+        target_id = str(payload.get("target_id") or "").strip()
+        enabled = bool(payload.get("enabled"))
+        if not uid or sub_type not in {"dynamic", "live"} or not target_id:
+            return _error("uid、sub_type、target_id 参数不完整。")
+
+        updated = self.plugin.db.set_subscription_enabled(
+            uid,
+            sub_type,
+            target_id,
+            enabled,
+        )
+        if not updated:
+            return _error("未找到匹配订阅。")
+        return _ok({"updated": True, "enabled": enabled})
+
     async def clear_pending(self):
         count = await self.plugin.pending_store.clear()
         return _ok({"cleared": count})
@@ -82,6 +107,7 @@ class BilibiliManagerApi:
         targets = {sub["target_id"] for sub in subscriptions}
         dynamic_count = sum(1 for sub in subscriptions if sub["sub_type"] == "dynamic")
         live_count = sum(1 for sub in subscriptions if sub["sub_type"] == "live")
+        enabled_count = sum(1 for sub in subscriptions if sub["enabled"])
         valid_accounts = sum(1 for acc in accounts if acc.get("valid", True))
         return {
             "check_interval": self.plugin.check_interval,
@@ -90,6 +116,7 @@ class BilibiliManagerApi:
             "enable_ai_tools": self.plugin.enable_ai_tools,
             "enable_ai_agent_entry": self.plugin.enable_ai_agent_entry,
             "subscriptions": len(subscriptions),
+            "enabled_subscriptions": enabled_count,
             "dynamic_subscriptions": dynamic_count,
             "live_subscriptions": live_count,
             "targets": len(targets),

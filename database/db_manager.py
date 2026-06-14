@@ -52,7 +52,18 @@ class DatabaseManager:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS live_status (uid TEXT PRIMARY KEY, last_status INTEGER, last_title TEXT)"
             )
+            self._ensure_columns(conn)
             conn.commit()
+
+    def _ensure_columns(self, conn):
+        columns = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(subscriptions)").fetchall()
+        }
+        if "enabled" not in columns:
+            conn.execute(
+                "ALTER TABLE subscriptions ADD COLUMN enabled INTEGER DEFAULT 1"
+            )
 
     def add_subscription(self, sub: Subscription) -> bool:
         try:
@@ -86,6 +97,21 @@ class DatabaseManager:
             conn.commit()
             return cursor.rowcount > 0
 
+    def set_subscription_enabled(
+        self,
+        uid: str,
+        sub_type: str,
+        target_id: str,
+        enabled: bool,
+    ) -> bool:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "UPDATE subscriptions SET enabled = ? WHERE uid = ? AND sub_type = ? AND target_id = ?",
+                (1 if enabled else 0, str(uid), sub_type, target_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     def get_subscriptions(self, target_id: Optional[str] = None) -> List[Subscription]:
         with sqlite3.connect(self.db_path) as conn:
             if target_id:
@@ -112,6 +138,11 @@ class DatabaseManager:
                     )
                 )
             return subs
+
+    def get_enabled_subscriptions(
+        self, target_id: Optional[str] = None
+    ) -> List[Subscription]:
+        return [sub for sub in self.get_subscriptions(target_id) if sub.enabled]
 
     def is_seen_dynamic(self, uid: str, dyn_id: str) -> bool:
         with sqlite3.connect(self.db_path) as conn:

@@ -55,10 +55,10 @@ function render() {
 
 function renderMetrics(diagnostics) {
   const items = [
-    ["订阅", diagnostics.subscriptions || 0],
+    ["总订阅", diagnostics.subscriptions || 0],
+    ["启用", diagnostics.enabled_subscriptions || 0],
     ["动态", diagnostics.dynamic_subscriptions || 0],
     ["直播", diagnostics.live_subscriptions || 0],
-    ["会话", diagnostics.targets || 0],
     ["账号", `${diagnostics.valid_accounts || 0}/${diagnostics.accounts || 0}`],
     ["Pending", diagnostics.pending_tasks || 0],
   ];
@@ -114,6 +114,9 @@ function renderSubscriptions(subscriptions) {
       </table>
     </div>
   `;
+  panel.querySelectorAll("[data-toggle]").forEach((button) => {
+    button.addEventListener("click", () => toggleSubscription(button.dataset));
+  });
   panel.querySelectorAll("[data-delete]").forEach((button) => {
     button.addEventListener("click", () => deleteSubscription(button.dataset));
   });
@@ -121,13 +124,22 @@ function renderSubscriptions(subscriptions) {
 
 function subscriptionRow(sub) {
   return `
-    <tr>
+    <tr class="${sub.enabled ? "" : "disabled-row"}">
       <td class="strong">${escapeHtml(sub.username || "-")}</td>
       <td>${escapeHtml(sub.uid)}</td>
       <td>${typeBadge(sub.sub_type)}</td>
       <td class="mono">${escapeHtml(sub.target_id)}</td>
       <td>${statusPill(sub.enabled ? "启用" : "停用", sub.enabled)}</td>
       <td class="right">
+        <button
+          class="ghost-button"
+          type="button"
+          data-toggle="1"
+          data-uid="${escapeAttribute(sub.uid)}"
+          data-sub-type="${escapeAttribute(sub.sub_type)}"
+          data-target-id="${escapeAttribute(sub.target_id)}"
+          data-enabled="${escapeAttribute(String(!sub.enabled))}"
+        >${sub.enabled ? "停用" : "启用"}</button>
         <button
           class="danger-button"
           type="button"
@@ -139,6 +151,27 @@ function subscriptionRow(sub) {
       </td>
     </tr>
   `;
+}
+
+async function toggleSubscription(dataset) {
+  const uid = dataset.uid;
+  const subType = dataset.subType;
+  const targetId = dataset.targetId;
+  const enabled = dataset.enabled === "true";
+  try {
+    unwrap(
+      await bridge.apiPost("subscriptions/enabled", {
+        uid,
+        sub_type: subType,
+        target_id: targetId,
+        enabled,
+      }),
+    );
+    showToast(enabled ? "订阅已启用" : "订阅已停用");
+    await loadOverview();
+  } catch (error) {
+    showToast(error.message || String(error));
+  }
 }
 
 async function deleteSubscription(dataset) {
@@ -314,6 +347,7 @@ function createLocalBridge() {
       data: {
         diagnostics: {
           subscriptions: 4,
+          enabled_subscriptions: 3,
           dynamic_subscriptions: 2,
           live_subscriptions: 2,
           targets: 2,
@@ -334,7 +368,7 @@ function createLocalBridge() {
             username: "哔哩哔哩直播",
             sub_type: "live",
             target_id: "aiocqhttp:GroupMessage:10001",
-            enabled: true,
+            enabled: false,
           },
         ],
         accounts: [

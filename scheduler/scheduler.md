@@ -14,6 +14,7 @@
 
 - 动态去重缓存使用 AstrBot KV，key 形如 `seen_posts_{uid}`。
 - 直播状态缓存使用 AstrBot KV，key 形如 `live_status_{uid}`。
+- 周期检查和手动直播检查只读取 `enabled=True` 的订阅。
 - 新订阅首次动态检查只建立基线，不推送历史动态。
 - 网络抓取失败不能更新去重基线。
 - `scheduler.py` 是统合入口，不应重新堆入具体动态/直播检查逻辑。

@@ -13,6 +13,7 @@
 
 - `GET overview`: 返回订阅、账号、pending task 和诊断统计。
 - `POST subscriptions/delete`: 按 `uid + sub_type + target_id` 删除订阅。
+- `POST subscriptions/enabled`: 按 `uid + sub_type + target_id` 启用或停用订阅。
 - `POST pending/clear`: 清空 workflow pending task。
 
 ## 边界

@@ -94,7 +94,7 @@ class BilibiliScheduler:
             await asyncio.sleep(self.check_interval)
 
     async def _check_all(self):
-        subs = self.db.get_subscriptions()
+        subs = self.db.get_enabled_subscriptions()
         dyn_subs = [sub for sub in subs if sub.sub_type == "dynamic"]
         live_subs = [sub for sub in subs if sub.sub_type == "live"]
 

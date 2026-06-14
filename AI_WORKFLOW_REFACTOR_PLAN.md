@@ -14,12 +14,13 @@
 - pending task 已写入 AstrBot KV，插件重载后仍可在有效期内继续。
 - 新增 `pages/manager/` 管理页。
 - 新增 `webapi/` 管理页后端 API。
+- WebUI 管理页支持订阅启停，调度器只处理启用订阅。
 - `handlers/ai_handler.py` 已退化为 Agent 入口和旧工具适配层。
 
 未完成：
 
 - workflow 卡片化展示。
-- 更完整的 WebUI 启停、手动检查、模板预览管理能力。
+- WebUI 手动检查、模板预览管理能力。
 
 ## 当前接入测试
 
