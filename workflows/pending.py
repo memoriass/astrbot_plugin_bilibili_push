@@ -12,7 +12,7 @@ from .utils import normalize_reply
 TASK_PREFIX = "bili"
 
 
-def store_pending_task(
+async def store_pending_task(
     plugin,
     event,
     request: WorkflowRequest,
@@ -34,7 +34,7 @@ def store_pending_task(
         "created_at": time.time(),
         **payload,
     }
-    plugin.create_bili_pending_task(task)
+    await plugin.pending_store.create(task)
     return task_id
 
 
@@ -43,7 +43,7 @@ async def run_continue_pending(plugin, event, request: WorkflowRequest) -> str:
     if not task_ref:
         return "继续任务需要 task_id，例如 `bili1a2b 1`。"
 
-    task_id, matches = plugin.resolve_bili_pending_task_id(
+    task_id, matches = await plugin.pending_store.resolve(
         task_ref,
         origin=event_origin(event),
     )
@@ -52,7 +52,7 @@ async def run_continue_pending(plugin, event, request: WorkflowRequest) -> str:
     if not task_id:
         return f"任务不存在或已过期：{task_ref}"
 
-    task = plugin.get_bili_pending_task(task_id)
+    task = await plugin.pending_store.get(task_id)
     if not task:
         return f"任务不存在或已过期：{task_ref}"
 
@@ -66,7 +66,7 @@ async def run_continue_pending(plugin, event, request: WorkflowRequest) -> str:
 
 async def _continue_candidates(plugin, event, request, task_id: str, task: dict, action: str) -> str:
     if normalize_reply(action) in CANCEL_REPLIES:
-        plugin.delete_bili_pending_task(task_id)
+        await plugin.pending_store.delete(task_id)
         return f"已取消任务：{task_id}"
 
     candidates = task.get("candidates") or []
@@ -75,7 +75,7 @@ async def _continue_candidates(plugin, event, request, task_id: str, task: dict,
         return f"请回复 1-{len(candidates)} 的序号，或发送 `bili{task_id[-4:]} 取消`。"
 
     candidate = candidates[index]
-    plugin.delete_bili_pending_task(task_id)
+    await plugin.pending_store.delete(task_id)
     if task.get("mode") != "add_subscription":
         return f"已选择：{candidate.get('username')} | UID={candidate.get('uid')}"
 
@@ -87,13 +87,13 @@ async def _continue_candidates(plugin, event, request, task_id: str, task: dict,
         params={"sub_type": task.get("sub_type") or "dynamic"},
         source=request.source,
     )
-    return build_confirm_task(plugin, event, next_request, candidate)
+    return await build_confirm_task(plugin, event, next_request, candidate)
 
 
 async def _continue_confirm(plugin, event, task_id: str, task: dict, action: str) -> str:
     normalized = normalize_reply(action)
     if normalized in CANCEL_REPLIES:
-        plugin.delete_bili_pending_task(task_id)
+        await plugin.pending_store.delete(task_id)
         return f"已取消任务：{task_id}"
     if normalized not in CONFIRM_REPLIES:
         return f"请发送 `bili{task_id[-4:]} 确认` 或 `bili{task_id[-4:]} 取消`。"
@@ -101,7 +101,7 @@ async def _continue_confirm(plugin, event, task_id: str, task: dict, action: str
     candidate = task.get("candidate") or {}
     uid = str(candidate.get("uid") or "")
     sub_type = str(task.get("sub_type") or "dynamic")
-    plugin.delete_bili_pending_task(task_id)
+    await plugin.pending_store.delete(task_id)
 
     from .subscription import add_subscription_by_uid
 

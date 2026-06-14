@@ -25,6 +25,12 @@ EXPECTED_COMMANDS = {
     "b站助手",
     "b站工作流",
 }
+PLUGIN_NAME = "astrbot_plugin_bilibili_push"
+EXPECTED_WEB_ENDPOINTS = {
+    "overview",
+    "subscriptions/delete",
+    "pending/clear",
+}
 
 
 def main() -> None:
@@ -43,6 +49,8 @@ def main() -> None:
         raise SystemExit("missing pending shortcut custom filter")
     if any("帮助" in name or "help" in func.lower() for func, name in commands):
         raise SystemExit("help command residue detected")
+    _check_plugin_pages()
+    _check_web_api_routes()
 
     oversized = _oversized_text_files()
     if oversized:
@@ -52,6 +60,8 @@ def main() -> None:
     print("workflow_integration_check=ok")
     print("commands=" + ",".join(sorted(command_names)))
     print("tools=" + ",".join(sorted(tool_names)))
+    routes = [f"/{PLUGIN_NAME}/{endpoint}" for endpoint in sorted(EXPECTED_WEB_ENDPOINTS)]
+    print("web_routes=" + ",".join(routes))
 
 
 def _decorated_entries(tree: ast.AST):
@@ -83,6 +93,26 @@ def _keyword_value(call: ast.Call, name: str) -> str:
         if keyword.arg == name and isinstance(keyword.value, ast.Constant):
             return str(keyword.value.value)
     return ""
+
+
+def _check_plugin_pages() -> None:
+    required = [
+        ROOT / "pages" / "manager" / "index.html",
+        ROOT / "pages" / "manager" / "app.js",
+        ROOT / "pages" / "manager" / "style.css",
+    ]
+    missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
+    if missing:
+        raise SystemExit(f"missing plugin page files: {missing}")
+
+
+def _check_web_api_routes() -> None:
+    source = (ROOT / "webapi" / "manager_api.py").read_text(encoding="utf-8")
+    if PLUGIN_NAME not in source:
+        raise SystemExit("missing plugin api route prefix")
+    missing = [endpoint for endpoint in EXPECTED_WEB_ENDPOINTS if endpoint not in source]
+    if missing:
+        raise SystemExit(f"missing web api endpoints: {missing}")
 
 
 def _oversized_text_files() -> list[tuple[str, int]]:

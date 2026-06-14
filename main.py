@@ -1,5 +1,4 @@
 from pathlib import Path
-import time
 
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
@@ -16,8 +15,10 @@ from .parser.bilibili_parser import BilibiliParser
 from .rendering import HtmlRendererAdapter
 from .scheduler import BilibiliScheduler
 from .utils.resource import get_template_path
+from .webapi import register_bilibili_web_apis
 from .workflows import (
     BiliPendingShortcutFilter,
+    PendingTaskStore,
     run_bili_workflow,
     workflow_from_cli,
     workflow_from_pending_shortcut,
@@ -61,7 +62,7 @@ class BilibiliPush(Star):
         self.ai_tool_timeout_sec = int(config.get("ai_tool_timeout_sec", 20))
         self.ai_max_steps = int(config.get("ai_max_steps", 8))
         self.ai_pending_timeout_sec = int(config.get("ai_pending_timeout_sec", 300))
-        self._bili_pending_tasks: dict[str, dict] = {}
+        self.pending_store = PendingTaskStore(self, ttl_sec=self.ai_pending_timeout_sec)
 
         # 核心组件初始化
         self.db = DatabaseManager(self.data_dir / "data.db")
@@ -102,9 +103,11 @@ class BilibiliPush(Star):
         self.ai_handler = AiToolHandler(self)
         self.runtime = PluginRuntime(self)
         self.runtime.init_resources()
+        self.web_api = register_bilibili_web_apis(context, self)
 
     async def initialize(self):
         """插件启动入口"""
+        await self.pending_store.ensure_loaded()
         await self.runtime.start()
 
     # --- 指令入口 ---
@@ -294,52 +297,6 @@ class BilibiliPush(Star):
     async def _handle_new_post(self, platform: str, target_id: str, msgs: list):
         """处理来自调度器的新动态/直播推送"""
         await self.runtime.handle_new_post(platform, target_id, msgs)
-
-    def create_bili_pending_task(self, task: dict) -> str:
-        self._cleanup_bili_pending_tasks()
-        task_id = str(task["task_id"])
-        task["expires_at"] = time.time() + self.ai_pending_timeout_sec
-        self._bili_pending_tasks[task_id] = task
-        return task_id
-
-    def get_bili_pending_task(self, task_id: str) -> dict | None:
-        self._cleanup_bili_pending_tasks()
-        return self._bili_pending_tasks.get(task_id)
-
-    def delete_bili_pending_task(self, task_id: str):
-        self._bili_pending_tasks.pop(task_id, None)
-
-    def resolve_bili_pending_task_id(
-        self,
-        task_ref: str,
-        origin: str = "",
-    ) -> tuple[str, list[str]]:
-        self._cleanup_bili_pending_tasks()
-        ref = str(task_ref or "").lower()
-        fragment = ref.removeprefix("bili")
-        matches = []
-        for task_id, task in self._bili_pending_tasks.items():
-            if origin and task.get("origin") != origin:
-                continue
-            if task_id == ref or task_id.startswith(ref):
-                matches.append(task_id)
-            elif len(fragment) >= 3 and task_id.removeprefix("bili").endswith(fragment):
-                matches.append(task_id)
-        if len(matches) == 1:
-            return matches[0], []
-        if len(matches) > 1:
-            return "", matches
-        return "", []
-
-    def _cleanup_bili_pending_tasks(self):
-        now = time.time()
-        expired = [
-            task_id
-            for task_id, task in self._bili_pending_tasks.items()
-            if float(task.get("expires_at") or 0) < now
-        ]
-        for task_id in expired:
-            self._bili_pending_tasks.pop(task_id, None)
 
     async def terminate(self):
         """插件终止时回收浏览器资源"""

@@ -55,7 +55,7 @@ async def run_search_up(plugin, event, request: WorkflowRequest) -> str:
     if not candidates:
         return f"未找到关键词“{keyword}”对应的 UP 主。"
 
-    task_id = store_pending_task(
+    task_id = await store_pending_task(
         plugin,
         event,
         request,

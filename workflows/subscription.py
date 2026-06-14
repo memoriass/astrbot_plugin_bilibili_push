@@ -26,7 +26,7 @@ async def run_add_subscription(plugin, event, request: WorkflowRequest) -> str:
     if not candidates:
         return f"未找到关键词“{keyword}”对应的 UP 主。"
 
-    task_id = store_pending_task(
+    task_id = await store_pending_task(
         plugin,
         event,
         request,
@@ -92,9 +92,9 @@ def run_remove_subscription(plugin, event, request: WorkflowRequest) -> str:
     return _remove_one(plugin, event, uid, sub_type)
 
 
-def build_confirm_task(plugin, event, request: WorkflowRequest, candidate: dict) -> str:
+async def build_confirm_task(plugin, event, request: WorkflowRequest, candidate: dict) -> str:
     sub_type = normalize_sub_type(str(request.params.get("sub_type") or "dynamic"))
-    task_id = store_pending_task(
+    task_id = await store_pending_task(
         plugin,
         event,
         request,
