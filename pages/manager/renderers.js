@@ -1,9 +1,7 @@
 import {
-  bindDataset,
   emptyState,
   escapeAttribute,
   escapeHtml,
-  formatBytes,
   formatTime,
 } from "./utils.js";
 import { renderAccountManager } from "./accounts.js";
@@ -60,41 +58,16 @@ export function renderPending(panel, tasks, actions) {
   panel.querySelector("#clearPendingButton").addEventListener("click", actions.onClear);
 }
 
-export function renderTemplates(panel, previews, selectedPreview, actions) {
-  panel.innerHTML = `
-    <section class="template-actions">
-      <div>
-        <h2>模板预览</h2>
-        <p>使用当前模板和样例 Bilibili 数据生成本地 PNG，选择条目后在右侧查看。</p>
-      </div>
-      <div class="template-controls">
-        <input id="templateSeedInput" type="number" inputmode="numeric" value="${escapeAttribute(actions.seed)}" aria-label="随机种子" />
-        <button class="ghost-button" id="refreshTemplatesButton" type="button">刷新列表</button>
-        <button class="ghost-button" id="generateTemplatesButton" type="button">生成预览</button>
-      </div>
-    </section>
-    <section class="template-layout">
-      <div class="preview-list">${previews.map(previewRow).join("") || emptyState("暂无模板预览")}</div>
-      <div class="preview-viewer">
-        ${selectedPreview ? previewImage(selectedPreview) : emptyState("选择一个预览文件")}
-      </div>
-    </section>
-  `;
-  bindDataset(panel, "[data-preview]", actions.onPreview);
-  panel.querySelector("#refreshTemplatesButton").addEventListener("click", actions.onRefresh);
-  panel.querySelector("#generateTemplatesButton").addEventListener("click", actions.onGenerate);
-}
-
 export function showLoading(metrics) {
   metrics.innerHTML = "";
-  for (const id of ["overviewPanel", "subscriptionsPanel", "accountsPanel", "pendingPanel", "templatesPanel"]) {
+  for (const id of ["overviewPanel", "subscriptionsPanel", "accountsPanel", "pendingPanel"]) {
     document.getElementById(id).innerHTML = emptyState("加载中");
   }
 }
 
 export function renderEmptyError(metrics) {
   metrics.innerHTML = "";
-  for (const id of ["overviewPanel", "subscriptionsPanel", "accountsPanel", "pendingPanel", "templatesPanel"]) {
+  for (const id of ["overviewPanel", "subscriptionsPanel", "accountsPanel", "pendingPanel"]) {
     document.getElementById(id).innerHTML = emptyState("加载失败");
   }
 }
@@ -109,26 +82,5 @@ function pendingCard(task) {
         <div><dt>过期</dt><dd>${escapeHtml(formatTime(task.expires_at))}</dd></div>
       </dl>
     </article>
-  `;
-}
-
-function previewRow(preview) {
-  return `
-    <article class="preview-card">
-      <div>
-        <h2>${escapeHtml(preview.label || preview.name)}</h2>
-        <p>${escapeHtml(preview.name)} · ${escapeHtml(formatBytes(preview.size))}</p>
-      </div>
-      <button class="ghost-button" type="button" data-preview="${escapeAttribute(preview.name)}">查看</button>
-    </article>
-  `;
-}
-
-function previewImage(preview) {
-  return `
-    <figure class="preview-image">
-      <img src="${escapeAttribute(preview.data_url)}" alt="${escapeAttribute(preview.label || preview.name)}" />
-      <figcaption>${escapeHtml(preview.label || preview.name)} · ${escapeHtml(formatBytes(preview.size))}</figcaption>
-    </figure>
   `;
 }

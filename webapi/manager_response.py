@@ -8,12 +8,6 @@ async def request_json() -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def request_args():
-    from quart import request
-
-    return request.args
-
-
 def ok(data: dict | None = None) -> dict:
     return {"status": "ok", "data": data or {}}
 

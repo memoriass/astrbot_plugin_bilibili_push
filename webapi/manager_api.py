@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from .manager_crud import AccountCrud, SubscriptionCrud
 from .manager_overview import ManagerOverviewService
-from .manager_response import error, ok, request_args, request_json
-from .template_preview import TemplatePreviewService
+from .manager_response import error, ok, request_json
 
 
 PLUGIN_NAME = "astrbot_plugin_bilibili_push"
@@ -22,9 +21,6 @@ def register_bilibili_web_apis(context, plugin):
         ("accounts/upsert", api.upsert_account, ["POST"], "Create or update account"),
         ("accounts/delete", api.delete_account, ["POST"], "Delete account"),
         ("accounts/valid", api.set_account_valid, ["POST"], "Set account validity"),
-        ("templates/list", api.list_templates, ["GET"], "List template previews"),
-        ("templates/preview", api.preview_template, ["GET"], "Read template preview"),
-        ("templates/generate", api.generate_templates, ["POST"], "Generate template previews"),
     ]
     for endpoint, handler, methods, description in routes:
         context.register_web_api(
@@ -42,7 +38,6 @@ class BilibiliManagerApi:
         self.overview_service = ManagerOverviewService(plugin)
         self.subscriptions = SubscriptionCrud(plugin)
         self.accounts = AccountCrud()
-        self.templates = TemplatePreviewService(plugin)
 
     async def overview(self):
         return ok(await self.overview_service.build())
@@ -79,25 +74,3 @@ class BilibiliManagerApi:
 
     async def set_account_valid(self):
         return await self.accounts.set_valid(await request_json())
-
-    async def list_templates(self):
-        return ok({"previews": self.templates.list_previews()})
-
-    async def preview_template(self):
-        name = str(request_args().get("name") or "").strip()
-        if not name:
-            return error("name 参数不能为空。")
-        try:
-            return ok({"preview": self.templates.preview_data(name)})
-        except (FileNotFoundError, ValueError) as exc:
-            return error(str(exc))
-
-    async def generate_templates(self):
-        payload = await request_json()
-        seed = payload.get("seed")
-        try:
-            seed = int(seed) if seed not in (None, "") else None
-            previews = await self.templates.generate(seed)
-        except Exception as exc:
-            return error(f"模板预览生成失败：{exc}")
-        return ok({"previews": previews})

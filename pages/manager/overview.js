@@ -3,20 +3,19 @@ import {
   emptyState,
   escapeAttribute,
   escapeHtml,
-  formatBytes,
   formatTime,
 } from "./utils.js";
 
 const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
 
-export function renderOverview(panel, overview, previews, actions) {
+export function renderOverview(panel, overview, actions) {
   const diagnostics = overview.diagnostics || {};
   const subscriptions = overview.subscriptions || [];
   const accounts = overview.accounts || [];
   const pendingTasks = overview.pending_tasks || [];
   const targets = Array.from(new Set(subscriptions.map((sub) => sub.target_id))).filter(Boolean);
   const subscriptionPreviews = buildSubscriptionPreviews(subscriptions);
-  const issues = buildIssues(subscriptions, accounts, pendingTasks, previews);
+  const issues = buildIssues(subscriptions, accounts, pendingTasks);
 
   panel.innerHTML = `
     <section class="overview-layout">
@@ -35,23 +34,17 @@ export function renderOverview(panel, overview, previews, actions) {
       </div>
       <aside class="overview-side">
         ${issuePanel(issues)}
-        ${templatePanel(previews)}
         ${capabilityPanel(diagnostics, targets)}
       </aside>
     </section>
   `;
 
   bindDataset(panel, "[data-jump]", (dataset) => actions.onNavigate(dataset.jump));
-  bindDataset(panel, "[data-preview]", actions.onPreview);
   const liveButton = panel.querySelector("[data-live-selected]");
   if (liveButton) {
     liveButton.addEventListener("click", () => {
       actions.onManualLive(panel.querySelector("#overviewManualTargetSelect").value);
     });
-  }
-  const generateButton = panel.querySelector("[data-generate]");
-  if (generateButton) {
-    generateButton.addEventListener("click", actions.onGenerate);
   }
 }
 
@@ -118,42 +111,6 @@ function issuePanel(issues) {
   `;
 }
 
-function templatePanel(previews) {
-  const firstPreview = previews[0];
-  return `
-    <section class="overview-section side-section">
-      <div class="section-heading">
-        <div>
-          <p class="section-kicker">模板</p>
-          <h2>模板预览</h2>
-        </div>
-        <button class="ghost-button" type="button" data-jump="templates">全部</button>
-      </div>
-      ${
-        firstPreview
-          ? `
-            <article class="template-brief">
-              <div>
-                <strong>${escapeHtml(previews.length)} 个预览</strong>
-                <p>${escapeHtml(firstPreview.label || firstPreview.name)} · ${escapeHtml(formatBytes(firstPreview.size))}</p>
-              </div>
-              <button class="ghost-button" type="button" data-preview="${escapeAttribute(firstPreview.name)}">查看</button>
-            </article>
-          `
-          : `
-            <article class="template-brief">
-              <div>
-                <strong>暂无预览</strong>
-                <p>本地未发现模板预览 PNG。</p>
-              </div>
-              <button class="ghost-button" type="button" data-generate="1">生成</button>
-            </article>
-          `
-      }
-    </section>
-  `;
-}
-
 function capabilityPanel(diagnostics, targets) {
   return `
     <section class="overview-section side-section">
@@ -204,7 +161,7 @@ function buildSubscriptionPreviews(subscriptions) {
   return Array.from(previews.values()).sort((a, b) => Number(b.enabled) - Number(a.enabled));
 }
 
-function buildIssues(subscriptions, accounts, pendingTasks, previews) {
+function buildIssues(subscriptions, accounts, pendingTasks) {
   const disabled = subscriptions.filter((sub) => !sub.enabled);
   const invalidAccounts = accounts.filter((account) => !account.valid);
   const issues = [];
@@ -230,14 +187,6 @@ function buildIssues(subscriptions, accounts, pendingTasks, previews) {
       count: disabled.length,
       detail: disabled.slice(0, 3).map((sub) => sub.username || sub.uid),
       tab: "subscriptions",
-    });
-  }
-  if (!previews.length) {
-    issues.push({
-      title: "模板预览缺失",
-      count: 1,
-      detail: ["需要生成本地预览"],
-      tab: "templates",
     });
   }
   return issues;

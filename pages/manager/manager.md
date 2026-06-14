@@ -1,51 +1,44 @@
 # manager 页面
 
-`manager` 是 AstrBot WebUI 中的插件管理页，用于集中查看和操作 Bilibili Push。
+`manager` 是 AstrBot Plugin Pages 中的插件管理页，用于集中查看和维护 Bilibili Push 的运行状态、订阅、登录账号和 pending task。
 
 ## 文件职责
 
-- `index.html`: 页面结构和静态资源引用。
-- `app.js`: Bridge 初始化、状态管理和页面动作编排。
-- `api.js`: bridge API endpoint 封装和响应解包。
-- `overview.js`: 概览工作台渲染，小型订阅预览、待处理项、模板入口和能力摘要。
-- `subscriptions.js`: 订阅卡片渲染、筛选、新增、编辑、启停和删除动作绑定。
-- `accounts.js`: 账号卡片渲染、新增、编辑、删除和有效性切换动作绑定。
-- `renderers.js`: 各标签页渲染函数。
+- `index.html`: 页面结构、样式和模块入口引用。
+- `app.js`: Bridge 初始化、页面状态、tab 切换和用户动作编排。
+- `api.js`: `bridge.apiGet()` / `bridge.apiPost()` 的 endpoint 封装。
+- `overview.js`: 概览工作台、小型订阅卡片、待处理项和运行能力摘要。
+- `subscriptions.js`: 订阅卡片、筛选、新增、编辑、启停和删除交互。
+- `accounts.js`: 登录账号卡片、新增、编辑、删除和有效性切换交互。
+- `renderers.js`: 指标、tab、pending 和各模块渲染入口。
 - `utils.js`: HTML 转义、格式化和通用 UI 片段。
-- `mock_bridge.js`: 本地预览 fallback 数据。
-- `style.css`: 亮暗主题、响应式布局和通用组件样式。
-- `overview.css`: 概览工作台布局和小型订阅预览样式。
-- `subscriptions.css`: 订阅卡片、订阅摘要和移动端布局样式。
-- `accounts.css`: 账号管理表单、账号卡片和移动端布局样式。
-- `views.css`: 模板预览标签页样式。
+- `mock_bridge.js`: 本地直接打开页面时的 fallback 假数据。
+- `style.css`: 主题、响应式布局和通用组件样式。
+- `overview.css`: 概览工作台和小型订阅卡片样式。
+- `subscriptions.css`: 订阅卡片、编辑器和移动端布局样式。
+- `accounts.css`: 账号卡片、编辑器和移动端布局样式。
 
 ## 数据来源
 
 - `bridge.apiGet("overview")`
-- `bridge.apiGet("templates/list")`
-- `bridge.apiGet("templates/preview", params)`
-- `bridge.apiPost("subscriptions/enabled", body)`
-- `bridge.apiPost("subscriptions/delete", body)`
 - `bridge.apiPost("subscriptions/create", body)`
 - `bridge.apiPost("subscriptions/update", body)`
+- `bridge.apiPost("subscriptions/enabled", body)`
+- `bridge.apiPost("subscriptions/delete", body)`
 - `bridge.apiPost("accounts/upsert", body)`
 - `bridge.apiPost("accounts/delete", body)`
 - `bridge.apiPost("accounts/valid", body)`
 - `bridge.apiPost("checks/live", body)`
 - `bridge.apiPost("pending/clear", body)`
-- `bridge.apiPost("templates/generate", body)`
 
-这些 endpoint 由 `webapi/manager_api.py` 注册。
+这些 endpoint 由 `webapi/manager_api.py` 注册。页面不直接访问数据库，也不手写 Dashboard 路由。
 
 ## 边界
 
-- 当前页面不新增订阅。
-- 概览页承载运行能力和手动直播检查，不再单独提供诊断标签页。
-- 概览小卡按 UID 聚合订阅，复用插件订阅列表的头像和 LIVE/DYNAMIC 展示逻辑。
-- 手动直播检查会向目标会话发送当前正在直播的启用订阅。
-- 模板预览重新生成会启动浏览器渲染，并可能访问 Bilibili 热门接口取样例数据。
-- 启停和删除订阅必须传完整 `uid + sub_type + target_id`。
-- 编辑订阅必须传原始 `uid + sub_type + target_id`，避免误改同 UID 的其他类型或会话。
-- 账号 Cookie 只允许提交写入，不在页面和 overview 接口回显。
-- 本地直接打开页面时使用 `mock_bridge.js` 内的假数据 fallback，仅用于布局预览。
-- 账号卡片不展示 cookies。
+- 当前页面只覆盖概览、订阅、账号和 pending 管理，不提供模板预览功能。
+- 概览页承载运行能力摘要和手动直播检查，不再单独提供诊断 tab。
+- 概览小卡按 UID 聚合订阅，复用订阅列表中的头像、LIVE 和 DYNAMIC 展示逻辑。
+- 启停、编辑和删除订阅必须传完整 `uid + sub_type + target_id`，避免误改同 UID 的其他类型或会话。
+- 账号 Cookie 只允许提交写入，不在页面和 `overview` 接口回显。
+- 手动直播检查会向目标会话发送当前正在直播的启用订阅，页面侧必须显式确认。
+- 本地直接打开页面时使用 `mock_bridge.js` 假数据，只用于布局和交互预览。

@@ -6,6 +6,8 @@ import {
   statusPill,
 } from "./utils.js";
 
+const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
+
 export function renderAccountManager(panel, accounts, actions, editor) {
   panel.innerHTML = `
     <section class="account-summary">
@@ -36,13 +38,17 @@ export function renderAccountManager(panel, accounts, actions, editor) {
 function accountCard(account) {
   return `
     <article class="account-card">
-      <img src="${escapeAttribute(account.face || "")}" alt="" />
-      <div>
-        <h2>${escapeHtml(account.name || "Bilibili 账号")}</h2>
-        <p class="mono">UID ${escapeHtml(account.uid || "-")}</p>
-        ${account.status_code ? `<p>状态码 ${escapeHtml(account.status_code)}</p>` : ""}
+      <div class="account-media">
+        <img src="${escapeAttribute(account.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+        <div class="account-media-overlay">
+          <h2>${escapeHtml(account.name || "Bilibili 账号")}</h2>
+          <p>UID: ${escapeHtml(account.uid || "-")}</p>
+        </div>
       </div>
-      ${statusPill(account.valid ? "有效" : "失效", account.valid)}
+      <div class="account-detail-row">
+        ${statusPill(account.valid ? "有效" : "失效", account.valid)}
+        ${account.status_code ? `<span>状态码 ${escapeHtml(account.status_code)}</span>` : `<span>Cookie ${account.valid ? "可用" : "需检查"}</span>`}
+      </div>
       <div class="account-actions">
         <button class="ghost-button" type="button" data-edit-account="1"
           data-uid="${escapeAttribute(account.uid)}">编辑</button>
@@ -68,15 +74,26 @@ function editorForm(editor) {
         </div>
         <button class="ghost-button" type="button" data-cancel-account="1">取消</button>
       </div>
-      <div class="editor-grid">
-        ${field("UID", "uid", item.uid || "", "text", editor.mode !== "create")}
-        ${field("名称", "name", item.name || "", "text", false)}
-        ${field("头像 URL", "face", item.face || "", "url", false)}
+      <div class="account-editor-layout">
+        <div class="account-editor-preview">
+          <img src="${escapeAttribute(item.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+          <div class="account-media-overlay">
+            <h2>${escapeHtml(item.name || "Bilibili 账号")}</h2>
+            <p>UID: ${escapeHtml(item.uid || "-")}</p>
+          </div>
+        </div>
+        <div class="account-editor-fields">
+          <div class="editor-grid">
+            ${field("UID", "uid", item.uid || "", "text", editor.mode !== "create")}
+            ${field("名称", "name", item.name || "", "text", false)}
+            ${field("头像 URL", "face", item.face || "", "url", false)}
+          </div>
+          <label class="cookie-field">
+            <span>Cookie</span>
+            <textarea name="cookies_text" rows="4" placeholder="SESSDATA=...; bili_jct=...; DedeUserID=..."></textarea>
+          </label>
+        </div>
       </div>
-      <label class="cookie-field">
-        <span>Cookie</span>
-        <textarea name="cookies_text" rows="4" placeholder="SESSDATA=...; bili_jct=...; DedeUserID=..."></textarea>
-      </label>
       <label class="editor-check">
         <input type="checkbox" name="valid" value="true" ${item.valid === false ? "" : "checked"} />
         标记为有效

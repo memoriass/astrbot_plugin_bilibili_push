@@ -37,9 +37,6 @@ EXPECTED_WEB_ENDPOINTS = {
     "subscriptions/enabled",
     "subscriptions/update",
     "pending/clear",
-    "templates/generate",
-    "templates/list",
-    "templates/preview",
 }
 
 
@@ -121,7 +118,6 @@ def _check_plugin_pages() -> None:
         ROOT / "pages" / "manager" / "subscriptions.js",
         ROOT / "pages" / "manager" / "subscriptions.css",
         ROOT / "pages" / "manager" / "utils.js",
-        ROOT / "pages" / "manager" / "views.css",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
@@ -144,7 +140,6 @@ def _check_web_api_modules() -> None:
         ROOT / "webapi" / "manager_overview.py",
         ROOT / "webapi" / "manager_response.py",
         ROOT / "webapi" / "manager_serializers.py",
-        ROOT / "webapi" / "template_preview.py",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:

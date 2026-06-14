@@ -7,7 +7,6 @@ import {
   renderPending,
   renderSubscriptions,
   renderTabs,
-  renderTemplates,
   showLoading,
 } from "./renderers.js";
 
@@ -17,13 +16,13 @@ const api = createApi(bridge);
 const state = {
   tab: "overview",
   overview: null,
-  previews: [],
-  selectedPreview: null,
   subscriptionEditor: null,
   accountEditor: null,
   query: "",
   type: "all",
 };
+
+const VALID_TABS = new Set(["overview", "subscriptions", "accounts", "pending"]);
 
 const metrics = document.getElementById("metrics");
 const toast = document.getElementById("toast");
@@ -51,12 +50,7 @@ await refreshAll();
 async function refreshAll() {
   try {
     showLoading(metrics);
-    const [overview, templateData] = await Promise.all([
-      api.overview(),
-      api.listTemplates(),
-    ]);
-    state.overview = overview;
-    state.previews = templateData.previews || [];
+    state.overview = await api.overview();
     render();
   } catch (error) {
     showToast(error.message || String(error));
@@ -71,12 +65,9 @@ function render() {
   renderOverview(
     document.getElementById("overviewPanel"),
     overview,
-    state.previews,
     {
       onNavigate: switchTab,
       onManualLive: manualLiveCheck,
-      onPreview: previewAndOpenTemplates,
-      onGenerate: generateTemplates,
     },
   );
   renderSubscriptions(
@@ -109,21 +100,10 @@ function render() {
   renderPending(document.getElementById("pendingPanel"), overview.pending_tasks || [], {
     onClear: clearPending,
   });
-  renderTemplates(
-    document.getElementById("templatesPanel"),
-    state.previews,
-    state.selectedPreview,
-    {
-      seed: dateSeed(),
-      onPreview: loadTemplatePreview,
-      onGenerate: generateTemplates,
-      onRefresh: refreshTemplates,
-    },
-  );
 }
 
 function switchTab(tab) {
-  state.tab = tab || "overview";
+  state.tab = VALID_TABS.has(tab) ? tab : "overview";
   render();
 }
 
@@ -309,56 +289,6 @@ async function manualLiveCheck(targetId) {
   } catch (error) {
     showToast(error.message || String(error));
   }
-}
-
-async function loadTemplatePreview(dataset) {
-  try {
-    const result = await api.previewTemplate(dataset.preview);
-    state.selectedPreview = result.preview;
-    render();
-  } catch (error) {
-    showToast(error.message || String(error));
-  }
-}
-
-async function previewAndOpenTemplates(dataset) {
-  await loadTemplatePreview(dataset);
-  switchTab("templates");
-}
-
-async function generateTemplates() {
-  const seed = Number(document.getElementById("templateSeedInput")?.value || dateSeed());
-  if (!window.confirm("重新生成模板预览会启动浏览器渲染，继续？")) {
-    return;
-  }
-  try {
-    showToast("正在生成模板预览");
-    const result = await api.generateTemplates(seed);
-    state.previews = result.previews || [];
-    state.selectedPreview = null;
-    render();
-    showToast("模板预览已生成");
-  } catch (error) {
-    showToast(error.message || String(error));
-  }
-}
-
-async function refreshTemplates() {
-  try {
-    const result = await api.listTemplates();
-    state.previews = result.previews || [];
-    render();
-    showToast("模板列表已刷新");
-  } catch (error) {
-    showToast(error.message || String(error));
-  }
-}
-
-function dateSeed() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return Number(`${now.getFullYear()}${month}${day}`);
 }
 
 function subscriptionPayload(dataset, extra = {}) {

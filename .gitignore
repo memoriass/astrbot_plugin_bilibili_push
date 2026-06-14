@@ -29,6 +29,7 @@ config.yaml
 .pytest_cache/
 .coverage
 htmlcov/
+template_previews/
 
 # 系统文件
 .DS_Store

@@ -7,6 +7,23 @@ import {
   typeBadge,
 } from "./utils.js";
 
+const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
+const CATEGORY_OPTIONS = {
+  dynamic: [
+    [1, "一般动态"],
+    [2, "专栏文章"],
+    [3, "视频"],
+    [4, "纯文字"],
+    [5, "转发"],
+    [6, "直播推送"],
+  ],
+  live: [
+    [1, "开播提醒"],
+    [2, "标题更新"],
+    [3, "下播提醒"],
+  ],
+};
+
 export function renderSubscriptionCards(panel, subscriptions, filters, actions, editor) {
   const filtered = filterSubscriptions(subscriptions, filters);
   const enabledCount = filtered.filter((sub) => sub.enabled).length;
@@ -35,9 +52,16 @@ export function renderSubscriptionCards(panel, subscriptions, filters, actions, 
   if (form) {
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      actions.onSubmit(Object.fromEntries(new FormData(form)));
+      actions.onSubmit(editorPayload(form));
     });
     panel.querySelector("[data-cancel-subscription]").addEventListener("click", actions.onCancel);
+    form.querySelector("[name='sub_type']").addEventListener("change", (event) => {
+      const type = event.target.value;
+      form.querySelector(".category-options").innerHTML = categoryControls(
+        type,
+        defaultCategories(type),
+      );
+    });
   }
 }
 
@@ -53,13 +77,20 @@ function filterSubscriptions(subscriptions, filters) {
 function subscriptionCard(sub) {
   return `
     <article class="subscription-card ${sub.enabled ? "" : "is-disabled"}">
-      <div class="subscription-card-head">
-        <div class="subscription-avatar" aria-hidden="true">${escapeHtml(initialText(sub.username || sub.uid))}</div>
-        <div class="subscription-title">
-          <h2>${escapeHtml(sub.username || "未命名 UP 主")}</h2>
-          <p class="mono">UID ${escapeHtml(sub.uid || "-")}</p>
+      <div class="subscription-media">
+        <img src="${escapeAttribute(sub.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+        <div class="subscription-card-badges">
+          ${sub.sub_type === "live" ? `<span class="media-badge live">LIVE</span>` : ""}
+          ${sub.sub_type === "dynamic" ? `<span class="media-badge dyn">DYNAMIC</span>` : ""}
         </div>
+        <div class="subscription-media-overlay">
+          <h2>${escapeHtml(sub.username || "未命名 UP 主")}</h2>
+          <p>UID: ${escapeHtml(sub.uid || "-")}</p>
+        </div>
+      </div>
+      <div class="subscription-status-row">
         ${statusPill(sub.enabled ? "启用" : "停用", sub.enabled)}
+        <span class="mono">${escapeHtml(sub.target_id || "-")}</span>
       </div>
       <div class="subscription-meta">
         <div>
@@ -91,6 +122,7 @@ function subscriptionCard(sub) {
 
 function editorForm(editor) {
   const item = editor.item || {};
+  const subType = item.sub_type || "dynamic";
   return `
     <form class="subscription-editor" id="subscriptionEditorForm">
       <input type="hidden" name="mode" value="${escapeAttribute(editor.mode || "create")}" />
@@ -100,17 +132,33 @@ function editorForm(editor) {
       <div class="editor-heading">
         <div>
           <h2>${editor.mode === "edit" ? "编辑订阅" : "新增订阅"}</h2>
-          <p>分类用逗号分隔；动态默认 1-6，直播默认 1-3。</p>
+          <p>选择订阅类型后勾选需要推送的通知类别；Cookie 和账号不在这里处理。</p>
         </div>
         <button class="ghost-button" type="button" data-cancel-subscription="1">取消</button>
       </div>
-      <div class="editor-grid">
-        ${field("UID", "uid", item.uid || "", "text", true)}
-        ${field("UP 主", "username", item.username || "", "text", false)}
-        ${selectField("类型", "sub_type", item.sub_type || "dynamic")}
-        ${field("会话 ID", "target_id", item.target_id || "", "text", true)}
-        ${field("分类", "categories", listText(item.categories), "text", false)}
-        ${field("标签", "tags", listText(item.tags), "text", false)}
+      <div class="subscription-editor-layout">
+        ${editorPreview(item, editor.mode)}
+        <div class="subscription-editor-fields">
+          <div class="editor-grid">
+            ${field("UID", "uid", item.uid || "", "text", true)}
+            ${field("UP 主", "username", item.username || "", "text", false)}
+            ${selectField("类型", "sub_type", subType)}
+            ${field("会话 ID", "target_id", item.target_id || "", "text", true)}
+          </div>
+          <section class="category-panel">
+            <div>
+              <h3>通知类别</h3>
+              <p>默认已按当前类型选中常用类别，可按会话需求调整。</p>
+            </div>
+            <div class="category-options">
+              ${categoryControls(subType, item.categories || defaultCategories(subType))}
+            </div>
+          </section>
+          <label class="tag-field">
+            <span>标签</span>
+            <input name="tags" type="text" value="${escapeAttribute(listText(item.tags))}" placeholder="可选，多个标签用逗号分隔" />
+          </label>
+        </div>
       </div>
       <label class="editor-check">
         <input type="checkbox" name="enabled" value="true" ${item.enabled === false ? "" : "checked"} />
@@ -120,6 +168,23 @@ function editorForm(editor) {
         <button class="ghost-button" type="submit">${editor.mode === "edit" ? "保存修改" : "创建订阅"}</button>
       </div>
     </form>
+  `;
+}
+
+function editorPreview(item, mode) {
+  const subType = item.sub_type || "dynamic";
+  return `
+    <div class="subscription-editor-preview">
+      <img src="${escapeAttribute(item.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+      <div class="subscription-card-badges">
+        <span class="media-badge ${subType === "live" ? "live" : "dyn"}">${subType === "live" ? "LIVE" : "DYNAMIC"}</span>
+      </div>
+      <span class="editor-preview-action">${mode === "edit" ? "EDIT" : "ADD"}</span>
+      <div class="subscription-media-overlay">
+        <h2>${escapeHtml(item.username || "待选择 UP 主")}</h2>
+        <p>UID: ${escapeHtml(item.uid || "-")}</p>
+      </div>
+    </div>
   `;
 }
 
@@ -145,6 +210,21 @@ function selectField(label, name, value) {
   `;
 }
 
+function categoryControls(subType, selected) {
+  const selectedSet = new Set((selected || []).map((item) => String(item)));
+  return CATEGORY_OPTIONS[subType].map(([value, label]) => `
+    <label class="category-chip">
+      <input type="checkbox" name="categories" value="${escapeAttribute(value)}"
+        ${selectedSet.has(String(value)) ? "checked" : ""} />
+      <span>${escapeHtml(label)}</span>
+    </label>
+  `).join("");
+}
+
+function defaultCategories(subType) {
+  return CATEGORY_OPTIONS[subType].map(([value]) => value);
+}
+
 function labelsBlock(sub) {
   const labels = [...(sub.categories || []), ...(sub.tags || [])].filter(Boolean);
   if (!labels.length) {
@@ -165,6 +245,19 @@ function listText(value) {
   return Array.isArray(value) ? value.join(",") : (value || "");
 }
 
-function initialText(value) {
-  return String(value || "UP").trim().slice(0, 2).toUpperCase();
+function editorPayload(form) {
+  const formData = new FormData(form);
+  return {
+    mode: formData.get("mode"),
+    original_uid: formData.get("original_uid"),
+    original_sub_type: formData.get("original_sub_type"),
+    original_target_id: formData.get("original_target_id"),
+    uid: formData.get("uid"),
+    username: formData.get("username"),
+    sub_type: formData.get("sub_type"),
+    target_id: formData.get("target_id"),
+    categories: formData.getAll("categories"),
+    tags: formData.get("tags"),
+    enabled: formData.get("enabled") === "true",
+  };
 }
