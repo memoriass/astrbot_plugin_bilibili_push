@@ -110,6 +110,8 @@ def _check_plugin_pages() -> None:
         ROOT / "pages" / "manager" / "overview.css",
         ROOT / "pages" / "manager" / "renderers.js",
         ROOT / "pages" / "manager" / "style.css",
+        ROOT / "pages" / "manager" / "subscriptions.js",
+        ROOT / "pages" / "manager" / "subscriptions.css",
         ROOT / "pages" / "manager" / "utils.js",
         ROOT / "pages" / "manager" / "views.css",
     ]

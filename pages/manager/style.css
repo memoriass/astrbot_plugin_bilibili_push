@@ -189,55 +189,6 @@ select {
   display: block;
 }
 
-.table-wrap {
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-
-table {
-  width: 100%;
-  min-width: 820px;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: middle;
-  font-size: 14px;
-}
-
-th {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-tr:last-child td {
-  border-bottom: 0;
-}
-
-tr.disabled-row td {
-  color: var(--muted);
-}
-
-.strong {
-  font-weight: 700;
-}
-
-.right {
-  text-align: right;
-}
-
-.right button + button {
-  margin-left: 8px;
-}
-
 .mono {
   font-family:
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;

@@ -6,8 +6,8 @@ import {
   formatBytes,
   formatTime,
   statusPill,
-  typeBadge,
 } from "./utils.js";
+import { renderSubscriptionCards } from "./subscriptions.js";
 
 export function renderMetrics(container, diagnostics) {
   const items = [
@@ -39,27 +39,7 @@ export function renderTabs(activeTab) {
 }
 
 export function renderSubscriptions(panel, subscriptions, filters, actions) {
-  const filtered = subscriptions.filter((sub) => {
-    const haystack = `${sub.uid} ${sub.username} ${sub.target_id}`.toLowerCase();
-    const typeMatched = filters.type === "all" || sub.sub_type === filters.type;
-    return typeMatched && (!filters.query || haystack.includes(filters.query));
-  });
-  if (!filtered.length) {
-    panel.innerHTML = emptyState("没有匹配的订阅");
-    return;
-  }
-  panel.innerHTML = `
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>UP 主</th><th>UID</th><th>类型</th><th>会话</th><th>状态</th><th></th></tr>
-        </thead>
-        <tbody>${filtered.map(subscriptionRow).join("")}</tbody>
-      </table>
-    </div>
-  `;
-  bindDataset(panel, "[data-toggle]", actions.onToggle);
-  bindDataset(panel, "[data-delete]", actions.onDelete);
+  renderSubscriptionCards(panel, subscriptions, filters, actions);
 }
 
 export function renderAccounts(panel, accounts) {
@@ -141,28 +121,6 @@ export function renderEmptyError(metrics) {
   for (const id of ["overviewPanel", "subscriptionsPanel", "accountsPanel", "pendingPanel", "diagnosticsPanel", "templatesPanel"]) {
     document.getElementById(id).innerHTML = emptyState("加载失败");
   }
-}
-
-function subscriptionRow(sub) {
-  return `
-    <tr class="${sub.enabled ? "" : "disabled-row"}">
-      <td class="strong">${escapeHtml(sub.username || "-")}</td>
-      <td>${escapeHtml(sub.uid)}</td>
-      <td>${typeBadge(sub.sub_type)}</td>
-      <td class="mono">${escapeHtml(sub.target_id)}</td>
-      <td>${statusPill(sub.enabled ? "启用" : "停用", sub.enabled)}</td>
-      <td class="right">
-        <button class="ghost-button" type="button" data-toggle="1"
-          data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
-          data-target-id="${escapeAttribute(sub.target_id)}" data-enabled="${escapeAttribute(String(!sub.enabled))}">
-          ${sub.enabled ? "停用" : "启用"}
-        </button>
-        <button class="danger-button" type="button" data-delete="1"
-          data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
-          data-target-id="${escapeAttribute(sub.target_id)}">删除</button>
-      </td>
-    </tr>
-  `;
 }
 
 function accountCard(account) {

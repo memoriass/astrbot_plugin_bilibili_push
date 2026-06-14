@@ -76,6 +76,8 @@ function mockOverview() {
         username: "哔哩哔哩番剧",
         sub_type: "dynamic",
         target_id: "aiocqhttp:GroupMessage:10001",
+        categories: ["番剧", "追番"],
+        tags: ["官方"],
         enabled: true,
       },
       {
@@ -83,6 +85,8 @@ function mockOverview() {
         username: "哔哩哔哩直播",
         sub_type: "live",
         target_id: "aiocqhttp:GroupMessage:10001",
+        categories: ["直播"],
+        tags: ["官方"],
         enabled: false,
       },
       {
@@ -90,6 +94,8 @@ function mockOverview() {
         username: "哔哩哔哩纪录片",
         sub_type: "dynamic",
         target_id: "aiocqhttp:GroupMessage:10001",
+        categories: ["纪录片"],
+        tags: ["更新"],
         enabled: true,
       },
       {
@@ -97,6 +103,8 @@ function mockOverview() {
         username: "国创动画作品发布",
         sub_type: "dynamic",
         target_id: "aiocqhttp:GroupMessage:10002",
+        categories: ["国创"],
+        tags: ["作品"],
         enabled: true,
       },
       {
@@ -104,6 +112,8 @@ function mockOverview() {
         username: "哔哩哔哩电竞",
         sub_type: "live",
         target_id: "aiocqhttp:GroupMessage:10002",
+        categories: ["电竞"],
+        tags: ["赛事"],
         enabled: true,
       },
       {
@@ -111,6 +121,8 @@ function mockOverview() {
         username: "哔哩哔哩漫画",
         sub_type: "dynamic",
         target_id: "aiocqhttp:GroupMessage:10003",
+        categories: ["漫画"],
+        tags: ["停用"],
         enabled: false,
       },
     ],
