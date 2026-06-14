@@ -15,12 +15,13 @@
 - 新增 `pages/manager/` 管理页。
 - 新增 `webapi/` 管理页后端 API。
 - WebUI 管理页支持订阅启停，调度器只处理启用订阅。
+- WebUI 管理页支持手动直播检查和模板预览查看/重新生成。
 - `handlers/ai_handler.py` 已退化为 Agent 入口和旧工具适配层。
 
 未完成：
 
 - workflow 卡片化展示。
-- WebUI 手动检查、模板预览管理能力。
+- WebUI 更完整的诊断日志和批量管理能力。
 
 ## 当前接入测试
 

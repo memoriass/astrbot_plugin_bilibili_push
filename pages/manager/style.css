@@ -129,6 +129,7 @@ h2 {
 
 .tabs {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);

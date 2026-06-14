@@ -28,9 +28,13 @@ EXPECTED_COMMANDS = {
 PLUGIN_NAME = "astrbot_plugin_bilibili_push"
 EXPECTED_WEB_ENDPOINTS = {
     "overview",
+    "checks/live",
     "subscriptions/delete",
     "subscriptions/enabled",
     "pending/clear",
+    "templates/generate",
+    "templates/list",
+    "templates/preview",
 }
 
 
@@ -99,8 +103,13 @@ def _keyword_value(call: ast.Call, name: str) -> str:
 def _check_plugin_pages() -> None:
     required = [
         ROOT / "pages" / "manager" / "index.html",
+        ROOT / "pages" / "manager" / "api.js",
         ROOT / "pages" / "manager" / "app.js",
+        ROOT / "pages" / "manager" / "mock_bridge.js",
+        ROOT / "pages" / "manager" / "renderers.js",
         ROOT / "pages" / "manager" / "style.css",
+        ROOT / "pages" / "manager" / "utils.js",
+        ROOT / "pages" / "manager" / "views.css",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:

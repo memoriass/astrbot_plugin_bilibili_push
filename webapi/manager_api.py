@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..core.http import HttpClient
+from .template_preview import TemplatePreviewService
 
 
 PLUGIN_NAME = "astrbot_plugin_bilibili_push"
@@ -32,12 +33,37 @@ def register_bilibili_web_apis(context, plugin):
         ["POST"],
         "Clear Bilibili workflow pending tasks",
     )
+    context.register_web_api(
+        f"/{PLUGIN_NAME}/checks/live",
+        api.manual_live_check,
+        ["POST"],
+        "Run manual Bilibili live check",
+    )
+    context.register_web_api(
+        f"/{PLUGIN_NAME}/templates/list",
+        api.list_templates,
+        ["GET"],
+        "List Bilibili template previews",
+    )
+    context.register_web_api(
+        f"/{PLUGIN_NAME}/templates/preview",
+        api.preview_template,
+        ["GET"],
+        "Read Bilibili template preview",
+    )
+    context.register_web_api(
+        f"/{PLUGIN_NAME}/templates/generate",
+        api.generate_templates,
+        ["POST"],
+        "Generate Bilibili template previews",
+    )
     return api
 
 
 class BilibiliManagerApi:
     def __init__(self, plugin):
         self.plugin = plugin
+        self.templates = TemplatePreviewService(plugin)
 
     async def overview(self):
         subscriptions = [
@@ -97,6 +123,37 @@ class BilibiliManagerApi:
     async def clear_pending(self):
         count = await self.plugin.pending_store.clear()
         return _ok({"cleared": count})
+
+    async def manual_live_check(self):
+        payload = await _request_json()
+        target_id = str(payload.get("target_id") or "").strip()
+        if not target_id:
+            return _error("target_id 参数不能为空。")
+        pushed = await self.plugin.scheduler.manual_live_check(target_id)
+        return _ok({"target_id": target_id, "pushed": pushed})
+
+    async def list_templates(self):
+        return _ok({"previews": self.templates.list_previews()})
+
+    async def preview_template(self):
+        args = _request_args()
+        name = str(args.get("name") or "").strip()
+        if not name:
+            return _error("name 参数不能为空。")
+        try:
+            return _ok({"preview": self.templates.preview_data(name)})
+        except (FileNotFoundError, ValueError) as exc:
+            return _error(str(exc))
+
+    async def generate_templates(self):
+        payload = await _request_json()
+        seed = payload.get("seed")
+        try:
+            seed = int(seed) if seed not in (None, "") else None
+            previews = await self.templates.generate(seed)
+        except Exception as exc:
+            return _error(f"模板预览生成失败：{exc}")
+        return _ok({"previews": previews})
 
     def _diagnostics(
         self,
@@ -175,6 +232,12 @@ async def _request_json() -> dict:
 
     data = await request.get_json()
     return data if isinstance(data, dict) else {}
+
+
+def _request_args():
+    from quart import request
+
+    return request.args
 
 
 def _ok(data: dict | None = None) -> dict:
