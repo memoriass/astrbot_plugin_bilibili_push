@@ -1,4 +1,5 @@
 import { createApi, getBridge } from "./api.js";
+import { renderOverview } from "./overview.js";
 import {
   renderAccounts,
   renderDiagnostics,
@@ -15,7 +16,7 @@ const bridge = getBridge();
 const api = createApi(bridge);
 
 const state = {
-  tab: "subscriptions",
+  tab: "overview",
   overview: null,
   previews: [],
   selectedPreview: null,
@@ -39,8 +40,7 @@ typeFilter.addEventListener("change", () => {
 });
 document.querySelectorAll(".tab").forEach((button) => {
   button.addEventListener("click", () => {
-    state.tab = button.dataset.tab;
-    render();
+    switchTab(button.dataset.tab);
   });
 });
 
@@ -67,6 +67,17 @@ function render() {
   const overview = state.overview || {};
   renderMetrics(metrics, overview.diagnostics || {});
   renderTabs(state.tab);
+  renderOverview(
+    document.getElementById("overviewPanel"),
+    overview,
+    state.previews,
+    {
+      onNavigate: switchTab,
+      onManualLive: manualLiveCheck,
+      onPreview: previewAndOpenTemplates,
+      onGenerate: generateTemplates,
+    },
+  );
   renderSubscriptions(
     document.getElementById("subscriptionsPanel"),
     overview.subscriptions || [],
@@ -89,6 +100,11 @@ function render() {
     state.selectedPreview,
     { onPreview: loadTemplatePreview, onGenerate: generateTemplates },
   );
+}
+
+function switchTab(tab) {
+  state.tab = tab || "overview";
+  render();
 }
 
 async function toggleSubscription(dataset) {
@@ -149,6 +165,11 @@ async function loadTemplatePreview(dataset) {
   } catch (error) {
     showToast(error.message || String(error));
   }
+}
+
+async function previewAndOpenTemplates(dataset) {
+  await loadTemplatePreview(dataset);
+  switchTab("templates");
 }
 
 async function generateTemplates() {

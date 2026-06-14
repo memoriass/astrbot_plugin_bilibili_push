@@ -106,6 +106,8 @@ def _check_plugin_pages() -> None:
         ROOT / "pages" / "manager" / "api.js",
         ROOT / "pages" / "manager" / "app.js",
         ROOT / "pages" / "manager" / "mock_bridge.js",
+        ROOT / "pages" / "manager" / "overview.js",
+        ROOT / "pages" / "manager" / "overview.css",
         ROOT / "pages" / "manager" / "renderers.js",
         ROOT / "pages" / "manager" / "style.css",
         ROOT / "pages" / "manager" / "utils.js",

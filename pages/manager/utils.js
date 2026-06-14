@@ -56,3 +56,9 @@ export function typeBadge(value) {
 export function statusPill(text, ok) {
   return `<span class="pill ${ok ? "ok" : "bad"}">${escapeHtml(text)}</span>`;
 }
+
+export function bindDataset(root, selector, handler) {
+  root.querySelectorAll(selector).forEach((button) => {
+    button.addEventListener("click", () => handler(button.dataset));
+  });
+}

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Bilibili Push Manager</title>
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./overview.css" />
     <link rel="stylesheet" href="./views.css" />
   </head>
   <body>
@@ -22,7 +23,8 @@
       <section class="metrics" id="metrics"></section>
 
       <nav class="tabs" aria-label="manager views">
-        <button class="tab active" type="button" data-tab="subscriptions">订阅</button>
+        <button class="tab active" type="button" data-tab="overview">概览</button>
+        <button class="tab" type="button" data-tab="subscriptions">订阅</button>
         <button class="tab" type="button" data-tab="accounts">账号</button>
         <button class="tab" type="button" data-tab="pending">Pending</button>
         <button class="tab" type="button" data-tab="diagnostics">诊断</button>
@@ -38,7 +40,8 @@
         </select>
       </section>
 
-      <section class="panel active" id="subscriptionsPanel"></section>
+      <section class="panel active" id="overviewPanel"></section>
+      <section class="panel" id="subscriptionsPanel"></section>
       <section class="panel" id="accountsPanel"></section>
       <section class="panel" id="pendingPanel"></section>
       <section class="panel" id="diagnosticsPanel"></section>

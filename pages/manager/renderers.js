@@ -1,4 +1,5 @@
 import {
+  bindDataset,
   emptyState,
   escapeAttribute,
   escapeHtml,
@@ -130,14 +131,14 @@ export function renderTemplates(panel, previews, selectedPreview, actions) {
 
 export function showLoading(metrics) {
   metrics.innerHTML = "";
-  for (const id of ["subscriptionsPanel", "accountsPanel", "pendingPanel", "diagnosticsPanel", "templatesPanel"]) {
+  for (const id of ["overviewPanel", "subscriptionsPanel", "accountsPanel", "pendingPanel", "diagnosticsPanel", "templatesPanel"]) {
     document.getElementById(id).innerHTML = emptyState("加载中");
   }
 }
 
 export function renderEmptyError(metrics) {
   metrics.innerHTML = "";
-  for (const id of ["subscriptionsPanel", "accountsPanel", "pendingPanel", "diagnosticsPanel", "templatesPanel"]) {
+  for (const id of ["overviewPanel", "subscriptionsPanel", "accountsPanel", "pendingPanel", "diagnosticsPanel", "templatesPanel"]) {
     document.getElementById(id).innerHTML = emptyState("加载失败");
   }
 }
@@ -213,10 +214,4 @@ function previewImage(preview) {
       <figcaption>${escapeHtml(preview.label || preview.name)} · ${escapeHtml(formatBytes(preview.size))}</figcaption>
     </figure>
   `;
-}
-
-function bindDataset(root, selector, handler) {
-  root.querySelectorAll(selector).forEach((button) => {
-    button.addEventListener("click", () => handler(button.dataset));
-  });
 }
