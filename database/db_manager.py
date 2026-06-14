@@ -112,6 +112,40 @@ class DatabaseManager:
             conn.commit()
             return cursor.rowcount > 0
 
+    def update_subscription(
+        self,
+        original_uid: str,
+        original_sub_type: str,
+        original_target_id: str,
+        sub: Subscription,
+    ) -> bool:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """
+                    UPDATE subscriptions
+                    SET uid = ?, username = ?, sub_type = ?, target_id = ?,
+                        categories = ?, tags = ?, enabled = ?
+                    WHERE uid = ? AND sub_type = ? AND target_id = ?
+                    """,
+                    (
+                        sub.uid,
+                        sub.username,
+                        sub.sub_type,
+                        sub.target_id,
+                        json.dumps(sub.categories),
+                        json.dumps(sub.tags),
+                        1 if sub.enabled else 0,
+                        str(original_uid),
+                        original_sub_type,
+                        original_target_id,
+                    ),
+                )
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.IntegrityError:
+            return False
+
     def get_subscriptions(self, target_id: Optional[str] = None) -> List[Subscription]:
         with sqlite3.connect(self.db_path) as conn:
             if target_id:

@@ -27,10 +27,15 @@ EXPECTED_COMMANDS = {
 }
 PLUGIN_NAME = "astrbot_plugin_bilibili_push"
 EXPECTED_WEB_ENDPOINTS = {
+    "accounts/delete",
+    "accounts/upsert",
+    "accounts/valid",
     "overview",
     "checks/live",
+    "subscriptions/create",
     "subscriptions/delete",
     "subscriptions/enabled",
+    "subscriptions/update",
     "pending/clear",
     "templates/generate",
     "templates/list",
@@ -55,6 +60,7 @@ def main() -> None:
     if any("帮助" in name or "help" in func.lower() for func, name in commands):
         raise SystemExit("help command residue detected")
     _check_plugin_pages()
+    _check_web_api_modules()
     _check_web_api_routes()
 
     oversized = _oversized_text_files()
@@ -103,6 +109,8 @@ def _keyword_value(call: ast.Call, name: str) -> str:
 def _check_plugin_pages() -> None:
     required = [
         ROOT / "pages" / "manager" / "index.html",
+        ROOT / "pages" / "manager" / "accounts.js",
+        ROOT / "pages" / "manager" / "accounts.css",
         ROOT / "pages" / "manager" / "api.js",
         ROOT / "pages" / "manager" / "app.js",
         ROOT / "pages" / "manager" / "mock_bridge.js",
@@ -127,6 +135,20 @@ def _check_web_api_routes() -> None:
     missing = [endpoint for endpoint in EXPECTED_WEB_ENDPOINTS if endpoint not in source]
     if missing:
         raise SystemExit(f"missing web api endpoints: {missing}")
+
+
+def _check_web_api_modules() -> None:
+    required = [
+        ROOT / "webapi" / "manager_api.py",
+        ROOT / "webapi" / "manager_crud.py",
+        ROOT / "webapi" / "manager_overview.py",
+        ROOT / "webapi" / "manager_response.py",
+        ROOT / "webapi" / "manager_serializers.py",
+        ROOT / "webapi" / "template_preview.py",
+    ]
+    missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
+    if missing:
+        raise SystemExit(f"missing web api modules: {missing}")
 
 
 def _oversized_text_files() -> list[tuple[str, int]]:

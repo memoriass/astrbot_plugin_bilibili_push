@@ -10,6 +10,21 @@
   box-shadow: var(--shadow);
 }
 
+.template-actions p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.template-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.template-controls input {
+  width: 140px;
+}
+
 .template-layout {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
@@ -66,6 +81,8 @@
 }
 
 @media (max-width: 860px) {
+  .template-actions,
+  .template-controls,
   .template-layout {
     align-items: stretch;
     grid-template-columns: 1fr;

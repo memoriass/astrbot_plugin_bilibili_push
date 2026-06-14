@@ -5,8 +5,8 @@ import {
   escapeHtml,
   formatBytes,
   formatTime,
-  statusPill,
 } from "./utils.js";
+import { renderAccountManager } from "./accounts.js";
 import { renderSubscriptionCards } from "./subscriptions.js";
 
 export function renderMetrics(container, diagnostics) {
@@ -38,16 +38,12 @@ export function renderTabs(activeTab) {
   document.getElementById("subscriptionToolbar").hidden = activeTab !== "subscriptions";
 }
 
-export function renderSubscriptions(panel, subscriptions, filters, actions) {
-  renderSubscriptionCards(panel, subscriptions, filters, actions);
+export function renderSubscriptions(panel, subscriptions, filters, actions, editor) {
+  renderSubscriptionCards(panel, subscriptions, filters, actions, editor);
 }
 
-export function renderAccounts(panel, accounts) {
-  if (!accounts.length) {
-    panel.innerHTML = emptyState("暂无登录账号");
-    return;
-  }
-  panel.innerHTML = `<div class="cards">${accounts.map(accountCard).join("")}</div>`;
+export function renderAccounts(panel, accounts, actions, editor) {
+  renderAccountManager(panel, accounts, actions, editor);
 }
 
 export function renderPending(panel, tasks, actions) {
@@ -67,7 +63,15 @@ export function renderPending(panel, tasks, actions) {
 export function renderTemplates(panel, previews, selectedPreview, actions) {
   panel.innerHTML = `
     <section class="template-actions">
-      <button class="ghost-button" id="generateTemplatesButton" type="button">重新生成预览</button>
+      <div>
+        <h2>模板预览</h2>
+        <p>使用当前模板和样例 Bilibili 数据生成本地 PNG，选择条目后在右侧查看。</p>
+      </div>
+      <div class="template-controls">
+        <input id="templateSeedInput" type="number" inputmode="numeric" value="${escapeAttribute(actions.seed)}" aria-label="随机种子" />
+        <button class="ghost-button" id="refreshTemplatesButton" type="button">刷新列表</button>
+        <button class="ghost-button" id="generateTemplatesButton" type="button">生成预览</button>
+      </div>
     </section>
     <section class="template-layout">
       <div class="preview-list">${previews.map(previewRow).join("") || emptyState("暂无模板预览")}</div>
@@ -77,6 +81,7 @@ export function renderTemplates(panel, previews, selectedPreview, actions) {
     </section>
   `;
   bindDataset(panel, "[data-preview]", actions.onPreview);
+  panel.querySelector("#refreshTemplatesButton").addEventListener("click", actions.onRefresh);
   panel.querySelector("#generateTemplatesButton").addEventListener("click", actions.onGenerate);
 }
 
@@ -92,19 +97,6 @@ export function renderEmptyError(metrics) {
   for (const id of ["overviewPanel", "subscriptionsPanel", "accountsPanel", "pendingPanel", "templatesPanel"]) {
     document.getElementById(id).innerHTML = emptyState("加载失败");
   }
-}
-
-function accountCard(account) {
-  return `
-    <article class="account-card">
-      <img src="${escapeAttribute(account.face || "")}" alt="" />
-      <div>
-        <h2>${escapeHtml(account.name || "Bilibili 账号")}</h2>
-        <p class="mono">UID ${escapeHtml(account.uid || "-")}</p>
-      </div>
-      ${statusPill(account.valid ? "有效" : "失效", account.valid)}
-    </article>
-  `;
 }
 
 function pendingCard(task) {

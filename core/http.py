@@ -105,6 +105,64 @@ class HttpClient:
         await cls.save_accounts()
 
     @classmethod
+    async def upsert_account(
+        cls,
+        uid: str,
+        name: str,
+        face: str,
+        cookies: dict | None = None,
+        valid: bool = True,
+    ):
+        for acc in cls._accounts:
+            if str(acc.get("uid")) == str(uid):
+                acc["name"] = name
+                acc["face"] = face
+                acc["valid"] = valid
+                if cookies is not None:
+                    acc["cookies"] = cookies
+                await cls.save_accounts()
+                await cls.close()
+                return
+
+        cls._accounts.append(
+            {
+                "uid": str(uid),
+                "name": name,
+                "face": face,
+                "cookies": cookies or {},
+                "valid": valid,
+            }
+        )
+        await cls.save_accounts()
+        await cls.close()
+
+    @classmethod
+    async def remove_account(cls, uid: str) -> bool:
+        uid = str(uid)
+        before = len(cls._accounts)
+        cls._accounts = [acc for acc in cls._accounts if str(acc.get("uid")) != uid]
+        if len(cls._accounts) == before:
+            return False
+        cls._current_account_index = min(
+            cls._current_account_index,
+            max(len(cls._accounts) - 1, 0),
+        )
+        await cls.save_accounts()
+        await cls.close()
+        return True
+
+    @classmethod
+    async def set_account_valid(cls, uid: str, valid: bool) -> bool:
+        for acc in cls._accounts:
+            if str(acc.get("uid")) == str(uid):
+                acc["valid"] = valid
+                acc.pop("status_code", None)
+                await cls.save_accounts()
+                await cls.close()
+                return True
+        return False
+
+    @classmethod
     async def get_accounts(cls) -> list[dict]:
         if not cls._accounts and cls._star_instance:
             await cls.load_accounts()

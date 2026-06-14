@@ -1,0 +1,85 @@
+.account-summary,
+.account-editor {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.account-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.account-summary p,
+.account-editor p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.account-editor {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cookie-field {
+  display: grid;
+  gap: 5px;
+}
+
+.cookie-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cookie-field textarea {
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.account-card {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.account-card .pill {
+  margin-left: auto;
+}
+
+.account-actions {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .account-summary,
+  .account-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+}

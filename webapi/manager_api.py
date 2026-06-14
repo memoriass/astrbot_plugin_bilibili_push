@@ -1,300 +1,103 @@
 from __future__ import annotations
 
-import asyncio
-
-from ..core.http import HttpClient
+from .manager_crud import AccountCrud, SubscriptionCrud
+from .manager_overview import ManagerOverviewService
+from .manager_response import error, ok, request_args, request_json
 from .template_preview import TemplatePreviewService
 
 
 PLUGIN_NAME = "astrbot_plugin_bilibili_push"
-NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg"
 
 
 def register_bilibili_web_apis(context, plugin):
     api = BilibiliManagerApi(plugin)
-    context.register_web_api(
-        f"/{PLUGIN_NAME}/overview",
-        api.overview,
-        ["GET"],
-        "Bilibili manager overview",
-    )
-    context.register_web_api(
-        f"/{PLUGIN_NAME}/subscriptions/delete",
-        api.delete_subscription,
-        ["POST"],
-        "Delete Bilibili subscription",
-    )
-    context.register_web_api(
-        f"/{PLUGIN_NAME}/subscriptions/enabled",
-        api.set_subscription_enabled,
-        ["POST"],
-        "Enable or disable Bilibili subscription",
-    )
-    context.register_web_api(
-        f"/{PLUGIN_NAME}/pending/clear",
-        api.clear_pending,
-        ["POST"],
-        "Clear Bilibili workflow pending tasks",
-    )
-    context.register_web_api(
-        f"/{PLUGIN_NAME}/checks/live",
-        api.manual_live_check,
-        ["POST"],
-        "Run manual Bilibili live check",
-    )
-    context.register_web_api(
-        f"/{PLUGIN_NAME}/templates/list",
-        api.list_templates,
-        ["GET"],
-        "List Bilibili template previews",
-    )
-    context.register_web_api(
-        f"/{PLUGIN_NAME}/templates/preview",
-        api.preview_template,
-        ["GET"],
-        "Read Bilibili template preview",
-    )
-    context.register_web_api(
-        f"/{PLUGIN_NAME}/templates/generate",
-        api.generate_templates,
-        ["POST"],
-        "Generate Bilibili template previews",
-    )
+    routes = [
+        ("overview", api.overview, ["GET"], "Bilibili manager overview"),
+        ("subscriptions/create", api.create_subscription, ["POST"], "Create subscription"),
+        ("subscriptions/update", api.update_subscription, ["POST"], "Update subscription"),
+        ("subscriptions/delete", api.delete_subscription, ["POST"], "Delete subscription"),
+        ("subscriptions/enabled", api.set_subscription_enabled, ["POST"], "Toggle subscription"),
+        ("pending/clear", api.clear_pending, ["POST"], "Clear pending tasks"),
+        ("checks/live", api.manual_live_check, ["POST"], "Run manual live check"),
+        ("accounts/upsert", api.upsert_account, ["POST"], "Create or update account"),
+        ("accounts/delete", api.delete_account, ["POST"], "Delete account"),
+        ("accounts/valid", api.set_account_valid, ["POST"], "Set account validity"),
+        ("templates/list", api.list_templates, ["GET"], "List template previews"),
+        ("templates/preview", api.preview_template, ["GET"], "Read template preview"),
+        ("templates/generate", api.generate_templates, ["POST"], "Generate template previews"),
+    ]
+    for endpoint, handler, methods, description in routes:
+        context.register_web_api(
+            f"/{PLUGIN_NAME}/{endpoint}",
+            handler,
+            methods,
+            description,
+        )
     return api
 
 
 class BilibiliManagerApi:
     def __init__(self, plugin):
         self.plugin = plugin
+        self.overview_service = ManagerOverviewService(plugin)
+        self.subscriptions = SubscriptionCrud(plugin)
+        self.accounts = AccountCrud()
         self.templates = TemplatePreviewService(plugin)
 
     async def overview(self):
-        subscriptions = await self._enrich_subscriptions([
-            _serialize_subscription(sub)
-            for sub in self.plugin.db.get_subscriptions()
-        ])
-        accounts = [_serialize_account(acc) for acc in await HttpClient.get_accounts()]
-        pending_tasks = [
-            _serialize_pending_task(task)
-            for task in await self.plugin.pending_store.list_tasks()
-        ]
-        return _ok(
-            {
-                "diagnostics": self._diagnostics(
-                    subscriptions,
-                    accounts,
-                    pending_tasks,
-                ),
-                "subscriptions": subscriptions,
-                "accounts": accounts,
-                "pending_tasks": pending_tasks,
-            }
-        )
+        return ok(await self.overview_service.build())
+
+    async def create_subscription(self):
+        return await self.subscriptions.create(await request_json())
+
+    async def update_subscription(self):
+        return await self.subscriptions.update(await request_json())
 
     async def delete_subscription(self):
-        payload = await _request_json()
-        uid = str(payload.get("uid") or "").strip()
-        sub_type = str(payload.get("sub_type") or "").strip()
-        target_id = str(payload.get("target_id") or "").strip()
-        if not uid or sub_type not in {"dynamic", "live"} or not target_id:
-            return _error("uid、sub_type、target_id 参数不完整。")
-
-        removed = self.plugin.db.remove_subscription(uid, sub_type, target_id)
-        if not removed:
-            return _error("未找到匹配订阅。")
-        return _ok({"removed": True})
+        return self.subscriptions.delete(await request_json())
 
     async def set_subscription_enabled(self):
-        payload = await _request_json()
-        uid = str(payload.get("uid") or "").strip()
-        sub_type = str(payload.get("sub_type") or "").strip()
-        target_id = str(payload.get("target_id") or "").strip()
-        enabled = bool(payload.get("enabled"))
-        if not uid or sub_type not in {"dynamic", "live"} or not target_id:
-            return _error("uid、sub_type、target_id 参数不完整。")
-
-        updated = self.plugin.db.set_subscription_enabled(
-            uid,
-            sub_type,
-            target_id,
-            enabled,
-        )
-        if not updated:
-            return _error("未找到匹配订阅。")
-        return _ok({"updated": True, "enabled": enabled})
+        return self.subscriptions.set_enabled(await request_json())
 
     async def clear_pending(self):
         count = await self.plugin.pending_store.clear()
-        return _ok({"cleared": count})
+        return ok({"cleared": count})
 
     async def manual_live_check(self):
-        payload = await _request_json()
+        payload = await request_json()
         target_id = str(payload.get("target_id") or "").strip()
         if not target_id:
-            return _error("target_id 参数不能为空。")
+            return error("target_id 参数不能为空。")
         pushed = await self.plugin.scheduler.manual_live_check(target_id)
-        return _ok({"target_id": target_id, "pushed": pushed})
+        return ok({"target_id": target_id, "pushed": pushed})
+
+    async def upsert_account(self):
+        return await self.accounts.upsert(await request_json())
+
+    async def delete_account(self):
+        return await self.accounts.delete(await request_json())
+
+    async def set_account_valid(self):
+        return await self.accounts.set_valid(await request_json())
 
     async def list_templates(self):
-        return _ok({"previews": self.templates.list_previews()})
+        return ok({"previews": self.templates.list_previews()})
 
     async def preview_template(self):
-        args = _request_args()
-        name = str(args.get("name") or "").strip()
+        name = str(request_args().get("name") or "").strip()
         if not name:
-            return _error("name 参数不能为空。")
+            return error("name 参数不能为空。")
         try:
-            return _ok({"preview": self.templates.preview_data(name)})
+            return ok({"preview": self.templates.preview_data(name)})
         except (FileNotFoundError, ValueError) as exc:
-            return _error(str(exc))
+            return error(str(exc))
 
     async def generate_templates(self):
-        payload = await _request_json()
+        payload = await request_json()
         seed = payload.get("seed")
         try:
             seed = int(seed) if seed not in (None, "") else None
             previews = await self.templates.generate(seed)
         except Exception as exc:
-            return _error(f"模板预览生成失败：{exc}")
-        return _ok({"previews": previews})
-
-    def _diagnostics(
-        self,
-        subscriptions: list[dict],
-        accounts: list[dict],
-        pending_tasks: list[dict],
-    ) -> dict:
-        targets = {sub["target_id"] for sub in subscriptions}
-        dynamic_count = sum(1 for sub in subscriptions if sub["sub_type"] == "dynamic")
-        live_count = sum(1 for sub in subscriptions if sub["sub_type"] == "live")
-        enabled_count = sum(1 for sub in subscriptions if sub["enabled"])
-        valid_accounts = sum(1 for acc in accounts if acc.get("valid", True))
-        return {
-            "check_interval": self.plugin.check_interval,
-            "render_type": self.plugin.render_type,
-            "enable_link_parser": self.plugin.enable_link_parser,
-            "enable_ai_tools": self.plugin.enable_ai_tools,
-            "enable_ai_agent_entry": self.plugin.enable_ai_agent_entry,
-            "subscriptions": len(subscriptions),
-            "enabled_subscriptions": enabled_count,
-            "dynamic_subscriptions": dynamic_count,
-            "live_subscriptions": live_count,
-            "targets": len(targets),
-            "accounts": len(accounts),
-            "valid_accounts": valid_accounts,
-            "pending_tasks": len(pending_tasks),
-        }
-
-    async def _enrich_subscriptions(self, subscriptions: list[dict]) -> list[dict]:
-        uids = sorted({sub["uid"] for sub in subscriptions if sub.get("uid")})
-        face_map, live_status_map = await asyncio.gather(
-            self._fetch_face_map(uids),
-            self._fetch_live_status_map(subscriptions),
-        )
-        for sub in subscriptions:
-            uid = sub.get("uid") or ""
-            sub["face"] = face_map.get(uid, NO_FACE)
-            sub["is_live"] = live_status_map.get(uid, False)
-        return subscriptions
-
-    async def _fetch_face_map(self, uids: list[str]) -> dict[str, str]:
-        if not uids:
-            return {}
-        client = await HttpClient.get_client()
-
-        async def fetch_face(uid: str) -> tuple[str, str]:
-            face = NO_FACE
-            try:
-                res = await client.get(
-                    "https://api.bilibili.com/x/web-interface/card",
-                    params={"mid": uid},
-                    timeout=5,
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    if data.get("code") == 0:
-                        face = data.get("data", {}).get("card", {}).get("face") or face
-            except Exception:
-                pass
-            return uid, face
-
-        return dict(await asyncio.gather(*[fetch_face(uid) for uid in uids]))
-
-    async def _fetch_live_status_map(self, subscriptions: list[dict]) -> dict[str, bool]:
-        live_uids = sorted({
-            sub["uid"]
-            for sub in subscriptions
-            if sub.get("uid") and sub.get("sub_type") == "live"
-        })
-        if not live_uids:
-            return {}
-        try:
-            live_infos = await self.plugin.scheduler.live_platform.batch_get_status(live_uids)
-            return {str(info.uid): info.live_status == 1 for info in live_infos}
-        except Exception:
-            return {}
-
-
-def _serialize_subscription(sub) -> dict:
-    return {
-        "uid": str(sub.uid),
-        "username": sub.username,
-        "sub_type": sub.sub_type,
-        "target_id": sub.target_id,
-        "categories": list(sub.categories or []),
-        "tags": list(sub.tags or []),
-        "enabled": bool(sub.enabled),
-    }
-
-
-def _serialize_account(account: dict) -> dict:
-    return {
-        "uid": str(account.get("uid") or ""),
-        "name": str(account.get("name") or ""),
-        "face": str(account.get("face") or ""),
-        "valid": bool(account.get("valid", True)),
-        "status_code": account.get("status_code"),
-    }
-
-
-def _serialize_pending_task(task: dict) -> dict:
-    candidate = task.get("candidate") or {}
-    return {
-        "task_id": str(task.get("task_id") or ""),
-        "kind": str(task.get("kind") or ""),
-        "origin": str(task.get("origin") or ""),
-        "workflow": str(task.get("workflow") or ""),
-        "keyword": str(task.get("keyword") or ""),
-        "mode": str(task.get("mode") or ""),
-        "sub_type": str(task.get("sub_type") or ""),
-        "created_at": task.get("created_at"),
-        "expires_at": task.get("expires_at"),
-        "candidate": {
-            "uid": str(candidate.get("uid") or ""),
-            "username": str(candidate.get("username") or ""),
-        }
-        if candidate
-        else None,
-        "candidate_count": len(task.get("candidates") or []),
-    }
-
-
-async def _request_json() -> dict:
-    from quart import request
-
-    data = await request.get_json()
-    return data if isinstance(data, dict) else {}
-
-
-def _request_args():
-    from quart import request
-
-    return request.args
-
-
-def _ok(data: dict | None = None) -> dict:
-    return {"status": "ok", "data": data or {}}
-
-
-def _error(message: str) -> dict:
-    return {"status": "error", "message": message}
+            return error(f"模板预览生成失败：{exc}")
+        return ok({"previews": previews})

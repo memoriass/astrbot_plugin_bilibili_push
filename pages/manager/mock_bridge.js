@@ -8,6 +8,8 @@ const samplePreview = encodeURIComponent(`
 </svg>
 `);
 
+const mockState = createMockOverview();
+
 export function createLocalBridge() {
   return {
     ready: async () => ({}),
@@ -27,9 +29,73 @@ export function createLocalBridge() {
           },
         });
       }
-      return ok(mockOverview());
+      return ok(mockState);
     },
-    apiPost: async (endpoint) => {
+    apiPost: async (endpoint, payload = {}) => {
+      if (endpoint === "subscriptions/create") {
+        mockState.subscriptions.push(mockSubscription(payload));
+        refreshDiagnostics();
+        return ok({ subscription: payload });
+      }
+      if (endpoint === "subscriptions/update") {
+        const sub = findSubscription(payload, "original_");
+        if (sub) {
+          Object.assign(sub, mockSubscription(payload));
+        }
+        refreshDiagnostics();
+        return ok({ subscription: sub });
+      }
+      if (endpoint === "subscriptions/enabled") {
+        const sub = findSubscription(payload);
+        if (sub) {
+          sub.enabled = Boolean(payload.enabled);
+        }
+        refreshDiagnostics();
+        return ok({ updated: true, enabled: Boolean(payload.enabled) });
+      }
+      if (endpoint === "subscriptions/delete") {
+        mockState.subscriptions = mockState.subscriptions.filter(
+          (sub) =>
+            !(
+              String(sub.uid) === String(payload.uid) &&
+              sub.sub_type === payload.sub_type &&
+              sub.target_id === payload.target_id
+            ),
+        );
+        refreshDiagnostics();
+        return ok({ removed: true });
+      }
+      if (endpoint === "accounts/upsert") {
+        const account = {
+          uid: String(payload.uid || "10003"),
+          name: payload.name || "Web Account",
+          face: payload.face || "",
+          valid: payload.valid !== false,
+        };
+        const index = mockState.accounts.findIndex((item) => item.uid === account.uid);
+        if (index >= 0) {
+          mockState.accounts[index] = account;
+        } else {
+          mockState.accounts.push(account);
+        }
+        refreshDiagnostics();
+        return ok({ account });
+      }
+      if (endpoint === "accounts/delete") {
+        mockState.accounts = mockState.accounts.filter(
+          (account) => String(account.uid) !== String(payload.uid),
+        );
+        refreshDiagnostics();
+        return ok({ removed: true });
+      }
+      if (endpoint === "accounts/valid") {
+        const account = mockState.accounts.find((item) => String(item.uid) === String(payload.uid));
+        if (account) {
+          account.valid = Boolean(payload.valid);
+        }
+        refreshDiagnostics();
+        return ok({ updated: true, valid: Boolean(payload.valid) });
+      }
       if (endpoint === "checks/live") {
         return ok({ pushed: 1 });
       }
@@ -65,7 +131,7 @@ function mockFace(label, color) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-function mockOverview() {
+function createMockOverview() {
   return {
     diagnostics: {
       subscriptions: 6,
@@ -173,4 +239,50 @@ function mockOverview() {
       },
     ],
   };
+}
+
+function mockSubscription(payload) {
+  const uid = String(payload.uid || "");
+  return {
+    uid,
+    username: payload.username || `UP ${uid}`,
+    sub_type: payload.sub_type || "dynamic",
+    target_id: payload.target_id || "aiocqhttp:GroupMessage:10001",
+    face: payload.face || mockFace("UP", "#0f766e"),
+    is_live: Boolean(payload.is_live),
+    categories: parseList(payload.categories),
+    tags: parseList(payload.tags),
+    enabled: payload.enabled !== false,
+  };
+}
+
+function findSubscription(payload, prefix = "") {
+  return mockState.subscriptions.find(
+    (sub) =>
+      String(sub.uid) === String(payload[`${prefix}uid`]) &&
+      sub.sub_type === payload[`${prefix}sub_type`] &&
+      sub.target_id === payload[`${prefix}target_id`],
+  );
+}
+
+function parseList(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function refreshDiagnostics() {
+  const subscriptions = mockState.subscriptions;
+  const accounts = mockState.accounts;
+  mockState.diagnostics.subscriptions = subscriptions.length;
+  mockState.diagnostics.enabled_subscriptions = subscriptions.filter((sub) => sub.enabled).length;
+  mockState.diagnostics.dynamic_subscriptions = subscriptions.filter((sub) => sub.sub_type === "dynamic").length;
+  mockState.diagnostics.live_subscriptions = subscriptions.filter((sub) => sub.sub_type === "live").length;
+  mockState.diagnostics.targets = new Set(subscriptions.map((sub) => sub.target_id)).size;
+  mockState.diagnostics.accounts = accounts.length;
+  mockState.diagnostics.valid_accounts = accounts.filter((account) => account.valid).length;
 }

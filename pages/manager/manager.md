@@ -8,13 +8,15 @@
 - `app.js`: Bridge 初始化、状态管理和页面动作编排。
 - `api.js`: bridge API endpoint 封装和响应解包。
 - `overview.js`: 概览工作台渲染，小型订阅预览、待处理项、模板入口和能力摘要。
-- `subscriptions.js`: 订阅卡片渲染、筛选和启停/删除动作绑定。
+- `subscriptions.js`: 订阅卡片渲染、筛选、新增、编辑、启停和删除动作绑定。
+- `accounts.js`: 账号卡片渲染、新增、编辑、删除和有效性切换动作绑定。
 - `renderers.js`: 各标签页渲染函数。
 - `utils.js`: HTML 转义、格式化和通用 UI 片段。
 - `mock_bridge.js`: 本地预览 fallback 数据。
 - `style.css`: 亮暗主题、响应式布局和通用组件样式。
 - `overview.css`: 概览工作台布局和小型订阅预览样式。
 - `subscriptions.css`: 订阅卡片、订阅摘要和移动端布局样式。
+- `accounts.css`: 账号管理表单、账号卡片和移动端布局样式。
 - `views.css`: 模板预览标签页样式。
 
 ## 数据来源
@@ -24,6 +26,11 @@
 - `bridge.apiGet("templates/preview", params)`
 - `bridge.apiPost("subscriptions/enabled", body)`
 - `bridge.apiPost("subscriptions/delete", body)`
+- `bridge.apiPost("subscriptions/create", body)`
+- `bridge.apiPost("subscriptions/update", body)`
+- `bridge.apiPost("accounts/upsert", body)`
+- `bridge.apiPost("accounts/delete", body)`
+- `bridge.apiPost("accounts/valid", body)`
 - `bridge.apiPost("checks/live", body)`
 - `bridge.apiPost("pending/clear", body)`
 - `bridge.apiPost("templates/generate", body)`
@@ -38,5 +45,7 @@
 - 手动直播检查会向目标会话发送当前正在直播的启用订阅。
 - 模板预览重新生成会启动浏览器渲染，并可能访问 Bilibili 热门接口取样例数据。
 - 启停和删除订阅必须传完整 `uid + sub_type + target_id`。
+- 编辑订阅必须传原始 `uid + sub_type + target_id`，避免误改同 UID 的其他类型或会话。
+- 账号 Cookie 只允许提交写入，不在页面和 overview 接口回显。
 - 本地直接打开页面时使用 `mock_bridge.js` 内的假数据 fallback，仅用于布局预览。
 - 账号卡片不展示 cookies。

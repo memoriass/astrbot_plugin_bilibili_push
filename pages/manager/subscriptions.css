@@ -19,6 +19,7 @@
 
 .subscription-summary-badges {
   display: flex;
+  align-items: stretch;
   gap: 8px;
 }
 
@@ -36,6 +37,61 @@
   display: block;
   color: var(--text);
   font-size: 18px;
+}
+
+.subscription-editor {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.editor-heading,
+.editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.editor-heading p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.editor-grid label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.editor-grid span,
+.editor-check {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editor-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-check input {
+  width: 16px;
+  height: 16px;
 }
 
 .subscription-card-grid {
@@ -155,6 +211,8 @@
 
 @media (max-width: 640px) {
   .subscription-summary,
+  .editor-heading,
+  .editor-actions,
   .subscription-card-head,
   .subscription-actions {
     align-items: stretch;
@@ -162,6 +220,7 @@
   }
 
   .subscription-summary-badges,
+  .editor-grid,
   .subscription-meta {
     grid-template-columns: 1fr;
     flex-direction: column;
