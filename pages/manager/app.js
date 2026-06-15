@@ -84,7 +84,6 @@ function render() {
       onEdit: startEditSubscription,
       onSubmit: submitSubscription,
       onCancel: cancelSubscriptionEdit,
-      onToggle: toggleSubscription,
       onDelete: startDeleteSubscription,
       onConfirmDelete: deleteSubscription,
       onCancelDelete: cancelSubscriptionDelete,
@@ -273,17 +272,6 @@ async function submitAccount(data) {
     showToast("账号已保存");
     state.accountEditor = null;
     state.accountDelete = null;
-    await refreshAll();
-  } catch (error) {
-    showToast(error.message || String(error));
-  }
-}
-
-async function toggleSubscription(dataset) {
-  const enabled = dataset.enabled === "true";
-  try {
-    await api.setSubscriptionEnabled(subscriptionPayload(dataset, { enabled }));
-    showToast(enabled ? "订阅已启用" : "订阅已停用");
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));

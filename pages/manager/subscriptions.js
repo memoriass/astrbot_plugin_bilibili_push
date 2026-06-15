@@ -4,8 +4,6 @@ import {
   escapeAttribute,
   escapeHtml,
   icon,
-  statusPill,
-  typeBadge,
 } from "./utils.js";
 
 const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
@@ -61,7 +59,6 @@ export function renderSubscriptionCards(
   `;
   panel.querySelector("[data-create-subscription]").addEventListener("click", actions.onCreate);
   bindDataset(panel, "[data-edit]", actions.onEdit);
-  bindDataset(panel, "[data-toggle]", actions.onToggle);
   bindDataset(panel, "[data-delete]", actions.onDelete);
   bindDataset(panel, "[data-confirm-delete]", actions.onConfirmDelete);
   bindDataset(panel, "[data-cancel-delete]", actions.onCancelDelete);
@@ -142,28 +139,6 @@ function subscriptionCard(sub) {
           <h2>${escapeHtml(sub.username || "未命名 UP 主")}</h2>
           <p>UID: ${escapeHtml(sub.uid || "-")}</p>
         </div>
-      </div>
-      <div class="subscription-status-row">
-        ${statusPill(sub.enabled ? "启用" : "停用", sub.enabled)}
-        <span class="mono">${escapeHtml(sub.target_id || "-")}</span>
-      </div>
-      <div class="subscription-meta">
-        <div>
-          <span>类型</span>
-          <strong>${typeBadge(sub.sub_type)}</strong>
-        </div>
-        <div>
-          <span>会话</span>
-          <strong class="mono">${escapeHtml(sub.target_id || "-")}</strong>
-        </div>
-      </div>
-      ${labelsBlock(sub)}
-      <div class="subscription-actions">
-        <button class="ghost-button" type="button" data-toggle="1"
-          data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
-          data-target-id="${escapeAttribute(sub.target_id)}" data-enabled="${escapeAttribute(String(!sub.enabled))}">
-          ${sub.enabled ? "停用" : "启用"}
-        </button>
       </div>
     </article>
   `;
@@ -313,18 +288,6 @@ function categoryControls(subType, selected) {
 
 function defaultCategories(subType) {
   return CATEGORY_OPTIONS[subType].map(([value]) => value);
-}
-
-function labelsBlock(sub) {
-  const labels = [...(sub.categories || []), ...(sub.tags || [])].filter(Boolean);
-  if (!labels.length) {
-    return `<div class="subscription-labels muted">未设置分类或标签</div>`;
-  }
-  return `
-    <div class="subscription-labels">
-      ${labels.slice(0, 6).map((label) => `<span>${escapeHtml(label)}</span>`).join("")}
-    </div>
-  `;
 }
 
 function summaryBadge(label, value) {

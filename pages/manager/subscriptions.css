@@ -101,14 +101,8 @@
 }
 
 .subscription-card {
-  display: grid;
-  gap: 12px;
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  padding: 10px;
-  box-shadow: var(--shadow);
+  border-radius: 18px;
 }
 
 .subscription-card.is-disabled {
@@ -122,6 +116,7 @@
   border-radius: 18px;
   background: var(--surface-muted);
   overflow: hidden;
+  box-shadow: var(--shadow);
 }
 
 .subscription-media img,
@@ -195,54 +190,6 @@
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.subscription-status-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-}
-
-.subscription-status-row .mono {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.subscription-meta {
-  display: none;
-}
-
-.subscription-labels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 26px;
-}
-
-.subscription-labels span {
-  border-radius: 999px;
-  background: var(--surface-muted);
-  color: var(--muted);
-  padding: 5px 8px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.subscription-labels.muted {
-  align-items: center;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.subscription-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 .subscription-pagination {
@@ -389,7 +336,6 @@
   .subscription-summary,
   .editor-heading,
   .editor-actions,
-  .subscription-actions,
   .subscription-pagination {
     align-items: stretch;
     flex-direction: column;
@@ -397,8 +343,7 @@
 
   .subscription-summary-badges,
   .subscription-editor-layout,
-  .editor-grid,
-  .subscription-meta {
+  .editor-grid {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
