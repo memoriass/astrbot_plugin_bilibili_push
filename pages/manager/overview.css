@@ -33,13 +33,13 @@
 
 .workbench-summary::after {
   position: absolute;
-  right: -54px;
-  bottom: -70px;
-  width: 260px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgb(204 255 126 / 72%) 0 42%, transparent 68%);
+  right: -62px;
+  bottom: -92px;
+  width: 360px;
+  height: 460px;
+  background: var(--flora-vine-soft) center / contain no-repeat;
   content: "";
+  opacity: 0.18;
   pointer-events: none;
 }
 

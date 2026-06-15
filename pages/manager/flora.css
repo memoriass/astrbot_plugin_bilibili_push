@@ -1,0 +1,94 @@
+:root {
+  --flora-vine-large: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 520 420'%3E%3Cg fill='none' stroke='%236f9f54' stroke-width='4' stroke-linecap='round' opacity='.75'%3E%3Cpath d='M34 374C120 286 150 198 242 122C324 54 416 42 486 34'/%3E%3Cpath d='M92 318C144 318 196 302 232 266'/%3E%3Cpath d='M190 174C236 192 282 190 326 164'/%3E%3Cpath d='M306 78C350 94 394 88 432 58'/%3E%3C/g%3E%3Cg fill='%239ccc6c' opacity='.66'%3E%3Cellipse cx='116' cy='300' rx='18' ry='42' transform='rotate(-52 116 300)'/%3E%3Cellipse cx='168' cy='252' rx='16' ry='38' transform='rotate(36 168 252)'/%3E%3Cellipse cx='232' cy='202' rx='17' ry='40' transform='rotate(-58 232 202)'/%3E%3Cellipse cx='302' cy='146' rx='15' ry='36' transform='rotate(32 302 146)'/%3E%3Cellipse cx='374' cy='92' rx='16' ry='38' transform='rotate(-56 374 92)'/%3E%3Cellipse cx='424' cy='64' rx='13' ry='32' transform='rotate(34 424 64)'/%3E%3C/g%3E%3Cg fill='%23d9f7a6' opacity='.72'%3E%3Ccircle cx='254' cy='118' r='9'/%3E%3Ccircle cx='270' cy='111' r='7'/%3E%3Ccircle cx='270' cy='127' r='7'/%3E%3Ccircle cx='436' cy='38' r='8'/%3E%3Ccircle cx='451' cy='33' r='6'/%3E%3Ccircle cx='449' cy='49' r='6'/%3E%3C/g%3E%3C/svg%3E");
+  --flora-vine-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 460'%3E%3Cg fill='none' stroke='%2380a961' stroke-width='4' stroke-linecap='round' opacity='.62'%3E%3Cpath d='M306 22C226 86 206 158 158 230C116 294 74 356 30 432'/%3E%3Cpath d='M232 86C260 120 294 138 334 142'/%3E%3Cpath d='M174 202C214 220 254 218 292 194'/%3E%3Cpath d='M92 338C130 352 166 346 198 318'/%3E%3C/g%3E%3Cg fill='%23b7df84' opacity='.62'%3E%3Cellipse cx='242' cy='104' rx='15' ry='36' transform='rotate(-42 242 104)'/%3E%3Cellipse cx='214' cy='164' rx='13' ry='34' transform='rotate(44 214 164)'/%3E%3Cellipse cx='152' cy='250' rx='14' ry='36' transform='rotate(-44 152 250)'/%3E%3Cellipse cx='100' cy='330' rx='13' ry='33' transform='rotate(48 100 330)'/%3E%3C/g%3E%3Cg fill='%23eefbc6' opacity='.74'%3E%3Ccircle cx='180' cy='226' r='8'/%3E%3Ccircle cx='194' cy='220' r='6'/%3E%3Ccircle cx='193' cy='235' r='6'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+body {
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before,
+body::after {
+  position: fixed;
+  pointer-events: none;
+  content: "";
+  z-index: 0;
+}
+
+body::before {
+  right: -96px;
+  bottom: -120px;
+  width: 520px;
+  height: 420px;
+  background: var(--flora-vine-large) center / contain no-repeat;
+  opacity: 0.42;
+}
+
+body::after {
+  top: 28px;
+  right: -86px;
+  width: 360px;
+  height: 460px;
+  background: var(--flora-vine-soft) center / contain no-repeat;
+  opacity: 0.2;
+}
+
+.page-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.app-main {
+  position: relative;
+  overflow: hidden;
+}
+
+.app-main::before,
+.app-main::after {
+  position: absolute;
+  pointer-events: none;
+  content: "";
+  z-index: 0;
+}
+
+.app-main::before {
+  top: 38%;
+  right: -132px;
+  width: 520px;
+  height: 420px;
+  background: var(--flora-vine-large) center / contain no-repeat;
+  opacity: 0.24;
+  transform: rotate(-8deg);
+}
+
+.app-main::after {
+  left: -110px;
+  bottom: 9%;
+  width: 360px;
+  height: 460px;
+  background: var(--flora-vine-soft) center / contain no-repeat;
+  opacity: 0.1;
+  transform: rotate(12deg);
+}
+
+.app-main > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 860px) {
+  body::before,
+  body::after {
+    opacity: 0.14;
+  }
+
+  .app-main::before {
+    right: -210px;
+    opacity: 0.12;
+  }
+
+  .app-main::after {
+    display: none;
+  }
+}
