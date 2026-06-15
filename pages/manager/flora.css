@@ -1,6 +1,7 @@
 :root {
   --flora-corner: url("./assets/flora-ornament-corner.svg");
   --flora-trail: url("./assets/flora-ornament-trail.svg");
+  --forest-girl-scene: url("./assets/forest-girl-scene.svg");
 }
 
 body {
@@ -74,7 +75,20 @@ body::after {
   transform: rotate(10deg) scaleX(-1);
 }
 
-.app-main > * {
+.scene-girl {
+  position: absolute;
+  top: 116px;
+  right: 8px;
+  width: min(32vw, 340px);
+  min-width: 260px;
+  aspect-ratio: 420 / 760;
+  background: var(--forest-girl-scene) center top / contain no-repeat;
+  opacity: 0.32;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-main > :not(.scene-girl) {
   position: relative;
   z-index: 1;
 }
@@ -99,5 +113,12 @@ body::after {
 
   .app-main::after {
     display: none;
+  }
+
+  .scene-girl {
+    top: 28%;
+    right: -120px;
+    min-width: 220px;
+    opacity: 0.08;
   }
 }
