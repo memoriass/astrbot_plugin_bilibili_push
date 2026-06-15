@@ -31,18 +31,6 @@
   overflow: hidden;
 }
 
-.workbench-summary::after {
-  position: absolute;
-  right: -62px;
-  bottom: -92px;
-  width: 360px;
-  height: 460px;
-  background: var(--flora-trail) center / contain no-repeat;
-  content: "";
-  opacity: 0.18;
-  pointer-events: none;
-}
-
 .workbench-summary.attention {
   background: linear-gradient(135deg, rgb(255 255 250 / 90%), rgb(255 242 239 / 88%));
 }

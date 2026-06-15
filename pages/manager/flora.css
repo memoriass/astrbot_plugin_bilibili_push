@@ -1,40 +1,10 @@
 :root {
-  --flora-corner: url("./assets/flora-ornament-corner.svg");
-  --flora-trail: url("./assets/flora-ornament-trail.svg");
   --sunlit-grove-scene: url("./assets/sunlit-grove-green-girl.jpg");
 }
 
 body {
   position: relative;
   overflow-x: hidden;
-}
-
-body::before,
-body::after {
-  position: fixed;
-  pointer-events: none;
-  content: "";
-  z-index: 0;
-}
-
-body::before {
-  right: -148px;
-  bottom: -162px;
-  width: 620px;
-  height: 620px;
-  background: var(--flora-corner) center / contain no-repeat;
-  opacity: 0.38;
-  transform: rotate(-4deg);
-}
-
-body::after {
-  top: 20px;
-  right: -108px;
-  width: 420px;
-  height: 760px;
-  background: var(--flora-trail) center / contain no-repeat;
-  opacity: 0.22;
-  transform: rotate(-3deg);
 }
 
 .page-shell {
@@ -45,34 +15,6 @@ body::after {
 .app-main {
   position: relative;
   overflow: hidden;
-}
-
-.app-main::before,
-.app-main::after {
-  position: absolute;
-  pointer-events: none;
-  content: "";
-  z-index: 0;
-}
-
-.app-main::before {
-  top: 28%;
-  right: -184px;
-  width: 620px;
-  height: 620px;
-  background: var(--flora-corner) center / contain no-repeat;
-  opacity: 0.18;
-  transform: rotate(-16deg);
-}
-
-.app-main::after {
-  left: -154px;
-  bottom: -76px;
-  width: 420px;
-  height: 760px;
-  background: var(--flora-trail) center / contain no-repeat;
-  opacity: 0.11;
-  transform: rotate(10deg) scaleX(-1);
 }
 
 .scene-girl {
@@ -93,27 +35,6 @@ body::after {
 }
 
 @media (max-width: 860px) {
-  body::before {
-    right: -284px;
-    bottom: -220px;
-    opacity: 0.2;
-  }
-
-  body::after {
-    right: -230px;
-    opacity: 0.13;
-  }
-
-  .app-main::before {
-    top: 44%;
-    right: -322px;
-    opacity: 0.1;
-  }
-
-  .app-main::after {
-    display: none;
-  }
-
   .scene-girl {
     inset: 0;
     width: 100%;

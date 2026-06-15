@@ -18,11 +18,7 @@
   align-content: start;
   justify-items: center;
   gap: 22px;
-  border: 1px solid rgb(255 255 255 / 72%);
-  border-radius: 999px;
-  background: rgb(255 255 251 / 78%);
-  padding: 14px 10px;
-  box-shadow: var(--shadow-soft);
+  padding: 14px 0;
 }
 
 .brand-mark {
@@ -179,7 +175,6 @@
 
   .side-rail {
     position: static;
-    border-radius: 18px;
     padding: 8px;
   }
 
