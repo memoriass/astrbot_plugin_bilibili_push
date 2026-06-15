@@ -1,10 +1,11 @@
 import {
   emptyState,
-  escapeAttribute,
   escapeHtml,
+  formatTargetId,
   formatTime,
 } from "./utils.js";
 import { renderAccountManager } from "./accounts.js";
+import { pendingCandidateText, pendingSummary, pendingTitle } from "./pending_text.js";
 import { renderSubscriptionCards } from "./subscriptions.js";
 
 export function renderMetrics(container, diagnostics) {
@@ -14,7 +15,7 @@ export function renderMetrics(container, diagnostics) {
     ["动态", diagnostics.dynamic_subscriptions || 0],
     ["直播", diagnostics.live_subscriptions || 0],
     ["账号", `${diagnostics.valid_accounts || 0}/${diagnostics.accounts || 0}`],
-    ["Pending", diagnostics.pending_tasks || 0],
+    ["待处理", diagnostics.pending_tasks || 0],
   ];
   container.innerHTML = items
     .map(([label, value]) => `
@@ -63,12 +64,12 @@ export function renderAccounts(panel, accounts, actions, editor, deleteConfirm) 
 
 export function renderPending(panel, tasks, actions) {
   if (!tasks.length) {
-    panel.innerHTML = emptyState("暂无 pending 任务");
+    panel.innerHTML = emptyState("暂无待处理事项");
     return;
   }
   panel.innerHTML = `
     <div class="pending-actions">
-      <button class="danger-button" id="clearPendingButton" type="button">清空 Pending</button>
+      <button class="danger-button" id="clearPendingButton" type="button">清空待处理</button>
     </div>
     <div class="cards">${tasks.map(pendingCard).join("")}</div>
   `;
@@ -90,12 +91,16 @@ export function renderEmptyError(metrics) {
 }
 
 function pendingCard(task) {
+  const origin = formatTargetId(task.origin) || "未知来源";
   return `
     <article class="pending-card">
-      <div><h2>${escapeHtml(task.task_id)}</h2><p>${escapeHtml(task.kind || task.workflow || "-")}</p></div>
+      <div>
+        <h2>${escapeHtml(pendingTitle(task))}</h2>
+        <p>${escapeHtml(pendingSummary(task))}</p>
+      </div>
       <dl>
-        <div><dt>来源</dt><dd class="mono">${escapeHtml(task.origin || "-")}</dd></div>
-        <div><dt>候选</dt><dd>${escapeHtml(task.candidate_count || 0)}</dd></div>
+        <div><dt>来源</dt><dd>${escapeHtml(origin)}</dd></div>
+        <div><dt>候选</dt><dd>${escapeHtml(pendingCandidateText(task))}</dd></div>
         <div><dt>过期</dt><dd>${escapeHtml(formatTime(task.expires_at))}</dd></div>
       </dl>
     </article>

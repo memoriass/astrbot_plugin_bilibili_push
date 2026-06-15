@@ -300,12 +300,12 @@ async function deleteAccount(dataset) {
 }
 
 async function clearPending() {
-  if (!window.confirm("清空所有 pending 任务？")) {
+  if (!window.confirm("清空所有待处理事项？")) {
     return;
   }
   try {
     const result = await api.clearPending();
-    showToast(`已清空 ${result.cleared || 0} 个任务`);
+    showToast(`已清空 ${result.cleared || 0} 个待处理事项`);
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));

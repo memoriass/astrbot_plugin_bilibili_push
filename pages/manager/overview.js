@@ -3,8 +3,10 @@ import {
   emptyState,
   escapeAttribute,
   escapeHtml,
+  formatTargetId,
   formatTime,
 } from "./utils.js";
+import { pendingTitle } from "./pending_text.js";
 
 const ALL_TARGETS = "__all__";
 
@@ -52,7 +54,7 @@ function workbenchSummary(diagnostics, issues) {
         <p>
           已启用 ${escapeHtml(enabled)}/${escapeHtml(total)} 个订阅，
           覆盖 ${escapeHtml(diagnostics.targets || 0)} 个会话，
-          当前 pending ${escapeHtml(diagnostics.pending_tasks || 0)} 个。
+          当前有 ${escapeHtml(diagnostics.pending_tasks || 0)} 个待处理事项。
         </p>
       </div>
       <div class="workbench-facts">
@@ -111,9 +113,9 @@ function buildIssues(subscriptions, accounts, pendingTasks) {
   const issues = [];
   if (pendingTasks.length) {
     issues.push({
-      title: "Pending 任务",
+      title: "待处理事项",
       count: pendingTasks.length,
-      detail: pendingTasks.slice(0, 2).map((task) => `${task.workflow || task.kind || task.task_id} · ${formatTime(task.expires_at)}`),
+      detail: pendingTasks.slice(0, 2).map((task) => `${pendingTitle(task)} · ${formatTime(task.expires_at)}`),
       tab: "pending",
     });
   }
@@ -162,40 +164,11 @@ function buildLiveTargetOptions(subscriptions) {
     if (!sub.enabled || sub.sub_type !== "live" || !sub.target_id) {
       continue;
     }
-    targets.set(sub.target_id, formatTargetLabel(sub.target_id));
+    targets.set(sub.target_id, formatTargetId(sub.target_id));
   }
   return Array.from(targets, ([value, label]) => ({ value, label })).sort((a, b) =>
     a.label.localeCompare(b.label, "zh-CN"),
   );
-}
-
-function formatTargetLabel(targetId) {
-  const [platform, kind, id] = String(targetId).split(":");
-  if (!id) {
-    return compactTargetId(targetId);
-  }
-  const channel = channelName(platform);
-  const targetKind = kind === "GroupMessage" ? "群" : kind === "FriendMessage" ? "私聊" : "会话";
-  return `${channel}${targetKind} ${id}`;
-}
-
-function channelName(platform = "") {
-  const key = platform.toLowerCase();
-  if (key.includes("cqhttp") || key === "aiohttp" || key === "qq") {
-    return "QQ";
-  }
-  if (key.includes("telegram") || key === "tg") {
-    return "TG";
-  }
-  if (key.includes("wechat") || key.includes("wx")) {
-    return "WX";
-  }
-  return platform.toUpperCase() || "群";
-}
-
-function compactTargetId(targetId) {
-  const value = String(targetId || "");
-  return value.length > 24 ? `${value.slice(0, 12)}...${value.slice(-8)}` : value;
 }
 
 function ratioText(value, total) {

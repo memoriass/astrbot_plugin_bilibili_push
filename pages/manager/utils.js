@@ -44,6 +44,16 @@ export function formatBytes(value) {
   return `${size} B`;
 }
 
+export function formatTargetId(targetId) {
+  const [platform, kind, id] = String(targetId || "").split(":");
+  if (!id) {
+    return compactTargetId(targetId);
+  }
+  const channel = channelName(platform);
+  const targetKind = kind === "GroupMessage" ? "群" : kind === "FriendMessage" ? "私聊" : "会话";
+  return `${channel}${targetKind} ${id}`;
+}
+
 export function emptyState(text) {
   return `<div class="empty">${escapeHtml(text)}</div>`;
 }
@@ -83,4 +93,23 @@ export function bindDataset(root, selector, handler) {
   root.querySelectorAll(selector).forEach((button) => {
     button.addEventListener("click", () => handler(button.dataset));
   });
+}
+
+function channelName(platform = "") {
+  const key = platform.toLowerCase();
+  if (key.includes("cqhttp") || key === "aiohttp" || key === "qq") {
+    return "QQ";
+  }
+  if (key.includes("telegram") || key === "tg") {
+    return "TG";
+  }
+  if (key.includes("wechat") || key.includes("wx")) {
+    return "WX";
+  }
+  return platform.toUpperCase() || "群";
+}
+
+function compactTargetId(targetId) {
+  const value = String(targetId || "");
+  return value.length > 24 ? `${value.slice(0, 12)}...${value.slice(-8)}` : value;
 }
