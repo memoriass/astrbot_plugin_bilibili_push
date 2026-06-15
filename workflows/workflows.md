@@ -45,8 +45,9 @@
 
 ## 聊天卡片
 
-- `search_up` 和模糊 `add_subscription`: 使用 `sub_list.html.jinja` 展示候选 UP。
+- `search_up` 和模糊 `add_subscription`: 使用 `workflow_candidates.html.jinja` 展示候选 UP 和回复方式。
 - `list_subscriptions`: 使用 `sub_list.html.jinja` 展示当前会话订阅。
 - `account_status`: 使用 `sub_list.html.jinja` 展示账号池状态。
-- `add_subscription`、`remove_subscription` 和确认 pending: 使用 `sub_add.html.jinja` 展示订阅变更。
+- 确认 pending: 使用 `workflow_confirm.html.jinja` 展示最终确认和取消方式。
+- `add_subscription` 和 `remove_subscription` 成功后: 使用 `sub_add.html.jinja` 展示订阅变更。
 - `check_status` 仍保持纯文本，避免诊断信息被卡片截断。

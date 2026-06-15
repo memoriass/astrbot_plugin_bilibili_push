@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from ..database.db_manager import Subscription
-from .cards import candidate_list_card, subscription_change_card
+from .cards import (
+    candidate_list_card,
+    subscription_change_card,
+    subscription_confirm_card,
+)
 from .formatting import format_candidates
 from .models import WorkflowRequest
 from .pending import store_pending_task
@@ -47,7 +51,12 @@ async def run_add_subscription(plugin, event, request: WorkflowRequest) -> str:
     )
     return WorkflowResult(
         text=text,
-        cards=[candidate_list_card(candidates, f"请选择要订阅的 UP: {keyword}")],
+        cards=[candidate_list_card(
+            candidates,
+            f"请选择要订阅的 UP: {keyword}",
+            task_id,
+            "选择候选后还需要再次确认，确认前不会写入订阅。",
+        )],
     )
 
 
@@ -123,12 +132,12 @@ async def build_confirm_task(plugin, event, request: WorkflowRequest, candidate:
     )
     return WorkflowResult(
         text=text,
-        cards=[subscription_change_card(
+        cards=[subscription_confirm_card(
             username=str(candidate.get("username") or ""),
             face=str(candidate.get("face") or ""),
             uid=str(candidate.get("uid") or ""),
             sub_type=sub_type,
-            action="PENDING",
+            task_id=task_id,
         )],
     )
 

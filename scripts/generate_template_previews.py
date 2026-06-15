@@ -268,6 +268,17 @@ def build_preview_jobs(rng: random.Random, bili_items: list[dict]):
             "has_dynamic": False,
         },
     ]
+    workflow_candidates = [
+        {
+            "uid": sub["uid"],
+            "username": sub["username"],
+            "face": sub["face"],
+            "has_dynamic": True,
+            "has_live": True,
+            "is_live": False,
+        }
+        for sub in subs
+    ]
 
     return [
         {
@@ -335,6 +346,36 @@ def build_preview_jobs(rng: random.Random, bili_items: list[dict]):
             "data": {"page_title": "登录账号状态", "subs": login_accounts},
             "viewport": {"width": 1000, "height": 620},
             "selector": ".card-board",
+        },
+        {
+            "name": "workflow_candidates",
+            "template": "workflow_candidates.html.jinja",
+            "data": {
+                "page_title": "请选择要订阅的 UP: Bilibili",
+                "task_ref": "bili9a8f",
+                "note": "选择候选后还需要再次确认，确认前不会写入订阅。",
+                "candidates": workflow_candidates,
+            },
+            "viewport": {"width": 1000, "height": 860},
+            "selector": ".workflow-board",
+        },
+        {
+            "name": "workflow_confirm",
+            "template": "workflow_confirm.html.jinja",
+            "data": {
+                "face": avatar_a,
+                "username": (item_a or {}).get("owner", {}).get("name")
+                or "哔哩哔哩样例UP",
+                "uid": str((item_a or {}).get("owner", {}).get("mid") or "946974"),
+                "sub_type": "dynamic",
+                "action_label": "待确认",
+                "title": "确认订阅动态吗？",
+                "summary": "确认后会写入当前会话；取消则不会改动订阅。",
+                "confirm_text": "bili9a8f 确认",
+                "cancel_text": "bili9a8f 取消",
+            },
+            "viewport": {"width": 540, "height": 620},
+            "selector": ".workflow-confirm",
         },
         {
             "name": "movie_card_live",

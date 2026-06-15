@@ -75,5 +75,10 @@ async def run_search_up(plugin, event, request: WorkflowRequest) -> str:
     )
     return WorkflowResult(
         text=text,
-        cards=[candidate_list_card(candidates, f"搜索结果: {keyword}")],
+        cards=[candidate_list_card(
+            candidates,
+            f"搜索结果: {keyword}",
+            task_id,
+            "选择候选只会返回 UID，不会写入订阅。",
+        )],
     )
