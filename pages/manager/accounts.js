@@ -4,7 +4,6 @@ import {
   escapeAttribute,
   escapeHtml,
   icon,
-  statusPill,
 } from "./utils.js";
 
 const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
@@ -28,7 +27,6 @@ export function renderAccountManager(panel, accounts, actions, editor, deleteCon
   bindDataset(panel, "[data-delete-account]", actions.onDelete);
   bindDataset(panel, "[data-confirm-delete-account]", actions.onConfirmDelete);
   bindDataset(panel, "[data-cancel-delete-account]", actions.onCancelDelete);
-  bindDataset(panel, "[data-valid-account]", actions.onToggleValid);
   const form = panel.querySelector("#accountEditorForm");
   if (form) {
     form.addEventListener("submit", (event) => {
@@ -54,16 +52,6 @@ function accountCard(account) {
           <h2>${escapeHtml(account.name || "Bilibili 账号")}</h2>
           <p>UID: ${escapeHtml(account.uid || "-")}</p>
         </div>
-      </div>
-      <div class="account-detail-row">
-        ${statusPill(account.valid ? "有效" : "失效", account.valid)}
-        ${account.status_code ? `<span>状态码 ${escapeHtml(account.status_code)}</span>` : `<span>Cookie ${account.valid ? "可用" : "需检查"}</span>`}
-      </div>
-      <div class="account-actions">
-        <button class="ghost-button" type="button" data-valid-account="1"
-          data-uid="${escapeAttribute(account.uid)}" data-valid="${escapeAttribute(String(!account.valid))}">
-          ${account.valid ? "标记失效" : "标记有效"}
-        </button>
       </div>
     </article>
   `;

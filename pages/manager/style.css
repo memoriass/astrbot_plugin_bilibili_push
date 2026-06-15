@@ -339,7 +339,6 @@ select {
   gap: 12px;
 }
 
-.account-card,
 .pending-card {
   display: flex;
   align-items: center;
@@ -352,22 +351,11 @@ select {
   box-shadow: var(--shadow);
 }
 
-.account-card img {
-  width: 46px;
-  height: 46px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--surface-muted);
-  object-fit: cover;
-}
-
-.account-card > div,
 .pending-card > div {
   min-width: 0;
   flex: 1;
 }
 
-.account-card p,
 .pending-card p {
   margin-top: 4px;
   color: var(--muted);

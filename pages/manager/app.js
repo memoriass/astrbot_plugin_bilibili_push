@@ -101,7 +101,6 @@ function render() {
       onEdit: startEditAccount,
       onSubmit: submitAccount,
       onCancel: cancelAccountEdit,
-      onToggleValid: toggleAccountValid,
       onDelete: startDeleteAccount,
       onConfirmDelete: deleteAccount,
       onCancelDelete: cancelAccountDelete,
@@ -283,17 +282,6 @@ async function deleteSubscription(dataset) {
     await api.deleteSubscription(subscriptionPayload(dataset));
     showToast("订阅已删除");
     state.subscriptionDelete = null;
-    await refreshAll();
-  } catch (error) {
-    showToast(error.message || String(error));
-  }
-}
-
-async function toggleAccountValid(dataset) {
-  const valid = dataset.valid === "true";
-  try {
-    await api.setAccountValid({ uid: dataset.uid, valid });
-    showToast(valid ? "账号已标记有效" : "账号已标记失效");
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));
