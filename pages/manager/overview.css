@@ -37,7 +37,7 @@
   bottom: -92px;
   width: 360px;
   height: 460px;
-  background: var(--flora-vine-soft) center / contain no-repeat;
+  background: var(--flora-trail) center / contain no-repeat;
   content: "";
   opacity: 0.18;
   pointer-events: none;

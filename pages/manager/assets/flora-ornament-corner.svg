@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 620">
+  <defs>
+    <linearGradient id="leaf" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#dff5ae"/>
+      <stop offset=".58" stop-color="#93be61"/>
+      <stop offset="1" stop-color="#507c3e"/>
+    </linearGradient>
+    <linearGradient id="stem" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#8daf62"/>
+      <stop offset="1" stop-color="#496f36"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#stem)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M594 54C486 74 408 130 366 214c-42 86-20 176-84 248-42 48-112 72-214 82" stroke-width="5.5"/>
+    <path d="M556 118c-74 18-102 82-80 128 18 38 68 44 92 14 26-34 6-76-34-74-44 2-82 42-86 104" stroke-width="4"/>
+    <path d="M430 184c-88 10-154 70-146 140 6 48 46 76 86 64 42-12 54-60 26-88-34-34-96-18-132 42" stroke-width="4"/>
+    <path d="M306 346c-72 0-128 42-134 98-4 42 24 72 60 70 38-2 60-36 42-66-20-34-76-36-124 0" stroke-width="3.8"/>
+    <path d="M514 76c20 48 14 90-18 128" stroke-width="3"/>
+    <path d="M388 206c28 40 34 84 12 132" stroke-width="3"/>
+    <path d="M238 404c24 28 28 64 12 108" stroke-width="3"/>
+  </g>
+  <g fill="url(#leaf)" opacity=".72">
+    <path d="M452 106c38-24 86-20 112 12-42 22-82 18-112-12Z"/>
+    <path d="M502 174c44-4 80 20 92 58-46 4-78-18-92-58Z"/>
+    <path d="M370 174c38-30 88-34 122-8-42 30-84 32-122 8Z"/>
+    <path d="M388 266c44 4 76 34 82 74-46-4-74-30-82-74Z"/>
+    <path d="M238 310c36-34 88-44 126-22-38 34-82 42-126 22Z"/>
+    <path d="M260 414c42 10 68 42 68 82-44-10-68-38-68-82Z"/>
+    <path d="M116 470c34-34 84-46 124-28-36 36-78 46-124 28Z"/>
+  </g>
+  <g fill="#f1ffd0" opacity=".8">
+    <circle cx="522" cy="118" r="11"/>
+    <circle cx="542" cy="114" r="8"/>
+    <circle cx="538" cy="134" r="8"/>
+    <circle cx="314" cy="324" r="10"/>
+    <circle cx="330" cy="316" r="7"/>
+    <circle cx="330" cy="334" r="7"/>
+    <circle cx="180" cy="492" r="9"/>
+    <circle cx="196" cy="486" r="6"/>
+    <circle cx="194" cy="502" r="6"/>
+  </g>
+</svg>

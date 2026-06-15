@@ -15,7 +15,7 @@
 - `mock_bridge.js`: 本地直接打开页面时的 fallback 假数据。
 - `style.css`: 主题变量、基础控件、弹窗和通用组件样式。
 - `layout.css`: 页面外壳、左侧导航、顶部栏、指标区和响应式布局样式。
-- `flora.css`: 页面和内容区的低透明度绿色藤萝装饰背景。
+- `flora.css`: 页面和内容区的低透明度欧式绿色藤萝装饰背景，引用 `assets/flora-*.svg`。
 - `overview.css`: 概览工作台和小型订阅卡片样式。
 - `subscriptions.css`: 订阅卡片、编辑器和移动端布局样式。
 - `accounts.css`: 账号卡片、编辑器和移动端布局样式。
