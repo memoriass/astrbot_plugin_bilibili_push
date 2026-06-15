@@ -19,6 +19,7 @@ from .webapi import register_bilibili_web_apis
 from .workflows import (
     BiliPendingShortcutFilter,
     PendingTaskStore,
+    render_workflow_result,
     run_bili_workflow,
     workflow_from_cli,
     workflow_from_pending_shortcut,
@@ -195,7 +196,7 @@ class BilibiliPush(Star):
         actual_args = args if isinstance(args, str) else ""
         request = workflow_from_cli(workflow, actual_args)
         result = await run_bili_workflow(self, event, request)
-        yield event.plain_result(result)
+        yield await render_workflow_result(event, self.renderer, result)
 
     @filter.custom_filter(BiliPendingShortcutFilter)
     async def bilibili_pending_shortcut(self, event: AstrMessageEvent):
@@ -204,7 +205,7 @@ class BilibiliPush(Star):
         if request is None:
             return
         result = await run_bili_workflow(self, event, request)
-        yield event.plain_result(result)
+        yield await render_workflow_result(event, self.renderer, result)
 
     @filter.llm_tool(name="bili_workflow")
     async def bili_workflow_tool(

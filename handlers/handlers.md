@@ -18,5 +18,6 @@
 - Handler 不直接做周期任务；周期行为放 `scheduler/`。
 - Handler 返回 AstrBot 结果，不应直接调用 `context.send_message()`，除非是明确的跨会话推送。
 - 带 AstrBot 装饰器的方法保留在 `main.py`，这里承接实际业务。
-- `ai_handler.py` 应保持入口适配层定位，具体搜索、选择、确认和订阅写入放 `workflows/`。
+- `ai_handler.py` 应保持入口适配层定位，只向 LLM tool 返回文本；具体搜索、选择、确认和订阅写入放 `workflows/`。
+- workflow 聊天卡片由 `workflows/presenter.py` 处理，不放进 AI tool 返回值。
 - Plugin Pages 的 Web API 不放在普通 handler 中，避免聊天入口和 WebUI 管理入口耦合。

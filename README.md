@@ -26,7 +26,7 @@
 | `<wake_prefix> b站登录` | `<wake_prefix> bilibili 登录` | 扫码登录 B站 账号（建议登录以提升稳定性） |
 | `<wake_prefix> b站登录状态` | - | 查看登录账号池状态 |
 | `<wake_prefix> b站助手 <自然语言>` | `<wake_prefix> bili 助手` | 显式触发 Agent 编排（可选入口） |
-| `<wake_prefix> b站工作流 <workflow> [参数]` | `<wake_prefix> biliwf` | 直接执行 Bilibili workflow |
+| `<wake_prefix> b站工作流 <workflow> [参数]` | `<wake_prefix> biliwf` | 直接执行 Bilibili workflow，用户可见结果使用卡片展示 |
 
 ---
 
@@ -44,6 +44,7 @@
 推荐 Agent 优先使用 `bili_workflow`。旧工具保留为兼容入口，会转发到 workflow。
 当只提供 UP 名称或模糊关键词时，workflow 会生成 `bili<任务ID>` pending task；
 用户选择候选并确认后才会写入订阅。
+LLM 工具返回稳定文本；显式 workflow 命令和 pending 续跑会额外渲染 HTML 图片卡片。
 
 可通过 `<wake_prefix> tool ls` 查看当前会话可用工具列表。
 
@@ -53,7 +54,7 @@
 
 - **自动链接解析**：当成员发送 B站 视频或动态链接时，机器人会自动转换成精美详情图。
 - **高性能渲染**：基于 Playwright 的内嵌浏览器渲染，默认输出透明 PNG 卡片。
-- **视觉增强**：订阅列表、搜索结果和登录账号状态使用透明多卡片布局，聊天背景由平台承接。
+- **视觉增强**：订阅列表、搜索结果、登录账号状态和 workflow 候选结果使用透明多卡片布局，聊天背景由平台承接。
 - **WebUI 管理页**：在 AstrBot 插件详情页进入 `manager`，可管理订阅、账号、pending task 和手动直播检查。
 - **智能清理**：自动清理过期的搜索记录与临时图片文件，节省磁盘空间。
 

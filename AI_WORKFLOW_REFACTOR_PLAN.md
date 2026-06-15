@@ -17,10 +17,10 @@
 - WebUI 管理页支持订阅启停，调度器只处理启用订阅。
 - WebUI 管理页支持订阅/账号管理、pending 清理和手动直播检查。
 - `handlers/ai_handler.py` 已退化为 Agent 入口和旧工具适配层。
+- workflow 已接入原 HTML 模板卡片；显式命令和 pending 续跑渲染图片，LLM tool 保持文本返回。
 
 未完成：
 
-- workflow 卡片化展示。
 - WebUI 更完整的诊断日志和批量管理能力。
 
 ## 当前接入测试
@@ -28,7 +28,8 @@
 已完成的本地验证：
 
 - `main.py` AST 检查通过：当前没有 help 命令残留。
-- `main.py` AST 检查通过：当前暴露 5 个 LLM tools：
+- `main.py` AST 检查通过：当前暴露 6 个 LLM tools：
+  - `bili_workflow`
   - `bili_search_up`
   - `bili_add_dynamic_sub`
   - `bili_add_live_sub`
@@ -129,6 +130,9 @@ workflows/
 - `subscription.py`: 添加、预览、确认添加、删除订阅 workflow。
 - `manage.py`: 列表、账号状态、诊断 workflow。
 - `formatting.py`: 文本和卡片字段格式化。
+- `results.py`: workflow 文本结果和可选卡片数据。
+- `cards.py`: workflow 复用原 HTML 模板的数据适配。
+- `presenter.py`: 显式聊天入口的卡片渲染，LLM tool 不使用。
 
 `handlers/ai_handler.py` 改造后只保留：
 

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from ..database.db_manager import Subscription
+from .cards import candidate_list_card, subscription_change_card
 from .formatting import format_candidates
 from .models import WorkflowRequest
 from .pending import store_pending_task
+from .results import WorkflowResult
 from .runtime import event_origin
 from .search import search_up_candidates
 from .utils import first_text, is_uid, normalize_sub_type
@@ -38,25 +40,30 @@ async def run_add_subscription(plugin, event, request: WorkflowRequest) -> str:
             "sub_type": sub_type,
         },
     )
-    return (
+    text = (
         format_candidates(candidates, title=f"请选择要订阅的 UP（{keyword}）")
         + f"\n\n任务ID: {task_id}\n"
         + f"发送 `bili{task_id[-4:]} <序号>` 选择候选；选择后还需要确认才会写入订阅。"
     )
+    return WorkflowResult(
+        text=text,
+        cards=[candidate_list_card(candidates, f"请选择要订阅的 UP: {keyword}")],
+    )
 
 
-async def add_subscription_by_uid(plugin, event, uid: str, sub_type: str) -> str:
+async def add_subscription_by_uid(plugin, event, uid: str, sub_type: str) -> WorkflowResult:
     if sub_type not in {"dynamic", "live", "both"}:
-        return "sub_type 仅支持 dynamic、live 或 both。"
+        return WorkflowResult("sub_type 仅支持 dynamic、live 或 both。")
 
     user_info = await plugin.parser.get_user_info(uid)
     if not user_info:
-        return f"无法获取 UID={uid} 的用户信息。"
+        return WorkflowResult(f"无法获取 UID={uid} 的用户信息。")
 
     types = ["dynamic", "live"] if sub_type == "both" else [sub_type]
     target_id = event_origin(event)
     existing = plugin.db.get_subscriptions(target_id)
     messages = []
+    cards = []
     for one_type in types:
         if any(sub.uid == str(uid) and sub.sub_type == one_type for sub in existing):
             messages.append(f"订阅已存在：{user_info['username']} ({uid}) [{one_type}]")
@@ -72,24 +79,32 @@ async def add_subscription_by_uid(plugin, event, uid: str, sub_type: str) -> str
         )
         if plugin.db.add_subscription(sub):
             messages.append(f"已添加订阅：{user_info['username']} ({uid}) [{one_type}]")
+            cards.append(subscription_change_card(
+                username=user_info["username"],
+                face=user_info.get("face") or "",
+                uid=uid,
+                sub_type=one_type,
+                action="ADDED",
+            ))
         else:
             messages.append(f"写入订阅失败或已存在：{user_info['username']} ({uid}) [{one_type}]")
-    return "\n".join(messages)
+    return WorkflowResult("\n".join(messages), cards=cards)
 
 
-def run_remove_subscription(plugin, event, request: WorkflowRequest) -> str:
+async def run_remove_subscription(plugin, event, request: WorkflowRequest) -> WorkflowResult:
     payload = {"target": request.target, **request.params}
     uid = first_text(payload, "uid", "target", "mid")
     sub_type = normalize_sub_type(first_text(payload, "sub_type", "type") or "dynamic")
     if not is_uid(uid):
-        return "删除订阅需要明确 UID。"
+        return WorkflowResult("删除订阅需要明确 UID。")
     if sub_type == "both":
         results = [
-            _remove_one(plugin, event, uid, "dynamic"),
-            _remove_one(plugin, event, uid, "live"),
+            await _remove_one(plugin, event, uid, "dynamic"),
+            await _remove_one(plugin, event, uid, "live"),
         ]
-        return "\n".join(results)
-    return _remove_one(plugin, event, uid, sub_type)
+        cards = [card for result in results for card in result.cards]
+        return WorkflowResult("\n".join(result.text for result in results), cards)
+    return await _remove_one(plugin, event, uid, sub_type)
 
 
 async def build_confirm_task(plugin, event, request: WorkflowRequest, candidate: dict) -> str:
@@ -101,18 +116,48 @@ async def build_confirm_task(plugin, event, request: WorkflowRequest, candidate:
         kind="confirm_add_subscription",
         payload={"candidate": candidate, "sub_type": sub_type},
     )
-    return (
+    text = (
         f"已选择：{candidate.get('username')} | UID={candidate.get('uid')} | type={sub_type}\n"
         f"任务ID: {task_id}\n"
         f"发送 `bili{task_id[-4:]} 确认` 写入订阅，或发送 `bili{task_id[-4:]} 取消` 放弃。"
     )
+    return WorkflowResult(
+        text=text,
+        cards=[subscription_change_card(
+            username=str(candidate.get("username") or ""),
+            face=str(candidate.get("face") or ""),
+            uid=str(candidate.get("uid") or ""),
+            sub_type=sub_type,
+            action="PENDING",
+        )],
+    )
 
 
-def _remove_one(plugin, event, uid: str, sub_type: str) -> str:
-    ok = plugin.db.remove_subscription(uid, sub_type, event_origin(event))
+async def _remove_one(plugin, event, uid: str, sub_type: str) -> WorkflowResult:
+    target_id = event_origin(event)
+    existing = plugin.db.get_subscriptions(target_id)
+    current = next(
+        (sub for sub in existing if sub.uid == str(uid) and sub.sub_type == sub_type),
+        None,
+    )
+    ok = plugin.db.remove_subscription(uid, sub_type, target_id)
     if not ok:
-        return f"未找到订阅：UID={uid}, type={sub_type}"
-    return f"已删除订阅：UID={uid}, type={sub_type}"
+        return WorkflowResult(f"未找到订阅：UID={uid}, type={sub_type}")
+
+    user_info = await plugin.parser.get_user_info(uid) or {}
+    username = (
+        getattr(current, "username", "")
+        or user_info.get("username")
+        or uid
+    )
+    card = subscription_change_card(
+        username=username,
+        face=user_info.get("face") or "",
+        uid=uid,
+        sub_type=sub_type,
+        action="REMOVED",
+    )
+    return WorkflowResult(f"已删除订阅：{username} ({uid}) [{sub_type}]", [card])
 
 
 def _default_categories(sub_type: str) -> list[int]:

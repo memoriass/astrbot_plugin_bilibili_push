@@ -61,6 +61,7 @@ flowchart LR
 - 账号风控切换只轮换一次，避免跳过可用账号。
 - 对外公共类名尽量保持稳定，例如 `BilibiliDynamic`、`BilibiliScheduler`。
 - AI 工具写订阅前必须有明确 UID；搜索候选多于 1 个时应走 pending 确认。
+- AI workflow 的 LLM tool 返回文本；显式聊天入口可把同一结果渲染为 HTML 图片卡片。
 - Plugin Pages 写操作应复用 workflow 或 service 层，不直接操作 SQLite。
 
 ## 常见改动入口

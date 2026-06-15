@@ -74,7 +74,8 @@ class AiToolHandler:
             return "AI 工具已关闭。"
         actual_event = message_event_from_tool_arg(event)
         request = workflow_from_tool(workflow, target, params)
-        return await run_bili_workflow(self.star, actual_event, request)
+        result = await run_bili_workflow(self.star, actual_event, request)
+        return result.text
 
     async def search_up(self, event, keyword: str) -> str:
         return await self.run_workflow(event, "search_up", keyword, {"keyword": keyword})

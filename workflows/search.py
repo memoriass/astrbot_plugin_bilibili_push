@@ -3,9 +3,11 @@ from __future__ import annotations
 from astrbot.api import logger
 
 from ..core.http import HttpClient
+from .cards import candidate_list_card
 from .formatting import format_candidates
 from .models import WorkflowRequest
 from .pending import store_pending_task
+from .results import WorkflowResult
 from .utils import clean_html_text, first_text
 
 
@@ -66,8 +68,12 @@ async def run_search_up(plugin, event, request: WorkflowRequest) -> str:
             "mode": "search_only",
         },
     )
-    return (
+    text = (
         format_candidates(candidates, title=f"搜索结果（{keyword}）")
         + f"\n\n任务ID: {task_id}\n"
         + f"如需选择候选，请发送 `bili{task_id[-4:]} <序号>`。"
+    )
+    return WorkflowResult(
+        text=text,
+        cards=[candidate_list_card(candidates, f"搜索结果: {keyword}")],
     )
