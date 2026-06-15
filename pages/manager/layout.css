@@ -1,16 +1,10 @@
 .page-shell {
   display: grid;
   width: min(1280px, calc(100% - 28px));
-  min-height: calc(100vh - 32px);
+  min-height: calc(100vh - 28px);
   grid-template-columns: 92px minmax(0, 1fr);
   gap: 18px;
-  margin: 16px auto;
-  border: 1px solid rgb(255 255 255 / 72%);
-  border-radius: 26px;
-  background: rgb(255 253 244 / 56%);
-  padding: 18px;
-  box-shadow: 0 28px 90px rgb(43 50 31 / 18%);
-  backdrop-filter: blur(18px);
+  margin: 14px auto;
 }
 
 .side-rail {
@@ -18,7 +12,12 @@
   align-content: start;
   justify-items: center;
   gap: 22px;
-  padding: 14px 0;
+  border: 1px solid rgb(255 255 255 / 72%);
+  border-radius: 999px;
+  background: rgb(255 255 251 / 78%);
+  padding: 14px 10px;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
 }
 
 .brand-mark {
@@ -42,6 +41,8 @@
 
 .app-main {
   min-width: 0;
+  min-height: calc(100vh - 28px);
+  margin-top: 8px;
   border: 1px solid rgb(255 255 255 / 72%);
   border-radius: 24px;
   background: rgb(255 255 250 / 70%);
@@ -169,12 +170,11 @@
     min-height: auto;
     grid-template-columns: 1fr;
     margin: 10px auto;
-    padding: 12px;
-    border-radius: 20px;
   }
 
   .side-rail {
     position: static;
+    border-radius: 18px;
     padding: 8px;
   }
 
@@ -189,6 +189,8 @@
   }
 
   .app-main {
+    min-height: auto;
+    margin-top: 0;
     border-radius: 18px;
     padding: 14px;
   }
