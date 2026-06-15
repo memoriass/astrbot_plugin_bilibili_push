@@ -1,7 +1,7 @@
 :root {
   --flora-corner: url("./assets/flora-ornament-corner.svg");
   --flora-trail: url("./assets/flora-ornament-trail.svg");
-  --forest-girl-scene: url("./assets/forest-girl-scene.svg");
+  --sunlit-grove-scene: url("./assets/sunlit-grove-green-girl.jpg");
 }
 
 body {
@@ -77,13 +77,12 @@ body::after {
 
 .scene-girl {
   position: absolute;
-  top: 116px;
-  right: 8px;
-  width: min(32vw, 340px);
-  min-width: 260px;
-  aspect-ratio: 420 / 760;
-  background: var(--forest-girl-scene) center top / contain no-repeat;
-  opacity: 0.32;
+  inset: 0;
+  width: 100%;
+  background:
+    linear-gradient(to right, rgb(255 255 250 / 94%), rgb(255 255 250 / 36%) 36%, transparent 72%),
+    var(--sunlit-grove-scene) 58% center / cover no-repeat;
+  opacity: 0.24;
   pointer-events: none;
   z-index: 0;
 }
@@ -116,9 +115,11 @@ body::after {
   }
 
   .scene-girl {
-    top: 28%;
-    right: -120px;
-    min-width: 220px;
-    opacity: 0.08;
+    inset: 0;
+    width: 100%;
+    background:
+      linear-gradient(to bottom, rgb(255 255 250 / 96%), rgb(255 255 250 / 36%) 46%, rgb(255 255 250 / 82%)),
+      var(--sunlit-grove-scene) 58% center / cover no-repeat;
+    opacity: 0.1;
   }
 }
