@@ -77,8 +77,11 @@
   margin-bottom: 18px;
 }
 
+.metrics[hidden] {
+  display: none;
+}
+
 .metric {
-  position: relative;
   min-height: 96px;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -86,31 +89,6 @@
   padding: 16px;
   box-shadow: var(--shadow-soft);
   overflow: hidden;
-}
-
-.metric::after {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #dfff9f, #a5db82);
-  content: "";
-  opacity: 0.88;
-}
-
-.metric:nth-child(3)::after,
-.metric:nth-child(4)::after {
-  background: linear-gradient(135deg, #d8f2ff, #83c7df);
-}
-
-.metric:nth-child(5)::after {
-  background: linear-gradient(135deg, #ffe2ed, #fb8cac);
-}
-
-.metric:nth-child(6)::after {
-  background: linear-gradient(135deg, #f0e2ff, #bda3ef);
 }
 
 .metric span {

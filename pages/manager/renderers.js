@@ -33,6 +33,7 @@ export function renderTabs(activeTab) {
   document.querySelectorAll(".panel").forEach((panel) => {
     panel.classList.toggle("active", panel.id === `${activeTab}Panel`);
   });
+  document.getElementById("metrics").hidden = activeTab !== "overview";
   document.getElementById("subscriptionToolbar").hidden = activeTab !== "subscriptions";
 }
 
