@@ -13,15 +13,12 @@ NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg"
 def candidate_list_card(
     candidates: list[dict],
     title: str,
-    task_id: str,
     note: str,
 ) -> WorkflowCard:
-    task_ref = _task_ref(task_id)
     return WorkflowCard(
         template_name="workflow_candidates.html.jinja",
         templates={
             "page_title": title,
-            "task_ref": task_ref,
             "note": note,
             "candidates": [
                 {
@@ -125,9 +122,7 @@ def subscription_confirm_card(
     face: str,
     uid: str,
     sub_type: str,
-    task_id: str,
 ) -> WorkflowCard:
-    task_ref = _task_ref(task_id)
     label = "直播" if sub_type == "live" else "动态"
     return WorkflowCard(
         template_name="workflow_confirm.html.jinja",
@@ -139,10 +134,10 @@ def subscription_confirm_card(
             "action_label": "待确认",
             "title": f"确认订阅{label}吗？",
             "summary": "确认后会写入当前会话；取消则不会改动订阅。",
-            "confirm_text": f"{task_ref} 确认",
-            "cancel_text": f"{task_ref} 取消",
+            "confirm_text": "引用回复 确认",
+            "cancel_text": "引用回复 取消",
         },
-        viewport={"width": 540, "height": 620},
+        viewport={"width": 560, "height": 620},
         selector=".workflow-confirm",
     )
 
@@ -151,11 +146,6 @@ def _account_status_label(active: bool, valid: bool) -> str:
     if active:
         return "当前有效" if valid else "当前失效"
     return "备用有效" if valid else "备用失效"
-
-
-def _task_ref(task_id: str) -> str:
-    value = str(task_id or "")
-    return f"bili{value[-4:]}" if len(value) > 4 else value
 
 
 async def _fetch_face_map(uids) -> dict[str, str]:

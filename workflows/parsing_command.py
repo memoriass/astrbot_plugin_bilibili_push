@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 
 from .models import WorkflowRequest
+from .markers import decode_task_marker
 from .pending import extract_task_ref
+from .runtime import event_message_text, event_reply_texts
 from .utils import normalize_workflow, normalize_sub_type
 
 
@@ -30,6 +32,24 @@ def workflow_from_pending_shortcut(text: str) -> WorkflowRequest | None:
         params={"task_id": task_ref, "action": action},
         source="pending",
     )
+
+
+def workflow_from_pending_event(event) -> WorkflowRequest | None:
+    text = event_message_text(event)
+    explicit = workflow_from_pending_shortcut(text)
+    if explicit:
+        return explicit
+
+    for quoted_text in event_reply_texts(event):
+        task_ref = decode_task_marker(quoted_text)
+        if task_ref:
+            return WorkflowRequest(
+                workflow="continue_pending",
+                target=task_ref,
+                params={"task_id": task_ref, "action": text.strip()},
+                source="pending",
+            )
+    return None
 
 
 def _parse_cli_params(text: str) -> dict:

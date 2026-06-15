@@ -18,8 +18,8 @@
         }
 
         .workflow-confirm {
-            width: 520px;
-            padding: 10px;
+            width: 548px;
+            padding: 24px 24px 10px;
             background: transparent;
         }
 
@@ -27,11 +27,7 @@
             width: 500px;
             min-height: 560px;
             position: relative;
-            overflow: hidden;
-            border-radius: 30px;
-            background: #ffffff;
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+            background: transparent;
         }
 
         .cover {
@@ -39,6 +35,9 @@
             height: 340px;
             overflow: hidden;
             background: #f1f5f9;
+            border-radius: 30px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 16px 38px rgba(15, 23, 42, 0.2);
         }
 
         .cover img {
@@ -122,21 +121,27 @@
         }
 
         .content {
-            padding: 22px 26px 26px;
+            padding: 20px 26px 6px;
         }
 
         .title {
-            color: #111827;
+            color: #ffffff;
             font-size: 24px;
             line-height: 1.25;
             font-weight: 900;
+            text-shadow:
+                0 3px 12px rgba(0, 0, 0, 0.86),
+                0 0 2px rgba(0, 0, 0, 0.76);
         }
 
         .summary {
             margin-top: 9px;
-            color: #475569;
+            color: rgba(255, 255, 255, 0.9);
             font-size: 15px;
             line-height: 1.55;
+            text-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.82),
+                0 0 2px rgba(0, 0, 0, 0.75);
         }
 
         .actions {
@@ -150,30 +155,30 @@
             min-height: 72px;
             padding: 12px;
             border-radius: 16px;
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            background: #f8fafc;
+            border: 1px solid rgba(255, 255, 255, 0.32);
         }
 
         .action-box strong {
             display: block;
-            color: #0f172a;
+            color: #ffffff;
             font-size: 13px;
             line-height: 1.2;
             font-weight: 900;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.42);
         }
 
         .action-box span {
             display: block;
             margin-top: 7px;
-            color: #111827;
-            font-family: Consolas, monospace;
+            color: rgba(255, 255, 255, 0.96);
             font-size: 14px;
             line-height: 1.2;
             overflow-wrap: anywhere;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.42);
         }
 
-        .confirm { background: #ecfdf5; }
-        .cancel { background: #fff1f2; }
+        .confirm { background: rgba(16, 185, 129, 0.52); }
+        .cancel { background: rgba(244, 63, 94, 0.48); }
     </style>
 </head>
 <body>

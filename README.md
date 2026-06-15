@@ -42,9 +42,9 @@
 - `bili_remove_sub`
 
 推荐 Agent 优先使用 `bili_workflow`。旧工具保留为兼容入口，会转发到 workflow。
-当只提供 UP 名称或模糊关键词时，workflow 会生成 `bili<任务ID>` pending task；
-用户选择候选并确认后才会写入订阅。
-LLM 工具返回稳定文本；显式 workflow 命令和 pending 续跑会额外渲染 HTML 图片卡片。
+当只提供 UP 名称或模糊关键词时，workflow 会生成后端 pending task；
+聊天侧不展示任务 ID，用户引用候选/确认消息回复序号、确认或取消后才会写入订阅。
+LLM 工具返回稳定文本；显式 workflow 命令和 pending 续跑会额外渲染 HTML 图片卡片，短 ID 输入仅作为兼容入口保留。
 
 可通过 `<wake_prefix> tool ls` 查看当前会话可用工具列表。
 

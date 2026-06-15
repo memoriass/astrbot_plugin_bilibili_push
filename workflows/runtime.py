@@ -20,6 +20,18 @@ def event_message_text(event: AstrMessageEvent) -> str:
     return str(getattr(event, "message_str", "") or "")
 
 
+def event_reply_texts(event: AstrMessageEvent) -> list[str]:
+    messages = getattr(getattr(event, "message_obj", None), "message", None) or []
+    texts = []
+    for component in messages:
+        if component.__class__.__name__ != "Reply":
+            continue
+        message = getattr(component, "message_str", "") or ""
+        if message:
+            texts.append(str(message))
+    return texts
+
+
 def message_event_from_tool_arg(event: Any) -> AstrMessageEvent:
     context = getattr(event, "context", None)
     actual_event = getattr(context, "event", None)

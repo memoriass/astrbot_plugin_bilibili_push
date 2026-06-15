@@ -22,7 +22,7 @@ from .workflows import (
     render_workflow_result,
     run_bili_workflow,
     workflow_from_cli,
-    workflow_from_pending_shortcut,
+    workflow_from_pending_event,
 )
 
 
@@ -201,7 +201,7 @@ class BilibiliPush(Star):
     @filter.custom_filter(BiliPendingShortcutFilter)
     async def bilibili_pending_shortcut(self, event: AstrMessageEvent):
         """继续 Bilibili workflow pending task。"""
-        request = workflow_from_pending_shortcut(event.get_message_str())
+        request = workflow_from_pending_event(event)
         if request is None:
             return
         result = await run_bili_workflow(self, event, request)

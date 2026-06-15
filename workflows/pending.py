@@ -41,20 +41,20 @@ async def store_pending_task(
 async def run_continue_pending(plugin, event, request: WorkflowRequest) -> str:
     task_ref = _task_ref_from_request_or_text(request, event_message_text(event))
     if not task_ref:
-        return "继续任务需要 task_id，例如 `bili1a2b 1`。"
+        return "请引用待处理消息回复序号、确认或取消。"
 
     task_id, matches = await plugin.pending_store.resolve(
         task_ref,
         origin=event_origin(event),
     )
     if matches:
-        return f"任务ID片段 `{task_ref}` 匹配多个任务：{', '.join(matches[:5])}。请多输入几位。"
+        return "匹配到多个待处理事项，请引用对应消息回复。"
     if not task_id:
-        return f"任务不存在或已过期：{task_ref}"
+        return "待处理事项不存在或已过期。"
 
     task = await plugin.pending_store.get(task_id)
     if not task:
-        return f"任务不存在或已过期：{task_ref}"
+        return "待处理事项不存在或已过期。"
 
     action = _action_from_request_or_text(request, event_message_text(event), task_ref)
     if task.get("kind") == "up_candidates":
@@ -67,12 +67,12 @@ async def run_continue_pending(plugin, event, request: WorkflowRequest) -> str:
 async def _continue_candidates(plugin, event, request, task_id: str, task: dict, action: str) -> str:
     if normalize_reply(action) in CANCEL_REPLIES:
         await plugin.pending_store.delete(task_id)
-        return f"已取消任务：{task_id}"
+        return "已取消待处理事项。"
 
     candidates = task.get("candidates") or []
     index = _choice_index(action, len(candidates))
     if index is None:
-        return f"请回复 1-{len(candidates)} 的序号，或发送 `bili{task_id[-4:]} 取消`。"
+        return f"请引用这条消息回复 1-{len(candidates)} 的序号，或回复“取消”。"
 
     candidate = candidates[index]
     await plugin.pending_store.delete(task_id)
@@ -94,9 +94,9 @@ async def _continue_confirm(plugin, event, task_id: str, task: dict, action: str
     normalized = normalize_reply(action)
     if normalized in CANCEL_REPLIES:
         await plugin.pending_store.delete(task_id)
-        return f"已取消任务：{task_id}"
+        return "已取消待处理事项。"
     if normalized not in CONFIRM_REPLIES:
-        return f"请发送 `bili{task_id[-4:]} 确认` 或 `bili{task_id[-4:]} 取消`。"
+        return "请引用这条消息回复“确认”或“取消”。"
 
     candidate = task.get("candidate") or {}
     uid = str(candidate.get("uid") or "")

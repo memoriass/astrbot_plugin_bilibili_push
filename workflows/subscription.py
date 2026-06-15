@@ -51,11 +51,15 @@ async def run_add_subscription(plugin, event, request: WorkflowRequest) -> str:
     )
     return WorkflowResult(
         text=text,
+        display_text=(
+            format_candidates(candidates, title=f"请选择要订阅的 UP（{keyword}）")
+            + "\n\n引用这条消息回复序号即可选择候选；选择后还需要确认才会写入订阅。"
+        ),
+        task_id=task_id,
         cards=[candidate_list_card(
             candidates,
             f"请选择要订阅的 UP: {keyword}",
-            task_id,
-            "选择候选后还需要再次确认，确认前不会写入订阅。",
+            "引用这条消息回复序号即可选择候选；确认前不会写入订阅。",
         )],
     )
 
@@ -132,12 +136,16 @@ async def build_confirm_task(plugin, event, request: WorkflowRequest, candidate:
     )
     return WorkflowResult(
         text=text,
+        display_text=(
+            f"已选择：{candidate.get('username')} | UID={candidate.get('uid')} | type={sub_type}\n"
+            "引用这条消息回复“确认”写入订阅，或回复“取消”放弃。"
+        ),
+        task_id=task_id,
         cards=[subscription_confirm_card(
             username=str(candidate.get("username") or ""),
             face=str(candidate.get("face") or ""),
             uid=str(candidate.get("uid") or ""),
             sub_type=sub_type,
-            task_id=task_id,
         )],
     )
 

@@ -18,6 +18,8 @@ class WorkflowCard:
 class WorkflowResult:
     text: str
     cards: list[WorkflowCard] = field(default_factory=list)
+    display_text: str = ""
+    task_id: str = ""
 
     def __str__(self) -> str:
         return self.text

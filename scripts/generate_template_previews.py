@@ -352,8 +352,7 @@ def build_preview_jobs(rng: random.Random, bili_items: list[dict]):
             "template": "workflow_candidates.html.jinja",
             "data": {
                 "page_title": "请选择要订阅的 UP: Bilibili",
-                "task_ref": "bili9a8f",
-                "note": "选择候选后还需要再次确认，确认前不会写入订阅。",
+                "note": "引用这条消息回复序号即可选择候选；确认前不会写入订阅。",
                 "candidates": workflow_candidates,
             },
             "viewport": {"width": 1000, "height": 860},
@@ -371,10 +370,10 @@ def build_preview_jobs(rng: random.Random, bili_items: list[dict]):
                 "action_label": "待确认",
                 "title": "确认订阅动态吗？",
                 "summary": "确认后会写入当前会话；取消则不会改动订阅。",
-                "confirm_text": "bili9a8f 确认",
-                "cancel_text": "bili9a8f 取消",
+                "confirm_text": "引用回复 确认",
+                "cancel_text": "引用回复 取消",
             },
-            "viewport": {"width": 540, "height": 620},
+            "viewport": {"width": 560, "height": 620},
             "selector": ".workflow-confirm",
         },
         {
