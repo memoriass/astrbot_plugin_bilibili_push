@@ -38,14 +38,10 @@
 }
 
 .brand-mark span {
-  width: 24px;
-  height: 24px;
-  border-radius: 9px;
-  background:
-    linear-gradient(90deg, transparent 43%, rgb(83 138 62) 43% 57%, transparent 57%),
-    linear-gradient(0deg, transparent 43%, rgb(83 138 62) 43% 57%, transparent 57%),
-    radial-gradient(circle, rgb(109 190 83) 0 60%, transparent 62%);
-  transform: rotate(45deg);
+  width: 46px;
+  height: 46px;
+  background: url("./assets/brand-white-hair.png") center / contain no-repeat;
+  filter: drop-shadow(0 5px 8px rgb(65 85 45 / 16%));
 }
 
 .app-main {
