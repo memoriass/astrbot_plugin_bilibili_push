@@ -5,10 +5,10 @@
   gap: 14px;
   margin-bottom: 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 20px;
   background: var(--surface);
   padding: 14px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
 }
 
 .subscription-summary p {
@@ -26,8 +26,8 @@
 .subscription-summary-badges span {
   min-width: 72px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-muted);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 52%);
   padding: 10px;
   color: var(--muted);
   font-size: 12px;
@@ -44,10 +44,10 @@
   gap: 12px;
   margin-bottom: 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 20px;
   background: var(--surface);
   padding: 14px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
 }
 
 .editor-heading,
@@ -116,7 +116,7 @@
   border-radius: 18px;
   background: var(--surface-muted);
   overflow: hidden;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
 }
 
 .subscription-media img,
@@ -148,7 +148,7 @@
 
 .media-badge {
   border: 1px solid rgb(255 255 255 / 25%);
-  border-radius: 9px;
+  border-radius: 999px;
   color: #fff;
   padding: 4px 8px;
   font-size: 10px;
@@ -215,8 +215,8 @@
 
 .subscription-editor-preview {
   aspect-ratio: 1;
-  border-radius: 24px;
-  box-shadow: 0 10px 28px rgb(16 24 40 / 16%);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
 }
 
 .editor-preview-action {
@@ -245,8 +245,8 @@
   display: grid;
   gap: 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-muted);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 48%);
   padding: 12px;
 }
 
@@ -278,8 +278,8 @@
   min-height: 42px;
   place-items: center;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 14px;
+  background: var(--surface-solid);
   color: var(--muted);
   font-size: 14px;
   font-weight: 800;
@@ -313,7 +313,7 @@
   display: inline-flex;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--surface-solid);
   color: var(--muted);
   padding: 7px 10px;
   font-size: 12px;

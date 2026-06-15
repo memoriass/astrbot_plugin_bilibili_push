@@ -1,18 +1,21 @@
 :root {
   color-scheme: light;
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --surface-muted: #eef1f4;
-  --text: #17202a;
-  --muted: #64707d;
-  --line: #d8dee6;
-  --accent: #1f7a5c;
-  --accent-soft: #dff3ec;
+  --bg: #eef7dc;
+  --surface: rgb(255 255 250 / 82%);
+  --surface-solid: #fffef8;
+  --surface-muted: rgb(239 244 229 / 78%);
+  --text: #1f261f;
+  --muted: #687060;
+  --line: rgb(129 142 112 / 18%);
+  --accent: #4f7f3c;
+  --accent-strong: #141914;
+  --accent-soft: #e2f8bd;
   --danger: #b42318;
   --danger-soft: #fee4e2;
-  --live: #1d5fd3;
-  --live-soft: #e0ebff;
-  --shadow: 0 10px 30px rgb(16 24 40 / 8%);
+  --live: #27718d;
+  --live-soft: #d9f1f5;
+  --shadow: 0 18px 42px rgb(70 82 53 / 12%);
+  --shadow-soft: 0 8px 22px rgb(70 82 53 / 9%);
 }
 
 [data-theme="dark"] {
@@ -39,7 +42,9 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 18% 12%, rgb(214 255 151 / 70%) 0 22%, transparent 42%),
+    linear-gradient(135deg, #eaffc7 0%, #f3f3e7 42%, #efe7d5 100%);
   color: var(--text);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -56,20 +61,6 @@ button {
   cursor: pointer;
 }
 
-.page-shell {
-  width: min(1180px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 28px 0 40px;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent);
@@ -84,7 +75,7 @@ p {
 }
 
 h1 {
-  font-size: 28px;
+  font-size: 30px;
   line-height: 1.2;
 }
 
@@ -93,83 +84,15 @@ h2 {
   line-height: 1.35;
 }
 
-.topbar-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.metric {
-  min-height: 84px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-
-.metric span {
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.metric strong {
-  display: block;
-  margin-top: 10px;
-  font-size: 24px;
-  line-height: 1;
-}
-
-.tabs {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-muted);
-}
-
-.tab {
-  min-width: 84px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  padding: 8px 14px;
-}
-
-.tab.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 1px 2px rgb(16 24 40 / 10%);
-}
-
-.toolbar {
-  display: flex;
-  gap: 10px;
-  margin: 14px 0;
-}
-
-.toolbar[hidden] {
-  display: none;
-}
-
 input,
 select {
-  height: 38px;
+  height: 42px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 999px;
   background: var(--surface);
   color: var(--text);
-  padding: 0 12px;
+  padding: 0 16px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%);
 }
 
 input {
@@ -178,15 +101,6 @@ input {
 
 select {
   min-width: 124px;
-}
-
-.panel {
-  display: none;
-  margin-top: 14px;
-}
-
-.panel.active {
-  display: block;
 }
 
 .mono {
@@ -224,16 +138,21 @@ select {
 
 .ghost-button,
 .danger-button {
-  min-height: 34px;
-  border-radius: 7px;
-  padding: 0 12px;
+  min-height: 38px;
+  border-radius: 999px;
+  padding: 0 16px;
   font-weight: 700;
 }
 
 .ghost-button {
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--surface-solid);
   color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.refresh-button {
+  min-width: 78px;
 }
 
 .danger-button {
@@ -289,8 +208,9 @@ select {
   display: grid;
   align-items: center;
   justify-items: center;
-  background: rgb(15 23 42 / 48%);
+  background: rgb(31 38 31 / 42%);
   padding: 20px;
+  backdrop-filter: blur(8px);
 }
 
 .manager-modal,
@@ -300,8 +220,8 @@ select {
   max-height: calc(100vh - 32px);
   overflow: auto;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
+  border-radius: 22px;
+  background: var(--surface-solid);
   box-shadow: 0 24px 70px rgb(15 23 42 / 30%);
 }
 
@@ -345,10 +265,10 @@ select {
   gap: 12px;
   min-height: 92px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--surface);
   padding: 14px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
 }
 
 .pending-card > div {
@@ -397,7 +317,7 @@ select {
   min-height: 180px;
   place-items: center;
   border: 1px dashed var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--surface);
   color: var(--muted);
 }
@@ -408,32 +328,14 @@ select {
   bottom: 18px;
   max-width: min(380px, calc(100% - 36px));
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 16px;
+  background: var(--surface-solid);
   color: var(--text);
   padding: 12px 14px;
   box-shadow: var(--shadow);
 }
 
 @media (max-width: 860px) {
-  .page-shell {
-    width: min(100% - 20px, 720px);
-    padding-top: 18px;
-  }
-
-  .topbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .toolbar {
-    flex-direction: column;
-  }
-
   input,
   select {
     width: 100%;

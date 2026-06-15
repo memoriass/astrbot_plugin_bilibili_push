@@ -13,7 +13,8 @@
 - `renderers.js`: 指标、tab、pending 和各模块渲染入口。
 - `utils.js`: HTML 转义、格式化和通用 UI 片段。
 - `mock_bridge.js`: 本地直接打开页面时的 fallback 假数据。
-- `style.css`: 主题、响应式布局和通用组件样式。
+- `style.css`: 主题变量、基础控件、弹窗和通用组件样式。
+- `layout.css`: 页面外壳、左侧导航、顶部栏、指标区和响应式布局样式。
 - `overview.css`: 概览工作台和小型订阅卡片样式。
 - `subscriptions.css`: 订阅卡片、编辑器和移动端布局样式。
 - `accounts.css`: 账号卡片、编辑器和移动端布局样式。
