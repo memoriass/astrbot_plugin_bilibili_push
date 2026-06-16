@@ -46,6 +46,27 @@
 - `check_status`
 - `continue_pending`
 
+## 工作图谱
+
+```mermaid
+flowchart TD
+    Entry["LLM tool / 显式命令 / pending 引用"] --> Request["WorkflowRequest"]
+    Request --> Runner["runner.py 分发"]
+    Runner --> Search["search_up"]
+    Runner --> Add["add_subscription"]
+    Runner --> Remove["remove_subscription"]
+    Runner --> Manage["list/account/check"]
+    Search --> Pending["pending task"]
+    Add --> Pending
+    Pending --> Confirm["引用回复确认/取消"]
+    Confirm --> Write["写订阅或取消"]
+    Runner --> Result["WorkflowResult.text"]
+    Result --> ToolText["LLM tool 返回文本"]
+    Result --> Cards["显式聊天入口渲染 HTML 卡片"]
+```
+
+需要用户确认的节点：搜索结果多候选、模糊添加订阅、订阅写入前确认和 pending 续跑。明确 UID 的当前会话订阅可直接执行，删除订阅必须限定当前会话。
+
 ## 聊天卡片
 
 - `search_up` 和模糊 `add_subscription`: 使用 `workflow_candidates.html.jinja` 展示候选 UP 和引用回复方式。

@@ -13,3 +13,10 @@
 - 不直接读取 Dashboard cookie、LocalStorage 或同源 DOM。
 - 不放聊天 help 内容；聊天侧的自然语言能力交给 AI workflow。
 - 无构建步骤，静态资源保持相对路径。
+
+## AstrBot 嵌入契约
+
+- 每个页面目录必须有 `index.html`，当前只有 `manager/`。
+- AstrBot 会注入 `/api/plugin/page/bridge-sdk.js`，页面自身不主动引用 bridge SDK。
+- JS 只调用 `window.AstrBotPluginPage.apiGet(endpoint)` 和 `apiPost(endpoint, body)`，endpoint 使用相对名，例如 `overview`、`subscriptions/update`。
+- 嵌入契约由 `scripts/check_astrbot_embed.py` 覆盖；如果 AstrBot Plugin Pages 实现变更，先更新该脚本和本模块文档。

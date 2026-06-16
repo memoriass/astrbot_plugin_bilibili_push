@@ -80,3 +80,10 @@ flowchart LR
 - 总体架构文档使用 `ARCHITECTURE.md`。
 - 模块说明使用模块名命名，例如 `dynamic/dynamic.md`、`scheduler/scheduler.md`。
 - 二级模块也使用目录名命名，例如 `utils/resources/templates/templates.md`。
+
+## 收尾验证
+
+- 拆分检查：运行 `python scripts/check_workflow_integration.py`，其中包含全仓库文本文件 500 行限制检查。
+- AstrBot 嵌入检查：运行 `python scripts/check_astrbot_embed.py`，对照本机 AstrBot 源码验证 Plugin Pages 发现规则、bridge API、`/api/plug` 转发和页面 endpoint 注册。
+- 模板渲染检查：运行 `python scripts/generate_template_previews.py --output-dir template_previews/final_review`，输出透明底 HTML 卡片图片和总览图。
+- `metadata.yaml` 的 `name` 必须与 Web API 前缀一致，当前固定为 `astrbot_plugin_bilibili_push`。AstrBot Dashboard bridge 会拼接 `/api/plug/<pluginName>/<endpoint>`，此处不一致会导致页面嵌入后 API 找不到路由。

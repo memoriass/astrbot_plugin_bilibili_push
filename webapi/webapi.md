@@ -36,3 +36,4 @@
 - 账号编辑时 Cookie 为空表示保留原 Cookie，新增账号必须提供 Cookie。
 - 手动直播检查会触发实际消息推送，页面侧必须显式确认。
 - 管理 API 不提供模板预览、模板渲染或预览生成能力；模板渲染测试保留在开发脚本层。
+- Web API 路由前缀必须与 `metadata.yaml` 的 `name` 和 `main.py` 注册名一致，当前为 `astrbot_plugin_bilibili_push`。AstrBot Plugin Pages bridge 会按插件名拼接 `/api/plug/<pluginName>/<endpoint>`。

@@ -20,3 +20,9 @@
 - workflow 模板不显示 task id，后台通过不可见 marker 和引用消息定位 pending task。
 - 如果引入轻量 HTML 渲染器，应单独维护 lite 模板，避免直接复用这些模板。
 - 模板字段来源分散在 `handlers/`、`workflows/cards.py`、`utils/renderers/` 和 `parser/`，改字段时需要同步调用方。
+
+## 预览
+
+- 开发预览使用 `scripts/generate_template_previews.py`，输出目录建议放在 `template_previews/` 下，不纳入 WebUI。
+- 预览脚本使用 Bilibili 热门数据和本地生成兜底图，目标是检查透明底、多卡片布局、workflow 候选和确认卡片是否可读。
+- WebUI 管理页不提供模板预览功能；模板不确定性留在开发脚本和人工最终检查中处理。

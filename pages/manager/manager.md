@@ -52,3 +52,15 @@
 - 账号 Cookie 只允许提交写入，不在页面和 `overview` 接口回显。
 - 手动直播检查会向目标会话发送当前正在直播的启用订阅，页面侧必须显式确认。
 - 本地直接打开页面时使用 `mock_bridge.js` 假数据，只用于布局和交互预览。
+
+## 确认弹窗
+
+- 订阅删除、账号删除、清空待处理和手动直播检查均使用页面内部 `manager-modal-backdrop` 弹窗。
+- 不再使用浏览器原生 `window.confirm()`，避免嵌入 AstrBot iframe 后出现风格割裂和不可控交互。
+- 弹窗左侧使用小型操作卡片，右侧承载确认文案与操作按钮；新增危险操作时复用该结构。
+
+## 验证
+
+- 本地页面预览：在 `pages/manager` 下启动静态服务后打开 `http://127.0.0.1:8765/`。
+- AstrBot 嵌入契约：运行 `python scripts/check_astrbot_embed.py`。
+- 页面 API 与后端路由：运行 `python scripts/check_workflow_integration.py`。
