@@ -5,7 +5,8 @@ import secrets
 import time
 
 from .models import CANCEL_REPLIES, CONFIRM_REPLIES, WorkflowRequest
-from .runtime import event_message_text, event_origin
+from .markers import decode_task_marker
+from .runtime import event_message_text, event_origin, event_text_bundle
 from .utils import normalize_reply
 
 
@@ -39,7 +40,7 @@ async def store_pending_task(
 
 
 async def run_continue_pending(plugin, event, request: WorkflowRequest) -> str:
-    task_ref = _task_ref_from_request_or_text(request, event_message_text(event))
+    task_ref = _task_ref_from_request_or_event(request, event)
     if not task_ref:
         return "请引用待处理消息回复序号、确认或取消。"
 
@@ -116,13 +117,28 @@ def extract_task_ref(text: str) -> str:
     return f"bili{match.group(1).lower()}" if match else ""
 
 
-def _task_ref_from_request_or_text(request: WorkflowRequest, text: str) -> str:
+def task_ref_from_text(text: str) -> str:
+    marker = decode_task_marker(text)
+    if marker:
+        return marker
+    return extract_task_ref(text)
+
+
+def task_ref_from_event(event) -> str:
+    for text in event_text_bundle(event):
+        task_ref = task_ref_from_text(text)
+        if task_ref:
+            return task_ref
+    return ""
+
+
+def _task_ref_from_request_or_event(request: WorkflowRequest, event) -> str:
     for key in ("task_id", "task", "id", "target"):
         value = request.params.get(key) if key != "target" else request.target
-        extracted = extract_task_ref(str(value or ""))
+        extracted = task_ref_from_text(str(value or ""))
         if extracted:
             return extracted
-    return extract_task_ref(text)
+    return task_ref_from_event(event)
 
 
 def _action_from_request_or_text(request: WorkflowRequest, text: str, task_ref: str) -> str:
@@ -130,8 +146,13 @@ def _action_from_request_or_text(request: WorkflowRequest, text: str, task_ref: 
         value = request.params.get(key)
         if value is not None and str(value).strip():
             return str(value).strip()
-    cleaned = str(text or "").replace(task_ref, "", 1).strip()
-    return cleaned or str(request.target or "").strip()
+    raw_text = str(text or "").strip()
+    if task_ref and task_ref in raw_text:
+        return raw_text.replace(task_ref, "", 1).strip()
+    target = str(request.target or "").strip()
+    if target and not task_ref_from_text(target):
+        return target
+    return raw_text
 
 
 def _choice_index(action: str, max_index: int) -> int | None:
