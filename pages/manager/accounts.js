@@ -4,9 +4,10 @@ import {
   escapeAttribute,
   escapeHtml,
   icon,
-} from "./utils.js";
+  placeholderFace,
+} from "./utils.js?v=manager-live-modal";
 
-const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
+const NO_FACE = placeholderFace("BILI");
 
 export function renderAccountManager(panel, accounts, actions, editor, deleteConfirm) {
   panel.innerHTML = `
@@ -103,14 +104,25 @@ function deleteModal(account) {
   return `
     <div class="manager-modal-backdrop">
       <section class="manager-modal confirm-modal" role="dialog" aria-modal="true" aria-label="删除账号">
-        <div>
-          <h2>删除账号</h2>
-          <p>确认删除 ${escapeHtml(account.name || "Bilibili 账号")}（UID: ${escapeHtml(account.uid || "-")}）？</p>
+        <div class="account-editor-preview confirm-preview">
+          <img src="${escapeAttribute(account.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+          <span class="editor-preview-action">DELETE</span>
+          <div class="account-media-overlay">
+            <h2>${escapeHtml(account.name || "Bilibili 账号")}</h2>
+            <p>UID: ${escapeHtml(account.uid || "-")}</p>
+          </div>
         </div>
-        <div class="modal-actions">
-          <button class="ghost-button" type="button" data-cancel-delete-account="1">取消</button>
-          <button class="danger-button" type="button" data-confirm-delete-account="1"
-            data-uid="${escapeAttribute(account.uid)}">删除</button>
+        <div class="confirm-copy">
+          <div>
+            <h2>删除账号</h2>
+            <p>确认删除 ${escapeHtml(account.name || "Bilibili 账号")}？</p>
+            <p class="modal-muted">UID: ${escapeHtml(account.uid || "-")}</p>
+          </div>
+          <div class="modal-actions">
+            <button class="ghost-button" type="button" data-cancel-delete-account="1">取消</button>
+            <button class="danger-button" type="button" data-confirm-delete-account="1"
+              data-uid="${escapeAttribute(account.uid)}">删除</button>
+          </div>
         </div>
       </section>
     </div>

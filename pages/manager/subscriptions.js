@@ -4,9 +4,10 @@ import {
   escapeAttribute,
   escapeHtml,
   icon,
-} from "./utils.js";
+  placeholderFace,
+} from "./utils.js?v=manager-live-modal";
 
-const NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg";
+const NO_FACE = placeholderFace("UP");
 const CATEGORY_OPTIONS = {
   dynamic: [
     [1, "一般动态"],
@@ -246,19 +247,33 @@ function editorPreview(item, mode) {
 }
 
 function deleteModal(sub) {
+  const subType = sub.sub_type || "dynamic";
   return `
     <div class="manager-modal-backdrop">
       <section class="manager-modal confirm-modal" role="dialog" aria-modal="true" aria-label="删除订阅">
-        <div>
-          <h2>删除订阅</h2>
-          <p>确认删除 ${escapeHtml(sub.username || sub.uid || "未命名 UP 主")} 的 ${escapeHtml(sub.sub_type || "-")} 订阅？</p>
-          <p class="modal-muted">UID: ${escapeHtml(sub.uid || "-")} / 会话: ${escapeHtml(sub.target_id || "-")}</p>
+        <div class="subscription-editor-preview confirm-preview">
+          <img src="${escapeAttribute(sub.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+          <div class="subscription-card-badges">
+            <span class="media-badge ${subType === "live" ? "live" : "dyn"}">${subType === "live" ? "LIVE" : "DYNAMIC"}</span>
+          </div>
+          <span class="editor-preview-action">DELETE</span>
+          <div class="subscription-media-overlay">
+            <h2>${escapeHtml(sub.username || "未命名 UP 主")}</h2>
+            <p>UID: ${escapeHtml(sub.uid || "-")}</p>
+          </div>
         </div>
-        <div class="modal-actions">
-          <button class="ghost-button" type="button" data-cancel-delete="1">取消</button>
-          <button class="danger-button" type="button" data-confirm-delete="1"
-            data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
-            data-target-id="${escapeAttribute(sub.target_id)}">删除</button>
+        <div class="confirm-copy">
+          <div>
+            <h2>删除订阅</h2>
+            <p>确认删除 ${escapeHtml(sub.username || sub.uid || "未命名 UP 主")} 的 ${escapeHtml(subType)} 订阅？</p>
+            <p class="modal-muted">会话: ${escapeHtml(sub.target_id || "-")}</p>
+          </div>
+          <div class="modal-actions">
+            <button class="ghost-button" type="button" data-cancel-delete="1">取消</button>
+            <button class="danger-button" type="button" data-confirm-delete="1"
+              data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(subType)}"
+              data-target-id="${escapeAttribute(sub.target_id)}">删除</button>
+          </div>
         </div>
       </section>
     </div>

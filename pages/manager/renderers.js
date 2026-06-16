@@ -3,10 +3,10 @@ import {
   escapeHtml,
   formatTargetId,
   formatTime,
-} from "./utils.js";
-import { renderAccountManager } from "./accounts.js";
-import { pendingCandidateText, pendingSummary, pendingTitle } from "./pending_text.js";
-import { renderSubscriptionCards } from "./subscriptions.js";
+} from "./utils.js?v=manager-live-modal";
+import { renderAccountManager } from "./accounts.js?v=manager-live-modal";
+import { pendingCandidateText, pendingSummary, pendingTitle } from "./pending_text.js?v=manager-live-modal";
+import { renderSubscriptionCards } from "./subscriptions.js?v=manager-live-modal";
 
 export function renderMetrics(container, diagnostics) {
   const items = [
@@ -62,7 +62,7 @@ export function renderAccounts(panel, accounts, actions, editor, deleteConfirm) 
   renderAccountManager(panel, accounts, actions, editor, deleteConfirm);
 }
 
-export function renderPending(panel, tasks, actions) {
+export function renderPending(panel, tasks, actions, clearConfirm = false) {
   if (!tasks.length) {
     panel.innerHTML = emptyState("暂无待处理事项");
     return;
@@ -72,8 +72,11 @@ export function renderPending(panel, tasks, actions) {
       <button class="danger-button" id="clearPendingButton" type="button">清空待处理</button>
     </div>
     <div class="cards">${tasks.map(pendingCard).join("")}</div>
+    ${clearConfirm ? clearPendingModal(tasks) : ""}
   `;
   panel.querySelector("#clearPendingButton").addEventListener("click", actions.onClear);
+  panel.querySelector("[data-cancel-clear-pending]")?.addEventListener("click", actions.onCancelClear);
+  panel.querySelector("[data-confirm-clear-pending]")?.addEventListener("click", actions.onConfirmClear);
 }
 
 export function showLoading(metrics) {
@@ -104,5 +107,30 @@ function pendingCard(task) {
         <div><dt>过期</dt><dd>${escapeHtml(formatTime(task.expires_at))}</dd></div>
       </dl>
     </article>
+  `;
+}
+
+function clearPendingModal(tasks) {
+  return `
+    <div class="manager-modal-backdrop">
+      <section class="manager-modal confirm-modal" role="dialog" aria-modal="true" aria-label="清空待处理">
+        <div class="action-confirm-preview confirm-preview">
+          <span>待处理队列</span>
+          <strong>${escapeHtml(tasks.length)}</strong>
+          <small>ITEMS</small>
+        </div>
+        <div class="confirm-copy">
+          <div>
+            <h2>清空待处理</h2>
+            <p>确认清空当前 ${escapeHtml(tasks.length)} 个待处理事项？</p>
+            <p class="modal-muted">清空后，聊天侧引用任务将不再继续处理。</p>
+          </div>
+          <div class="modal-actions">
+            <button class="ghost-button" type="button" data-cancel-clear-pending="1">取消</button>
+            <button class="danger-button" type="button" data-confirm-clear-pending="1">清空</button>
+          </div>
+        </div>
+      </section>
+    </div>
   `;
 }

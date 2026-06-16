@@ -1,5 +1,5 @@
-import { createApi, getBridge } from "./api.js";
-import { renderOverview } from "./overview.js";
+import { createApi, getBridge } from "./api.js?v=manager-live-modal";
+import { renderOverview } from "./overview.js?v=manager-live-modal";
 import {
   renderAccounts,
   renderEmptyError,
@@ -8,7 +8,7 @@ import {
   renderSubscriptions,
   renderTabs,
   showLoading,
-} from "./renderers.js";
+} from "./renderers.js?v=manager-live-modal";
 
 const bridge = getBridge();
 const api = createApi(bridge);
@@ -21,6 +21,8 @@ const state = {
   subscriptionPage: 1,
   accountEditor: null,
   accountDelete: null,
+  pendingClearConfirm: false,
+  liveCheckConfirm: null,
   query: "",
   type: "all",
 };
@@ -72,8 +74,11 @@ function render() {
     overview,
     {
       onNavigate: switchTab,
-      onManualLive: manualLiveCheck,
+      onManualLive: startManualLiveCheck,
+      onConfirmLive: manualLiveCheck,
+      onCancelLive: cancelManualLiveCheck,
     },
+    state.liveCheckConfirm,
   );
   renderSubscriptions(
     document.getElementById("subscriptionsPanel"),
@@ -108,9 +113,16 @@ function render() {
     state.accountEditor,
     state.accountDelete,
   );
-  renderPending(document.getElementById("pendingPanel"), overview.pending_tasks || [], {
-    onClear: clearPending,
-  });
+  renderPending(
+    document.getElementById("pendingPanel"),
+    overview.pending_tasks || [],
+    {
+      onClear: startClearPending,
+      onConfirmClear: clearPending,
+      onCancelClear: cancelClearPending,
+    },
+    state.pendingClearConfirm,
+  );
 }
 
 function switchTab(tab) {
@@ -299,29 +311,55 @@ async function deleteAccount(dataset) {
   }
 }
 
+function startClearPending() {
+  state.pendingClearConfirm = true;
+  render();
+}
+
+function cancelClearPending() {
+  state.pendingClearConfirm = false;
+  render();
+}
+
 async function clearPending() {
-  if (!window.confirm("清空所有待处理事项？")) {
-    return;
-  }
   try {
     const result = await api.clearPending();
     showToast(`已清空 ${result.cleared || 0} 个待处理事项`);
+    state.pendingClearConfirm = false;
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));
   }
 }
 
-async function manualLiveCheck(targetId, displayName) {
-  const isAll = targetId === "__all__";
-  const label = displayName || (isAll ? "全部群" : targetId);
-  if (!targetId || !window.confirm(`对 ${label} 执行手动直播检查？`)) {
+function startManualLiveCheck(targetId, displayName) {
+  if (!targetId) {
     return;
   }
+  state.liveCheckConfirm = {
+    targetId,
+    displayName: displayName || targetId,
+  };
+  render();
+}
+
+function cancelManualLiveCheck() {
+  state.liveCheckConfirm = null;
+  render();
+}
+
+async function manualLiveCheck() {
+  const target = state.liveCheckConfirm;
+  if (!target?.targetId) {
+    return;
+  }
+  const targetId = target.targetId;
+  const isAll = targetId === "__all__";
   try {
     const result = await api.manualLiveCheck(targetId);
     const targetText = isAll ? `检查 ${result.targets || 0} 个群，` : "";
     showToast(`手动检查完成，${targetText}推送 ${result.pushed || 0} 条`);
+    state.liveCheckConfirm = null;
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));

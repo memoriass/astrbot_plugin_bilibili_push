@@ -58,6 +58,32 @@ export function emptyState(text) {
   return `<div class="empty">${escapeHtml(text)}</div>`;
 }
 
+export function placeholderFace(label = "BILI") {
+  const safeLabel = String(label || "BILI").slice(0, 8);
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#dfffb1"/>
+          <stop offset=".52" stop-color="#f8fff0"/>
+          <stop offset="1" stop-color="#b7d78d"/>
+        </linearGradient>
+        <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="rgba(255,255,255,.2)"/>
+          <stop offset="1" stop-color="rgba(20,25,20,.72)"/>
+        </linearGradient>
+      </defs>
+      <rect width="360" height="360" fill="url(#bg)"/>
+      <circle cx="180" cy="136" r="58" fill="rgba(255,255,255,.82)"/>
+      <rect x="92" y="220" width="176" height="84" rx="42" fill="rgba(255,255,255,.62)"/>
+      <path d="M42 70c54-24 88 8 138-12 56-22 92-8 138 18" fill="none" stroke="rgba(79,127,60,.28)" stroke-width="18" stroke-linecap="round"/>
+      <rect width="360" height="360" fill="url(#shade)"/>
+      <text x="180" y="322" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="900" fill="#fff">${escapeHtml(safeLabel)}</text>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 export function typeBadge(value) {
   const text = value === "live" ? "直播" : "动态";
   return `<span class="badge ${escapeAttribute(value)}">${text}</span>`;

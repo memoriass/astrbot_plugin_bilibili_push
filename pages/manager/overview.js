@@ -5,12 +5,12 @@ import {
   escapeHtml,
   formatTargetId,
   formatTime,
-} from "./utils.js";
-import { pendingTitle } from "./pending_text.js";
+} from "./utils.js?v=manager-live-modal";
+import { pendingTitle } from "./pending_text.js?v=manager-live-modal";
 
 const ALL_TARGETS = "__all__";
 
-export function renderOverview(panel, overview, actions) {
+export function renderOverview(panel, overview, actions, liveConfirm = null) {
   const diagnostics = overview.diagnostics || {};
   const subscriptions = overview.subscriptions || [];
   const accounts = overview.accounts || [];
@@ -28,6 +28,7 @@ export function renderOverview(panel, overview, actions) {
         ${capabilityPanel(diagnostics, liveTargets)}
       </aside>
     </section>
+    ${liveConfirm ? liveCheckModal(liveConfirm) : ""}
   `;
 
   bindDataset(panel, "[data-jump]", (dataset) => actions.onNavigate(dataset.jump));
@@ -38,6 +39,8 @@ export function renderOverview(panel, overview, actions) {
       actions.onManualLive(select.value, select.options[select.selectedIndex]?.textContent || select.value);
     });
   }
+  panel.querySelector("[data-cancel-live-check]")?.addEventListener("click", actions.onCancelLive);
+  panel.querySelector("[data-confirm-live-check]")?.addEventListener("click", actions.onConfirmLive);
 }
 
 function workbenchSummary(diagnostics, issues) {
@@ -169,6 +172,33 @@ function buildLiveTargetOptions(subscriptions) {
   return Array.from(targets, ([value, label]) => ({ value, label })).sort((a, b) =>
     a.label.localeCompare(b.label, "zh-CN"),
   );
+}
+
+function liveCheckModal(target) {
+  const label = target.displayName || target.targetId || "-";
+  const isAll = target.targetId === ALL_TARGETS;
+  return `
+    <div class="manager-modal-backdrop">
+      <section class="manager-modal confirm-modal" role="dialog" aria-modal="true" aria-label="直播检查">
+        <div class="action-confirm-preview confirm-preview">
+          <span>直播检查</span>
+          <strong>${isAll ? "ALL" : "LIVE"}</strong>
+          <small>${escapeHtml(isAll ? "GROUPS" : "TARGET")}</small>
+        </div>
+        <div class="confirm-copy">
+          <div>
+            <h2>执行直播检查</h2>
+            <p>确认对 ${escapeHtml(label)} 执行手动直播检查？</p>
+            <p class="modal-muted">检查会按当前订阅与会话配置执行，可能触发对应推送。</p>
+          </div>
+          <div class="modal-actions">
+            <button class="ghost-button" type="button" data-cancel-live-check="1">取消</button>
+            <button class="ghost-button" type="button" data-confirm-live-check="1">开始检查</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
 }
 
 function ratioText(value, total) {

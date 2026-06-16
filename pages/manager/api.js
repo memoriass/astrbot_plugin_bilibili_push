@@ -1,5 +1,5 @@
-import { createLocalBridge } from "./mock_bridge.js";
-import { unwrap } from "./utils.js";
+import { createLocalBridge } from "./mock_bridge.js?v=manager-live-modal";
+import { unwrap } from "./utils.js?v=manager-live-modal";
 
 export function getBridge() {
   return window.AstrBotPluginPage || createLocalBridge();
