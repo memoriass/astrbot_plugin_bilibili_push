@@ -13,24 +13,26 @@
 
 ## 快速使用
 
-实际命令前缀以 AstrBot 的 `wake_prefix` 为准，下方用 `<wake_prefix>` 表示。
+下方示例使用 AstrBot 常见默认前缀 `/`。
 
 | 用途 | 命令 |
 | :--- | :--- |
-| 订阅动态 | `<wake_prefix> 添加b站订阅 <UID>` |
-| 订阅直播 | `<wake_prefix> 添加b站直播 <UID>` |
-| 删除动态订阅 | `<wake_prefix> 取消b站订阅 <UID>` |
-| 删除直播订阅 | `<wake_prefix> 取消b站直播 <UID>` |
-| 查看订阅 | `<wake_prefix> b站订阅列表` |
-| 搜索 UP 主 | `<wake_prefix> b站搜索 <关键词>` |
-| 登录 Bilibili 账号 | `<wake_prefix> b站登录` |
-| 查看账号状态 | `<wake_prefix> b站登录状态` |
+| 订阅动态 | `/添加b站订阅 <UID>` |
+| 订阅直播 | `/添加b站直播 <UID>` |
+| 删除动态订阅 | `/取消b站订阅 <UID>` |
+| 删除直播订阅 | `/取消b站直播 <UID>` |
+| 查看订阅 | `/b站订阅列表` |
+| 搜索 UP 主 | `/b站搜索 <关键词>` |
+| 登录 Bilibili 账号 | `/b站登录` |
+| 查看账号状态 | `/b站登录状态` |
+
+如果你的 AstrBot `wake_prefix` 不是 `/`，请把示例里的 `/` 替换为实际设置的前缀。
 
 示例：
 
 ```text
-<wake_prefix> 添加b站订阅 946974
-<wake_prefix> b站搜索 影视飓风
+/添加b站订阅 946974
+/b站搜索 影视飓风
 ```
 
 ## AI 使用说明
