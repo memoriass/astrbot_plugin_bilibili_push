@@ -17,16 +17,18 @@ from .scheduler import BilibiliScheduler
 from .utils.resource import get_template_path
 from .webapi import register_bilibili_web_apis
 from .workflows import (
+    BiliNaturalWorkflowFilter,
     BiliPendingShortcutFilter,
     PendingTaskStore,
     render_workflow_result,
     run_bili_workflow,
+    workflow_from_natural_language,
     workflow_from_pending_event,
 )
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.6"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.7"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
@@ -194,6 +196,14 @@ class BilibiliPush(Star):
         result = await run_bili_workflow(self, event, request)
         yield await render_workflow_result(event, self.renderer, result)
 
+    @filter.custom_filter(BiliNaturalWorkflowFilter)
+    async def bilibili_natural_workflow(self, event: AstrMessageEvent):
+        request = workflow_from_natural_language(event.get_message_str())
+        if request is None:
+            return
+        result = await run_bili_workflow(self, event, request)
+        yield await render_workflow_result(event, self.renderer, result)
+
     @filter.llm_tool(name="bili_workflow")
     async def bili_workflow_tool(
         self,
@@ -237,22 +247,22 @@ class BilibiliPush(Star):
         return await self.ai_handler.search_up(event, keyword)
 
     @filter.llm_tool(name="bili_add_dynamic_sub")
-    async def bili_add_dynamic_sub_tool(self, event: AstrMessageEvent, uid: str) -> str:
-        """添加 B站动态订阅。
+    async def bili_add_dynamic_sub_tool(self, event: AstrMessageEvent, target: str) -> str:
+        """添加 B站动态订阅。target 可以是明确 UID 或 UP 主关键词。
 
         Args:
-            uid(string): UP 主 UID。
+            target(string): UP 主 UID 或搜索关键词。
         """
-        return await self.ai_handler.add_subscription(event, uid, "dynamic")
+        return await self.ai_handler.add_subscription(event, target, "dynamic")
 
     @filter.llm_tool(name="bili_add_live_sub")
-    async def bili_add_live_sub_tool(self, event: AstrMessageEvent, uid: str) -> str:
-        """添加 B站直播订阅。
+    async def bili_add_live_sub_tool(self, event: AstrMessageEvent, target: str) -> str:
+        """添加 B站直播订阅。target 可以是明确 UID 或 UP 主关键词。
 
         Args:
-            uid(string): UP 主 UID。
+            target(string): UP 主 UID 或搜索关键词。
         """
-        return await self.ai_handler.add_subscription(event, uid, "live")
+        return await self.ai_handler.add_subscription(event, target, "live")
 
     @filter.llm_tool(name="bili_list_subs")
     async def bili_list_subs_tool(

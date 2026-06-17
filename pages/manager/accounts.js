@@ -5,7 +5,7 @@ import {
   escapeHtml,
   icon,
   placeholderFace,
-} from "./utils.js?v=manager-live-modal";
+} from "./utils.js?v=manager-multitype-ai";
 
 const NO_FACE = placeholderFace("BILI");
 

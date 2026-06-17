@@ -5,7 +5,7 @@ import {
   escapeHtml,
   icon,
   placeholderFace,
-} from "./utils.js?v=manager-live-modal";
+} from "./utils.js?v=manager-multitype-ai";
 
 const NO_FACE = placeholderFace("UP");
 const CATEGORY_OPTIONS = {
@@ -25,20 +25,13 @@ const CATEGORY_OPTIONS = {
 };
 const PAGE_SIZE = 12;
 
-export function renderSubscriptionCards(
-  panel,
-  subscriptions,
-  filters,
-  actions,
-  editor,
-  deleteConfirm,
-  pagination = {},
-) {
+export function renderSubscriptionCards(panel, subscriptions, filters, actions, editor, deleteConfirm, pagination = {}) {
   const filtered = filterSubscriptions(subscriptions, filters);
   const enabledCount = filtered.filter((sub) => sub.enabled).length;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const page = clamp(Number(pagination.page || 1), 1, totalPages);
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   panel.innerHTML = `
     <section class="subscription-summary">
       <div>
@@ -58,12 +51,14 @@ export function renderSubscriptionCards(
     ${editor ? `<div class="manager-modal-backdrop">${editorForm(editor)}</div>` : ""}
     ${deleteConfirm ? deleteModal(deleteConfirm.item || deleteConfirm) : ""}
   `;
+
   panel.querySelector("[data-create-subscription]").addEventListener("click", actions.onCreate);
   bindDataset(panel, "[data-edit]", actions.onEdit);
   bindDataset(panel, "[data-delete]", actions.onDelete);
   bindDataset(panel, "[data-confirm-delete]", actions.onConfirmDelete);
   bindDataset(panel, "[data-cancel-delete]", actions.onCancelDelete);
   bindDataset(panel, "[data-page]", actions.onPage);
+
   const form = panel.querySelector("#subscriptionEditorForm");
   if (form) {
     form.addEventListener("submit", (event) => {
@@ -71,43 +66,36 @@ export function renderSubscriptionCards(
       actions.onSubmit(editorPayload(form));
     });
     panel.querySelector("[data-cancel-subscription]").addEventListener("click", actions.onCancel);
-    form.querySelectorAll("[name='sub_type']").forEach((input) => {
-      input.addEventListener("change", (event) => {
-        const type = event.target.value;
-        form.querySelector(".category-options").innerHTML = categoryControls(
-          type,
-          defaultCategories(type),
-        );
-        updatePreviewType(form, type);
+    form.querySelectorAll("[name='sub_types']").forEach((input) => {
+      input.addEventListener("change", () => {
+        if (!selectedTypes(form).length) {
+          input.checked = true;
+        }
+        updateCategoryGroups(form);
+        updatePreviewBadges(form);
       });
     });
   }
 }
 
-function updatePreviewType(form, type) {
-  const badge = form.querySelector(".subscription-editor-preview .media-badge");
-  if (!badge) {
-    return;
+export function groupSubscriptionEditorItem(subscriptions, item) {
+  const base = item || {};
+  const peers = subscriptions.filter(
+    (sub) => String(sub.uid) === String(base.uid) && String(sub.target_id) === String(base.target_id),
+  );
+  const subTypes = peers.length ? peers.map((sub) => sub.sub_type) : [base.sub_type || "dynamic"];
+  const categories = {};
+  for (const sub of peers) {
+    categories[sub.sub_type] = sub.categories || defaultCategories(sub.sub_type);
   }
-  badge.className = `media-badge ${type === "live" ? "live" : "dyn"}`;
-  badge.textContent = type === "live" ? "LIVE" : "DYNAMIC";
-}
-
-function paginationBar(page, totalPages, total) {
-  return `
-    <nav class="subscription-pagination" aria-label="订阅分页">
-      <button class="ghost-button" type="button" data-page="${escapeAttribute(page - 1)}" ${page <= 1 ? "disabled" : ""}>上一页</button>
-      <span>第 ${escapeHtml(page)} / ${escapeHtml(totalPages)} 页 · 共 ${escapeHtml(total)} 个</span>
-      <button class="ghost-button" type="button" data-page="${escapeAttribute(page + 1)}" ${page >= totalPages ? "disabled" : ""}>下一页</button>
-    </nav>
-  `;
-}
-
-function clamp(value, min, max) {
-  if (!Number.isFinite(value)) {
-    return min;
+  if (!peers.length && base.sub_type) {
+    categories[base.sub_type] = base.categories || defaultCategories(base.sub_type);
   }
-  return Math.min(max, Math.max(min, value));
+  return {
+    ...base,
+    sub_types: uniqueTypes(subTypes),
+    categories_by_type: categories,
+  };
 }
 
 function filterSubscriptions(subscriptions, filters) {
@@ -125,8 +113,7 @@ function subscriptionCard(sub) {
       <div class="subscription-media">
         <img src="${escapeAttribute(sub.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
         <div class="subscription-card-badges">
-          ${sub.sub_type === "live" ? `<span class="media-badge live">LIVE</span>` : ""}
-          ${sub.sub_type === "dynamic" ? `<span class="media-badge dyn">DYNAMIC</span>` : ""}
+          ${mediaBadge(sub.sub_type)}
         </div>
         <div class="card-icon-actions">
           <button class="icon-button" type="button" data-edit="1"
@@ -147,8 +134,9 @@ function subscriptionCard(sub) {
 
 function editorForm(editor) {
   const item = editor.item || {};
-  const subType = item.sub_type || "dynamic";
   const isCreate = editor.mode === "create";
+  const subTypes = uniqueTypes(item.sub_types || [item.sub_type || "dynamic"]);
+  const categories = item.categories_by_type || { [item.sub_type || "dynamic"]: item.categories };
   return `
     <form class="subscription-editor" id="subscriptionEditorForm" role="dialog" aria-modal="true">
       <input type="hidden" name="mode" value="${escapeAttribute(editor.mode || "create")}" />
@@ -161,28 +149,28 @@ function editorForm(editor) {
       <div class="editor-heading">
         <div>
           <h2>${editor.mode === "edit" ? "编辑订阅" : "新增订阅"}</h2>
-          <p>${isCreate ? "填写 UID 后选择订阅类型和通知类别；Cookie 和账号不在这里处理。" : "左侧卡片已包含 UID 和 UP 主信息，这里只调整订阅类型、通知类别和标签。"}</p>
+          <p>${isCreate ? "填写 UID 后选择订阅类型和通知类别。" : "卡片已包含 UID 与 UP 主信息，这里只调整类型、通知类别、标签和启用状态。"}</p>
         </div>
         <button class="ghost-button" type="button" data-cancel-subscription="1">取消</button>
       </div>
       <div class="subscription-editor-layout">
-        ${editorPreview(item, editor.mode)}
+        ${editorPreview(item, editor.mode, subTypes)}
         <div class="subscription-editor-fields">
           ${isCreate ? createIdentityFields(item) : ""}
           <section class="type-panel">
             <div>
               <h3>订阅类型</h3>
-              <p>动态与直播可在这里快速切换，保存后会更新当前订阅记录。</p>
+              <p>动态与直播可以同时选中，保存时会按类型分别写入。</p>
             </div>
-            ${typeControls(subType)}
+            ${typeControls(subTypes)}
           </section>
           <section class="category-panel">
             <div>
               <h3>通知类别</h3>
-              <p>默认已按当前类型选中常用类别，可按会话需求调整。</p>
+              <p>同时选择两种类型时，下方会分别显示动态与直播的通知类别。</p>
             </div>
             <div class="category-options">
-              ${categoryControls(subType, item.categories || defaultCategories(subType))}
+              ${categoryGroups(subTypes, categories)}
             </div>
           </section>
           <label class="tag-field">
@@ -211,31 +199,31 @@ function createIdentityFields(item) {
   `;
 }
 
-function typeControls(value) {
+function typeControls(values) {
+  const selected = new Set(values || ["dynamic"]);
   return `
     <div class="type-switch">
-      ${typeChip("dynamic", "动态", value)}
-      ${typeChip("live", "直播", value)}
+      ${typeChip("dynamic", "动态", selected)}
+      ${typeChip("live", "直播", selected)}
     </div>
   `;
 }
 
-function typeChip(value, label, current) {
+function typeChip(value, label, selected) {
   return `
     <label class="type-chip ${value}">
-      <input type="radio" name="sub_type" value="${escapeAttribute(value)}" ${current === value ? "checked" : ""} />
+      <input type="checkbox" name="sub_types" value="${escapeAttribute(value)}" ${selected.has(value) ? "checked" : ""} />
       <span>${escapeHtml(label)}</span>
     </label>
   `;
 }
 
-function editorPreview(item, mode) {
-  const subType = item.sub_type || "dynamic";
+function editorPreview(item, mode, subTypes) {
   return `
     <div class="subscription-editor-preview">
       <img src="${escapeAttribute(item.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
       <div class="subscription-card-badges">
-        <span class="media-badge ${subType === "live" ? "live" : "dyn"}">${subType === "live" ? "LIVE" : "DYNAMIC"}</span>
+        ${subTypes.map(mediaBadge).join("")}
       </div>
       <span class="editor-preview-action">${mode === "edit" ? "EDIT" : "ADD"}</span>
       <div class="subscription-media-overlay">
@@ -254,7 +242,7 @@ function deleteModal(sub) {
         <div class="subscription-editor-preview confirm-preview">
           <img src="${escapeAttribute(sub.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
           <div class="subscription-card-badges">
-            <span class="media-badge ${subType === "live" ? "live" : "dyn"}">${subType === "live" ? "LIVE" : "DYNAMIC"}</span>
+            ${mediaBadge(subType)}
           </div>
           <span class="editor-preview-action">DELETE</span>
           <div class="subscription-media-overlay">
@@ -265,7 +253,7 @@ function deleteModal(sub) {
         <div class="confirm-copy">
           <div>
             <h2>删除订阅</h2>
-            <p>确认删除 ${escapeHtml(sub.username || sub.uid || "未命名 UP 主")} 的 ${escapeHtml(subType)} 订阅？</p>
+            <p>确认删除 ${escapeHtml(sub.username || sub.uid || "未命名 UP 主")} 的 ${escapeHtml(typeLabel(subType))} 订阅？</p>
             <p class="modal-muted">会话: ${escapeHtml(sub.target_id || "-")}</p>
           </div>
           <div class="modal-actions">
@@ -290,11 +278,34 @@ function field(label, name, value, type, required) {
   `;
 }
 
+function paginationBar(page, totalPages, total) {
+  return `
+    <nav class="subscription-pagination" aria-label="订阅分页">
+      <button class="ghost-button" type="button" data-page="${escapeAttribute(page - 1)}" ${page <= 1 ? "disabled" : ""}>上一页</button>
+      <span>第 ${escapeHtml(page)} / ${escapeHtml(totalPages)} 页 · 共 ${escapeHtml(total)} 个</span>
+      <button class="ghost-button" type="button" data-page="${escapeAttribute(page + 1)}" ${page >= totalPages ? "disabled" : ""}>下一页</button>
+    </nav>
+  `;
+}
+
+function categoryGroups(types, categoriesByType) {
+  return uniqueTypes(types).map((type) => `
+    <div class="category-group" data-category-group="${escapeAttribute(type)}">
+      <div class="category-group-heading">
+        ${mediaBadge(type)}
+      </div>
+      <div class="category-chip-row">
+        ${categoryControls(type, categoriesByType?.[type] || defaultCategories(type))}
+      </div>
+    </div>
+  `).join("");
+}
+
 function categoryControls(subType, selected) {
   const selectedSet = new Set((selected || []).map((item) => String(item)));
   return CATEGORY_OPTIONS[subType].map(([value, label]) => `
     <label class="category-chip">
-      <input type="checkbox" name="categories" value="${escapeAttribute(value)}"
+      <input type="checkbox" name="categories_${escapeAttribute(subType)}" value="${escapeAttribute(value)}"
         ${selectedSet.has(String(value)) ? "checked" : ""} />
       <span>${escapeHtml(label)}</span>
     </label>
@@ -305,6 +316,53 @@ function defaultCategories(subType) {
   return CATEGORY_OPTIONS[subType].map(([value]) => value);
 }
 
+function editorPayload(form) {
+  const formData = new FormData(form);
+  const subTypes = selectedTypes(form);
+  return {
+    mode: formData.get("mode"),
+    original_uid: formData.get("original_uid"),
+    original_sub_type: formData.get("original_sub_type"),
+    original_target_id: formData.get("original_target_id"),
+    uid: formData.get("uid"),
+    username: formData.get("username"),
+    sub_type: subTypes[0] || "dynamic",
+    sub_types: subTypes,
+    target_id: formData.get("target_id"),
+    categories: formData.getAll(`categories_${subTypes[0] || "dynamic"}`),
+    categories_by_type: categoriesByType(form),
+    tags: formData.get("tags"),
+    enabled: formData.get("enabled") === "true",
+  };
+}
+
+function updateCategoryGroups(form) {
+  const container = form.querySelector(".category-options");
+  if (!container) {
+    return;
+  }
+  container.innerHTML = categoryGroups(selectedTypes(form), categoriesByType(form));
+}
+
+function updatePreviewBadges(form) {
+  const badges = form.querySelector(".subscription-editor-preview .subscription-card-badges");
+  if (badges) {
+    badges.innerHTML = selectedTypes(form).map(mediaBadge).join("");
+  }
+}
+
+function categoriesByType(form) {
+  const data = new FormData(form);
+  return {
+    dynamic: data.getAll("categories_dynamic"),
+    live: data.getAll("categories_live"),
+  };
+}
+
+function selectedTypes(form) {
+  return Array.from(form.querySelectorAll("[name='sub_types']:checked")).map((input) => input.value);
+}
+
 function summaryBadge(label, value) {
   return `<span><strong>${escapeHtml(value)}</strong>${escapeHtml(label)}</span>`;
 }
@@ -313,19 +371,22 @@ function listText(value) {
   return Array.isArray(value) ? value.join(",") : (value || "");
 }
 
-function editorPayload(form) {
-  const formData = new FormData(form);
-  return {
-    mode: formData.get("mode"),
-    original_uid: formData.get("original_uid"),
-    original_sub_type: formData.get("original_sub_type"),
-    original_target_id: formData.get("original_target_id"),
-    uid: formData.get("uid"),
-    username: formData.get("username"),
-    sub_type: formData.get("sub_type"),
-    target_id: formData.get("target_id"),
-    categories: formData.getAll("categories"),
-    tags: formData.get("tags"),
-    enabled: formData.get("enabled") === "true",
-  };
+function mediaBadge(type) {
+  return `<span class="media-badge ${type === "live" ? "live" : "dyn"}">${type === "live" ? "LIVE" : "DYNAMIC"}</span>`;
+}
+
+function typeLabel(type) {
+  return type === "live" ? "直播" : "动态";
+}
+
+function uniqueTypes(types) {
+  const values = (types || []).filter((type) => ["dynamic", "live"].includes(type));
+  return [...new Set(values.length ? values : ["dynamic"])];
+}
+
+function clamp(value, min, max) {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(max, Math.max(min, value));
 }

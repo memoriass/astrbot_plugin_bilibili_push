@@ -298,6 +298,25 @@
 }
 
 .category-options {
+  display: grid;
+  gap: 8px;
+}
+
+.category-group {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgb(129 142 112 / 16%);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 38%);
+  padding: 10px;
+}
+
+.category-group-heading {
+  display: flex;
+  align-items: center;
+}
+
+.category-chip-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

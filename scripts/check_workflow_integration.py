@@ -60,8 +60,10 @@ def main() -> None:
         raise SystemExit(f"missing llm tools: {sorted(missing_tools)}")
     if missing_commands:
         raise SystemExit(f"missing commands: {sorted(missing_commands)}")
-    if "bilibili_pending_shortcut" not in custom_filters:
-        raise SystemExit("missing pending shortcut custom filter")
+    required_filters = {"bilibili_pending_shortcut", "bilibili_natural_workflow"}
+    missing_filters = required_filters - set(custom_filters)
+    if missing_filters:
+        raise SystemExit(f"missing custom filters: {sorted(missing_filters)}")
     if any("帮助" in name or "help" in func.lower() for func, name in commands):
         raise SystemExit("help command residue detected")
     _check_plugin_pages()

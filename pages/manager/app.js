@@ -1,5 +1,5 @@
-import { createApi, getBridge } from "./api.js?v=manager-live-modal";
-import { renderOverview } from "./overview.js?v=manager-live-modal";
+import { createApi, getBridge } from "./api.js?v=manager-multitype-ai";
+import { renderOverview } from "./overview.js?v=manager-multitype-ai";
 import {
   renderAccounts,
   renderEmptyError,
@@ -8,7 +8,8 @@ import {
   renderSubscriptions,
   renderTabs,
   showLoading,
-} from "./renderers.js?v=manager-live-modal";
+} from "./renderers.js?v=manager-multitype-ai";
+import { groupSubscriptionEditorItem } from "./subscriptions.js?v=manager-multitype-ai";
 
 const bridge = getBridge();
 const api = createApi(bridge);
@@ -139,7 +140,7 @@ function startCreateSubscription() {
   const targetId = state.overview?.subscriptions?.[0]?.target_id || "";
   state.subscriptionEditor = {
     mode: "create",
-    item: { sub_type: "dynamic", target_id: targetId, enabled: true },
+    item: { sub_types: ["dynamic"], target_id: targetId, enabled: true },
   };
   state.subscriptionDelete = null;
   render();
@@ -153,12 +154,12 @@ function startEditSubscription(dataset) {
   }
   state.subscriptionEditor = {
     mode: "edit",
-    item: {
+    item: groupSubscriptionEditorItem(state.overview?.subscriptions || [], {
       ...item,
       original_uid: item.uid,
       original_sub_type: item.sub_type,
       original_target_id: item.target_id,
-    },
+    }),
   };
   state.subscriptionDelete = null;
   render();
@@ -186,34 +187,61 @@ function cancelSubscriptionDelete() {
 }
 
 async function submitSubscription(data) {
-  const payload = {
-    uid: data.uid,
-    username: data.username,
-    sub_type: data.sub_type,
-    target_id: data.target_id,
-    categories: data.categories,
-    tags: data.tags,
-    enabled: data.enabled === true || data.enabled === "true",
-  };
   try {
-    if (data.mode === "edit") {
-      await api.updateSubscription({
-        ...payload,
-        original_uid: data.original_uid,
-        original_sub_type: data.original_sub_type,
-        original_target_id: data.original_target_id,
-      });
-      showToast("订阅已更新");
-    } else {
-      await api.createSubscription(payload);
-      showToast("订阅已创建");
+    const operations = subscriptionOperations(data);
+    for (const operation of operations) {
+      if (operation.kind === "update") {
+        await api.updateSubscription(operation.payload);
+      } else {
+        await api.createSubscription(operation.payload);
+      }
     }
+    showToast(data.mode === "edit" ? "订阅已更新" : "订阅已创建");
     state.subscriptionEditor = null;
     state.subscriptionDelete = null;
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));
   }
+}
+
+function subscriptionOperations(data) {
+  const selectedTypes = uniqueTypes(data.sub_types || [data.sub_type || "dynamic"]);
+  const basePayloads = selectedTypes.map((subType) => ({
+    uid: data.uid,
+    username: data.username,
+    sub_type: subType,
+    target_id: data.target_id,
+    categories: data.categories_by_type?.[subType] || data.categories || [],
+    tags: data.tags,
+    enabled: data.enabled === true || data.enabled === "true",
+  }));
+  if (data.mode !== "edit") {
+    return basePayloads.map((payload) => ({ kind: "create", payload }));
+  }
+  const existing = (state.overview?.subscriptions || []).filter(
+    (sub) =>
+      String(sub.uid) === String(data.uid) &&
+      String(sub.target_id) === String(data.target_id),
+  );
+  const ops = [];
+  for (const payload of basePayloads) {
+    const current = existing.find((sub) => sub.sub_type === payload.sub_type);
+    if (current) {
+      ops.push({
+        kind: "update",
+        payload: {
+          ...payload,
+          original_uid: current.uid,
+          original_sub_type: current.sub_type,
+          original_target_id: current.target_id,
+        },
+      });
+    } else {
+      ops.push({ kind: "create", payload });
+    }
+  }
+  return ops;
 }
 
 function findSubscription(dataset) {
@@ -373,6 +401,11 @@ function subscriptionPayload(dataset, extra = {}) {
     target_id: dataset.targetId,
     ...extra,
   };
+}
+
+function uniqueTypes(types) {
+  const values = (types || []).filter((type) => ["dynamic", "live"].includes(type));
+  return [...new Set(values.length ? values : ["dynamic"])];
 }
 
 function showToast(message) {

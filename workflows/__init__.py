@@ -1,5 +1,5 @@
 from .formatting import format_workflow_list
-from .filters import BiliPendingShortcutFilter
+from .filters import BiliNaturalWorkflowFilter, BiliPendingShortcutFilter
 from .parsing_pending import (
     workflow_from_pending_event,
 )
@@ -11,6 +11,7 @@ from .runner import run_bili_workflow
 
 __all__ = [
     "BiliPendingShortcutFilter",
+    "BiliNaturalWorkflowFilter",
     "PendingTaskStore",
     "format_workflow_list",
     "render_workflow_result",

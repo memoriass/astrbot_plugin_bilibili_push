@@ -5,8 +5,8 @@ import {
   escapeHtml,
   formatTargetId,
   formatTime,
-} from "./utils.js?v=manager-live-modal";
-import { pendingTitle } from "./pending_text.js?v=manager-live-modal";
+} from "./utils.js?v=manager-multitype-ai";
+import { pendingTitle } from "./pending_text.js?v=manager-multitype-ai";
 
 const ALL_TARGETS = "__all__";
 

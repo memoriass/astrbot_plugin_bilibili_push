@@ -3,10 +3,10 @@ import {
   escapeHtml,
   formatTargetId,
   formatTime,
-} from "./utils.js?v=manager-live-modal";
-import { renderAccountManager } from "./accounts.js?v=manager-live-modal";
-import { pendingCandidateText, pendingSummary, pendingTitle } from "./pending_text.js?v=manager-live-modal";
-import { renderSubscriptionCards } from "./subscriptions.js?v=manager-live-modal";
+} from "./utils.js?v=manager-multitype-ai";
+import { renderAccountManager } from "./accounts.js?v=manager-multitype-ai";
+import { pendingCandidateText, pendingSummary, pendingTitle } from "./pending_text.js?v=manager-multitype-ai";
+import { renderSubscriptionCards } from "./subscriptions.js?v=manager-multitype-ai";
 
 export function renderMetrics(container, diagnostics) {
   const items = [
