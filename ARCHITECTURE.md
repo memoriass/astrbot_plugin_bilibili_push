@@ -15,7 +15,7 @@
 
 1. AstrBot 加载 [main.py](main.py)，实例化 `BilibiliPush`。
 2. 插件创建数据目录、临时目录、背景图目录。
-3. 初始化数据库、解析器、调度器、命令处理器和渲染适配器。
+3. 读取配置并通过 `core/config.py` 做类型兜底，初始化数据库、解析器、调度器、命令处理器和渲染适配器。
 4. `initialize()` 设置全局 HTTP 客户端账号池，启动调度器和临时文件清理任务。
 5. `terminate()` 停止调度器、取消清理任务、关闭浏览器和 HTTP client。
 
@@ -35,16 +35,17 @@ flowchart LR
 
 ## AI 与管理页
 
-- AI 入口统一走 AstrBot LLM tools，`bili_workflow` 是推荐工具；旧的分散 LLM tools 仅作为兼容 wrapper。
+- AI 入口统一走 AstrBot LLM tools，`bili_workflow` 是推荐工具；分散 LLM tools 用作能力说明入口，实际业务仍汇入 workflow。
 - 模糊 UP 名称会先生成候选和 pending task；AI/自然语言入口允许高置信候选自动推进到确认卡片，但不会绕过用户确认写库。
-- 显式聊天 workflow 和 pending 续跑可以渲染 HTML 图片卡片；LLM tool 只返回稳定文本，避免把图片消息组件交给模型。
+- 自然语言和 AI 入口统一走 LLM tools；pending 续跑可以渲染 HTML 图片卡片，LLM tool 只返回稳定文本，避免把图片消息组件交给模型。
 - Plugin Pages 当前落地 `pages/manager/`，用于订阅、账号、pending task 和手动直播检查管理，不承载模板预览和聊天 help。
 
 ## 模块边界
 
 - `main.py`: AstrBot 插件入口，只做装配、命令注册和生命周期管理。
+- `_conf_schema.json`: AstrBot 插件配置页 schema；新增配置必须同步 `core/config.py` 和 README。
 - `core/`: 跨模块基础类型、模型、HTTP 客户端、兼容层，详见 `core/core.md`。
-- `database/`: SQLite 持久化，当前负责订阅数据，详见 `database/database.md`。
+- `database/`: SQLite 持久化，负责订阅、账号池和群/会话目标，详见 `database/database.md`。
 - `dynamic/`: Bilibili 动态抓取、备用接口转换、动态内容解析，详见 `dynamic/dynamic.md`。
 - `live/`: Bilibili 直播状态抓取、状态对比、直播 Post 构造，详见 `live/live.md`。
 - `scheduler/`: 周期任务、去重、状态缓存、推送分发，详见 `scheduler/scheduler.md`。
@@ -65,11 +66,12 @@ flowchart LR
 - 不在代码里堆大段架构说明；将背景知识写入 Markdown。
 - 网络接口失败不能伪装为空结果，否则会污染动态去重缓存。
 - 订阅写入不要覆盖用户已有配置，重复订阅应明确返回已存在。
+- SQLite 存长期业务数据，包括订阅、账号池和会话目标；KV 只存 pending、去重和直播状态这类短期状态。
 - 账号风控切换只轮换一次，避免跳过可用账号。
 - 对外公共类名尽量保持稳定，例如 `BilibiliDynamic`、`BilibiliScheduler`。
 - AI 工具不能凭模糊候选直接写库；高置信候选只能自动推进到确认节点，最终仍需用户确认。
-- AI workflow 的 LLM tool 返回文本；显式聊天入口可把同一结果渲染为 HTML 图片卡片。
-- Plugin Pages 写操作应复用 workflow 或 service 层，不直接操作 SQLite。
+- AI workflow 的 LLM tool 返回文本；pending 续跑可把同一结果渲染为 HTML 图片卡片。
+- Plugin Pages 写操作应走 `webapi/` service 层，不把 SQL 逻辑写到前端或命令 handler。
 
 ## 常见改动入口
 

@@ -15,7 +15,7 @@
 
 路由前缀固定为 `/astrbot_plugin_bilibili_push/`，由 AstrBot Dashboard 转发为 `/api/plug/<plugin>/<endpoint>`。
 
-- `GET overview`: 返回订阅、账号、pending task 和运行统计；订阅会补全头像和直播状态，用于卡片展示。
+- `GET overview`: 返回订阅、账号、目标会话、pending task 和运行统计；订阅会补全头像和直播状态，用于卡片展示。
 - `POST subscriptions/create`: 新增订阅，支持 UID、类型、会话、分类、标签和启用状态。
 - `POST subscriptions/update`: 按原始 `uid + sub_type + target_id` 定位并更新订阅字段。
 - `POST subscriptions/enabled`: 按 `uid + sub_type + target_id` 启用或停用订阅。

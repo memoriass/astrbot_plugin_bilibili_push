@@ -36,6 +36,17 @@ def serialize_account(account: dict) -> dict:
     }
 
 
+def serialize_target(target) -> dict:
+    return {
+        "target_id": str(target.target_id),
+        "channel": str(target.channel or ""),
+        "title": str(target.title or ""),
+        "enabled": bool(target.enabled),
+        "created_at": int(target.created_at or 0),
+        "updated_at": int(target.updated_at or 0),
+    }
+
+
 def account_status_label(account: dict, available: bool, cooldown_until: int) -> str:
     if not account.get("valid", True):
         return "已停用"

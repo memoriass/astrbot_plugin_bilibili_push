@@ -35,14 +35,8 @@ class LiveSubscriptionChecker:
         batches = list(self._chunks(sub_units))
 
         for index, batch in enumerate(batches):
-            try:
-                statuses = await self.platform.batch_get_status([
-                    sub_unit.sub_target for sub_unit in batch
-                ])
-                for sub_unit, new_status in zip(batch, statuses):
-                    await self._handle_status(sub_unit, new_status, current_is_first)
-            except Exception as exc:
-                logger.error(f"直播批量检查失败: {exc}")
+            for sub_unit, new_status in await self._fetch_status_pairs(batch):
+                await self._handle_status(sub_unit, new_status, current_is_first)
             if index < len(batches) - 1:
                 await self._pause_between_requests()
 
@@ -134,30 +128,46 @@ class LiveSubscriptionChecker:
         sub_units = group_subscriptions(live_subs)
         batches = list(self._chunks(sub_units))
         for index, batch in enumerate(batches):
-            try:
-                statuses = await self.platform.batch_get_status([
-                    sub_unit.sub_target for sub_unit in batch
-                ])
-                for sub_unit, new_status in zip(batch, statuses):
-                    uid = sub_unit.sub_target
-                    logger.info(
-                        f"手动检查 UID: {uid}, 状态: {new_status.live_status}, 标题: {new_status.title}"
-                    )
-                    if new_status.live_status != 1:
-                        continue
-                    raw_post = self.platform._gen_current_status(new_status, 1)
-                    parsed_post = await self.platform.parse(raw_post)
-                    await self.dispatcher.dispatch(
-                        self.platform.platform_name,
-                        [parsed_post],
-                        sub_unit.user_sub_infos,
-                    )
-                    count += 1
-            except Exception as exc:
-                logger.error(f"手动直播批量检查失败: {exc}")
+            for sub_unit, new_status in await self._fetch_status_pairs(batch):
+                uid = sub_unit.sub_target
+                logger.info(
+                    f"手动检查 UID: {uid}, 状态: {new_status.live_status}, 标题: {new_status.title}"
+                )
+                if new_status.live_status != 1:
+                    continue
+                raw_post = self.platform._gen_current_status(new_status, 1)
+                parsed_post = await self.platform.parse(raw_post)
+                await self.dispatcher.dispatch(
+                    self.platform.platform_name,
+                    [parsed_post],
+                    sub_unit.user_sub_infos,
+                )
+                count += 1
             if index < len(batches) - 1:
                 await self._pause_between_requests()
         return count
+
+    async def _fetch_status_pairs(self, batch):
+        targets = [sub_unit.sub_target for sub_unit in batch]
+        try:
+            statuses = await self.platform.batch_get_status(targets)
+            if len(statuses) != len(batch):
+                raise ValueError(
+                    f"直播接口返回数量不匹配: targets={len(batch)}, statuses={len(statuses)}"
+                )
+            return list(zip(batch, statuses))
+        except Exception as exc:
+            if len(batch) <= 1 or self._is_risk_error(exc):
+                uid = targets[0] if targets else "-"
+                logger.error(f"直播检查失败 UID:{uid}: {exc}")
+                return []
+
+            midpoint = len(batch) // 2
+            logger.warning(f"直播批量检查失败，拆分批次重试: {exc}")
+            left = await self._fetch_status_pairs(batch[:midpoint])
+            await self._pause_between_requests()
+            right = await self._fetch_status_pairs(batch[midpoint:])
+            return left + right
 
     def _chunks(self, items):
         for index in range(0, len(items), self.batch_size):
@@ -166,3 +176,8 @@ class LiveSubscriptionChecker:
     async def _pause_between_requests(self):
         if self.request_delay_sec > 0:
             await asyncio.sleep(self.request_delay_sec)
+
+    @staticmethod
+    def _is_risk_error(exc: Exception) -> bool:
+        text = str(exc)
+        return any(code in text for code in ("352", "403", "412", "risk control"))

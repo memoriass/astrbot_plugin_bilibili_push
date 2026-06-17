@@ -14,8 +14,9 @@ export function renderOverview(panel, overview, actions, liveConfirm = null) {
   const diagnostics = overview.diagnostics || {};
   const subscriptions = overview.subscriptions || [];
   const accounts = overview.accounts || [];
+  const targets = overview.targets || [];
   const pendingTasks = overview.pending_tasks || [];
-  const liveTargets = buildLiveTargetOptions(subscriptions);
+  const liveTargets = buildLiveTargetOptions(subscriptions, targets);
   const issues = buildIssues(subscriptions, accounts, pendingTasks);
 
   panel.innerHTML = `
@@ -95,7 +96,6 @@ function capabilityPanel(diagnostics, targets) {
       <div class="capability-list">
         ${capabilityItem("动态检查", `${diagnostics.dynamic_check_interval || diagnostics.check_interval || "-"} 秒`)}
         ${capabilityItem("直播检查", `${diagnostics.live_check_interval || diagnostics.check_interval || "-"} 秒`)}
-        ${capabilityItem("渲染", diagnostics.render_type || "-")}
         ${capabilityItem("链接解析", diagnostics.enable_link_parser ? "启用" : "停用")}
         ${capabilityItem("AI 工具", diagnostics.enable_ai_tools ? "启用" : "停用")}
         ${capabilityItem("账号冷却", `${diagnostics.risk_cooldown_sec || "-"} 秒`)}
@@ -162,10 +162,16 @@ function capabilityItem(label, value) {
   return `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
 }
 
-function buildLiveTargetOptions(subscriptions) {
+function buildLiveTargetOptions(subscriptions, targetRows) {
   const targets = new Map();
+  const enabledTargets = new Map(
+    targetRows.map((target) => [target.target_id, target.enabled !== false]),
+  );
   for (const sub of subscriptions) {
     if (!sub.enabled || sub.sub_type !== "live" || !sub.target_id) {
+      continue;
+    }
+    if (enabledTargets.has(sub.target_id) && !enabledTargets.get(sub.target_id)) {
       continue;
     }
     targets.set(sub.target_id, formatTargetId(sub.target_id));

@@ -7,7 +7,7 @@
 - `subscription_handler.py`: 添加、删除、查看订阅。
 - `subscription_editor.py`: 订阅增删和变更卡片。
 - `subscription_list.py`: 订阅列表聚合、头像/直播状态补充和列表卡片。
-- `ai_handler.py`: LLM tool 兼容适配，实际业务在 `workflows/`。
+- `ai_handler.py`: LLM tool 适配层，实际业务在 `workflows/`。
 - `login_handler.py`: Bilibili 扫码登录和账号池状态展示。
 - `search_handler.py`: UP 主搜索和搜索结果卡片。
 - `link_handler.py`: 聊天消息中的 Bilibili 链接自动解析。

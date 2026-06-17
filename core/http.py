@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Optional
 
 import httpx
 
+from .config import PluginConfig, load_plugin_config
+
 if TYPE_CHECKING:
     from astrbot.api.star import Star
 
@@ -38,48 +40,27 @@ class HttpClient:
         if not conf:
             conf = getattr(star, "config", {}) or {}
 
-        cls._verify_ssl = conf.get("verify_ssl", True)
-        cls._risk_cooldown_sec = int(conf.get("risk_cooldown_sec", 1800))
+        parsed_config = (
+            conf if isinstance(conf, PluginConfig) else load_plugin_config(conf)
+        )
+        cls._verify_ssl = parsed_config.verify_ssl
+        cls._risk_cooldown_sec = parsed_config.risk_cooldown_sec
         await cls.load_accounts()
 
     @classmethod
     async def load_accounts(cls):
         if cls._star_instance:
-            cls._accounts = await cls._star_instance.get_kv_data(
-                "bilibili_push_accounts", []
-            )
-            # Migrate old single cookie if exists and pool is empty
-            if not cls._accounts:
-                old_cookies = await cls._star_instance.get_kv_data("bili_cookies", {})
-                if not old_cookies:
-                    # Try another common key from previous versions if any
-                    old_cookies = await cls._star_instance.get_kv_data(
-                        "bilibili_cookies", {}
-                    )
-
-                if old_cookies:
-                    # Generic migration entry
-                    cls._accounts.append(
-                        {
-                            "uid": "default",
-                            "name": "Default Account",
-                            "face": "",
-                            "cookies": old_cookies,
-                            "valid": True,
-                        }
-                    )
-                    await cls.save_accounts()
-
-            # Reset index
+            db = cls._account_db()
+            cls._accounts = db.get_accounts() if db else []
             cls._current_account_index = 0
             await cls._refresh_account_states()
 
     @classmethod
     async def save_accounts(cls):
-        if cls._star_instance:
-            await cls._star_instance.put_kv_data(
-                "bilibili_push_accounts", cls._accounts
-            )
+        db = cls._account_db()
+        if db:
+            for account in cls._accounts:
+                db.upsert_account(account)
 
     @classmethod
     async def add_account(cls, uid: str, name: str, face: str, cookies: dict):
@@ -92,9 +73,7 @@ class HttpClient:
                 acc["valid"] = True
                 cls._clear_transient_status(acc)
                 await cls.save_accounts()
-                # Update current client if it matches
-                if cls._client:
-                    cls._client.cookies.update(cookies)
+                await cls.close()
                 return
 
         # Add new
@@ -108,6 +87,7 @@ class HttpClient:
             }
         )
         await cls.save_accounts()
+        await cls.close()
 
     @classmethod
     async def upsert_account(
@@ -150,6 +130,9 @@ class HttpClient:
         cls._accounts = [acc for acc in cls._accounts if str(acc.get("uid")) != uid]
         if len(cls._accounts) == before:
             return False
+        db = cls._account_db()
+        if db:
+            db.remove_account(uid)
         cls._current_account_index = min(
             cls._current_account_index,
             max(len(cls._accounts) - 1, 0),
@@ -164,7 +147,11 @@ class HttpClient:
             if str(acc.get("uid")) == str(uid):
                 acc["valid"] = valid
                 cls._clear_transient_status(acc)
-                await cls.save_accounts()
+                db = cls._account_db()
+                if db:
+                    db.set_account_valid(uid, valid)
+                else:
+                    await cls.save_accounts()
                 await cls.close()
                 return True
         return False
@@ -314,3 +301,7 @@ class HttpClient:
         account.pop("status_code", None)
         account.pop("cooldown_until", None)
         account.pop("failure_count", None)
+
+    @classmethod
+    def _account_db(cls):
+        return getattr(cls._star_instance, "db", None)

@@ -2,8 +2,8 @@ from pathlib import Path
 
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
-from astrbot.core.star.filter.command import GreedyStr
 
+from .core.config import load_plugin_config
 from .core.runtime import PluginRuntime
 from .database.db_manager import DatabaseManager
 from .handlers.ai_handler import AiToolHandler
@@ -21,18 +21,17 @@ from .workflows import (
     PendingTaskStore,
     render_workflow_result,
     run_bili_workflow,
-    workflow_from_cli,
     workflow_from_pending_event,
 )
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.2"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.5"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.config = {}
+        self.config = load_plugin_config(context.get_config() or {})
 
         # 路径初始化
         self.plugin_dir = Path(__file__).parent
@@ -50,33 +49,22 @@ class BilibiliPush(Star):
         self.bg_dir.mkdir(parents=True, exist_ok=True)
 
         # 获取插件配置
-        config = context.get_config() or {}
-        self.push_on_startup = config.get("push_on_startup", False)
-        self.check_interval = int(config.get("check_interval", 30))
-        self.dynamic_check_interval = int(
-            config.get("dynamic_check_interval", max(self.check_interval, 120))
-        )
-        self.live_check_interval = int(
-            config.get("live_check_interval", self.check_interval)
-        )
-        self.request_delay_sec = float(config.get("request_delay_sec", 0.8))
-        self.request_jitter_sec = float(config.get("request_jitter_sec", 5.0))
-        self.live_batch_size = int(config.get("live_batch_size", 50))
-        self.risk_cooldown_sec = int(config.get("risk_cooldown_sec", 1800))
-        self.render_type = config.get("render_type", "image")
+        config = self.config
+        self.push_on_startup = config.push_on_startup
+        self.check_interval = config.check_interval
+        self.dynamic_check_interval = config.dynamic_check_interval
+        self.live_check_interval = config.live_check_interval
+        self.request_delay_sec = config.request_delay_sec
+        self.request_jitter_sec = config.request_jitter_sec
+        self.live_batch_size = config.live_batch_size
+        self.risk_cooldown_sec = config.risk_cooldown_sec
 
-        self.enable_link_parser = config.get("enable_link_parser", True)
-        self.search_cache_expiry_hours = config.get("search_cache_expiry_hours", 24)
-        self.platform_name = config.get("platform_name", "auto")
-        self.enable_ai_tools = config.get("enable_ai_tools", True)
-        self.ai_pending_timeout_sec = int(config.get("ai_pending_timeout_sec", 300))
-        self.enable_ai_auto_select_candidates = config.get(
-            "enable_ai_auto_select_candidates",
-            True,
-        )
-        self.ai_auto_select_confidence = float(
-            config.get("ai_auto_select_confidence", 0.88),
-        )
+        self.enable_link_parser = config.enable_link_parser
+        self.search_cache_expiry_hours = config.search_cache_expiry_hours
+        self.enable_ai_tools = config.enable_ai_tools
+        self.ai_pending_timeout_sec = config.ai_pending_timeout_sec
+        self.enable_ai_auto_select_candidates = config.enable_ai_auto_select_candidates
+        self.ai_auto_select_confidence = config.ai_auto_select_confidence
         self.pending_store = PendingTaskStore(self, ttl_sec=self.ai_pending_timeout_sec)
 
         # 核心组件初始化
@@ -91,7 +79,6 @@ class BilibiliPush(Star):
             request_jitter_sec=self.request_jitter_sec,
             live_batch_size=self.live_batch_size,
             push_on_startup=self.push_on_startup,
-            render_type=self.render_type,
             on_new_post=self._handle_new_post,
             star=self,
         )
@@ -197,19 +184,6 @@ class BilibiliPush(Star):
             event, self.parser, self.enable_link_parser
         ):
             yield ret
-
-    @filter.command("b站工作流", alias={"bili workflow", "biliwf"})
-    async def bilibili_workflow_command(
-        self,
-        event: AstrMessageEvent,
-        workflow: str = "list_subscriptions",
-        args: GreedyStr = GreedyStr,
-    ):
-        """显式执行 Bilibili workflow。"""
-        actual_args = args if isinstance(args, str) else ""
-        request = workflow_from_cli(workflow, actual_args)
-        result = await run_bili_workflow(self, event, request)
-        yield await render_workflow_result(event, self.renderer, result)
 
     @filter.custom_filter(BiliPendingShortcutFilter)
     async def bilibili_pending_shortcut(self, event: AstrMessageEvent):

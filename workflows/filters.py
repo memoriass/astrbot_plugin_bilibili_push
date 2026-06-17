@@ -4,7 +4,7 @@ from astrbot.api import AstrBotConfig
 from astrbot.api.event import AstrMessageEvent
 from astrbot.core.star.filter.custom_filter import CustomFilter
 
-from .parsing_command import workflow_from_pending_event
+from .parsing_pending import workflow_from_pending_event
 
 
 class BiliPendingShortcutFilter(CustomFilter):

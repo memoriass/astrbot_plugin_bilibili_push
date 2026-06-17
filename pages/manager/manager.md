@@ -24,7 +24,7 @@
 
 ## 数据来源
 
-- `bridge.apiGet("overview")`
+- `bridge.apiGet("overview")`: 返回 diagnostics、subscriptions、accounts、targets 和 pending_tasks。
 - `bridge.apiPost("subscriptions/create", body)`
 - `bridge.apiPost("subscriptions/update", body)`
 - `bridge.apiPost("subscriptions/enabled", body)`

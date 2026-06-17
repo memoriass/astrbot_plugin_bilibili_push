@@ -8,6 +8,7 @@ from .manager_serializers import (
     serialize_account,
     serialize_pending_task,
     serialize_subscription,
+    serialize_target,
 )
 
 
@@ -21,14 +22,21 @@ class ManagerOverviewService:
             for sub in self.plugin.db.get_subscriptions()
         ])
         accounts = [serialize_account(acc) for acc in await HttpClient.get_accounts()]
+        targets = [serialize_target(target) for target in self.plugin.db.get_targets()]
         pending_tasks = [
             serialize_pending_task(task)
             for task in await self.plugin.pending_store.list_tasks()
         ]
         return {
-            "diagnostics": self._diagnostics(subscriptions, accounts, pending_tasks),
+            "diagnostics": self._diagnostics(
+                subscriptions,
+                accounts,
+                pending_tasks,
+                targets,
+            ),
             "subscriptions": subscriptions,
             "accounts": accounts,
+            "targets": targets,
             "pending_tasks": pending_tasks,
         }
 
@@ -37,18 +45,26 @@ class ManagerOverviewService:
         subscriptions: list[dict],
         accounts: list[dict],
         pending_tasks: list[dict],
+        targets: list[dict],
     ) -> dict:
-        targets = {sub["target_id"] for sub in subscriptions}
         dynamic_count = sum(1 for sub in subscriptions if sub["sub_type"] == "dynamic")
         live_count = sum(1 for sub in subscriptions if sub["sub_type"] == "live")
-        enabled_count = sum(1 for sub in subscriptions if sub["enabled"])
+        target_enabled = {
+            target["target_id"]: target.get("enabled", True)
+            for target in targets
+        }
+        enabled_count = sum(
+            1
+            for sub in subscriptions
+            if sub["enabled"] and target_enabled.get(sub["target_id"], True)
+        )
+        enabled_targets = sum(1 for target in targets if target.get("enabled", True))
         valid_accounts = sum(1 for acc in accounts if acc.get("available", True))
         return {
             "check_interval": self.plugin.check_interval,
             "dynamic_check_interval": self.plugin.dynamic_check_interval,
             "live_check_interval": self.plugin.live_check_interval,
             "risk_cooldown_sec": self.plugin.risk_cooldown_sec,
-            "render_type": self.plugin.render_type,
             "enable_link_parser": self.plugin.enable_link_parser,
             "enable_ai_tools": self.plugin.enable_ai_tools,
             "subscriptions": len(subscriptions),
@@ -56,6 +72,7 @@ class ManagerOverviewService:
             "dynamic_subscriptions": dynamic_count,
             "live_subscriptions": live_count,
             "targets": len(targets),
+            "enabled_targets": enabled_targets,
             "accounts": len(accounts),
             "valid_accounts": valid_accounts,
             "pending_tasks": len(pending_tasks),

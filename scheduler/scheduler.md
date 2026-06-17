@@ -21,6 +21,7 @@
 - `scheduler.py` 按 `dynamic_check_interval` 和 `live_check_interval` 分别调度动态与直播，避免两类请求固定同一时刻打出。
 - `dynamic_checker.py` 负责动态基线和新动态筛选，同一轮不同 UP 之间使用 `request_delay_sec` 做轻量限速。
 - `live_checker.py` 负责周期直播检查和 WebUI 手动直播检查，直播状态使用 `batch_get_status()` 按 `live_batch_size` 批量查询。
+- 直播批量检查遇到非风控异常时会拆分批次重试；明确风控错误不做单 UID 追打，避免放大请求压力。
 - WebUI 的“全部直播检查”会先按 UID 去重，再批量查询状态并按订阅目标分发，避免多群重复请求同一 UP。
 - `dispatcher.py` 是推送出口，新增主题、分类过滤或消息组件时在这里接入。
 - `subscription_group.py` 是数据库订阅到轮询单元的转换层，修改订阅字段时需要同步这里。

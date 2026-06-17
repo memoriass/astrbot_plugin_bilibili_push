@@ -8,7 +8,9 @@ export function createLocalBridge() {
     },
     apiPost: async (endpoint, payload = {}) => {
       if (endpoint === "subscriptions/create") {
-        mockState.subscriptions.push(mockSubscription(payload));
+        const subscription = mockSubscription(payload);
+        mockState.subscriptions.push(subscription);
+        ensureTarget(subscription.target_id);
         refreshDiagnostics();
         return ok({ subscription: payload });
       }
@@ -16,6 +18,7 @@ export function createLocalBridge() {
         const sub = findSubscription(payload, "original_");
         if (sub) {
           Object.assign(sub, mockSubscription(payload));
+          ensureTarget(sub.target_id);
         }
         refreshDiagnostics();
         return ok({ subscription: sub });
@@ -113,7 +116,6 @@ function createMockOverview() {
       dynamic_check_interval: 120,
       live_check_interval: 30,
       risk_cooldown_sec: 1800,
-      render_type: "image",
       enable_link_parser: true,
       enable_ai_tools: true,
     },
@@ -185,6 +187,11 @@ function createMockOverview() {
         enabled: false,
       },
     ],
+    targets: [
+      mockTarget("aiocqhttp:GroupMessage:10001"),
+      mockTarget("aiocqhttp:GroupMessage:10002"),
+      mockTarget("aiocqhttp:GroupMessage:10003"),
+    ],
     accounts: [
       { uid: "10001", name: "Bili Account", face: "", valid: true },
       { uid: "10002", name: "Backup Account", face: "", valid: false },
@@ -234,6 +241,24 @@ function findSubscription(payload, prefix = "") {
   );
 }
 
+function ensureTarget(targetId) {
+  if (!targetId || mockState.targets.some((target) => target.target_id === targetId)) {
+    return;
+  }
+  mockState.targets.push(mockTarget(targetId));
+}
+
+function mockTarget(targetId) {
+  return {
+    target_id: targetId,
+    channel: String(targetId || "").split(":", 1)[0],
+    title: "",
+    enabled: true,
+    created_at: 0,
+    updated_at: 0,
+  };
+}
+
 function parseList(value) {
   if (Array.isArray(value)) {
     return value;
@@ -251,7 +276,8 @@ function refreshDiagnostics() {
   mockState.diagnostics.enabled_subscriptions = subscriptions.filter((sub) => sub.enabled).length;
   mockState.diagnostics.dynamic_subscriptions = subscriptions.filter((sub) => sub.sub_type === "dynamic").length;
   mockState.diagnostics.live_subscriptions = subscriptions.filter((sub) => sub.sub_type === "live").length;
-  mockState.diagnostics.targets = new Set(subscriptions.map((sub) => sub.target_id)).size;
+  mockState.diagnostics.targets = mockState.targets.length;
+  mockState.diagnostics.enabled_targets = mockState.targets.filter((target) => target.enabled).length;
   mockState.diagnostics.accounts = accounts.length;
   mockState.diagnostics.valid_accounts = accounts.filter((account) => account.valid).length;
 }

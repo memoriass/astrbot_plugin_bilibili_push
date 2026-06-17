@@ -164,9 +164,16 @@ class BilibiliLive(StatusChangePlatform):
             params={"uids[]": targets},
             timeout=10.0,
         )
+        if res.status_code in {403, 412}:
+            await HttpClient.invalidate_current_account(status_code=res.status_code)
+            raise Exception(f"Live API risk control after retry: {res.status_code}")
         res.raise_for_status()
         res_dict = res.json()
         if res_dict["code"] != 0:
+            if str(res_dict["code"]) in {"-352", "352", "403", "412"}:
+                await HttpClient.invalidate_current_account(
+                    status_code=int(res_dict["code"])
+                )
             raise Exception(f"Live API Error after retry: {res_dict['code']}")
         data = res_dict.get("data", {})
         return [

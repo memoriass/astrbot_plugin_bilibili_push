@@ -31,7 +31,7 @@ async def run_check_status(plugin, event, request: WorkflowRequest) -> str:
     return (
         "Bilibili 插件诊断：\n"
         f"- workflows: 已启用\n"
-        f"- LLM tools: bili_workflow + 兼容工具\n"
+        f"- LLM tools: bili_workflow + 能力说明工具\n"
         f"- accounts: {len(accounts)}\n"
         f"- renderer: {browser_ready}\n\n"
         + format_workflow_list()

@@ -49,6 +49,28 @@ def _check_metadata() -> None:
         raise SystemExit("metadata.yaml repo is missing or points to the wrong project")
     if "description" not in metadata and "desc" not in metadata:
         raise SystemExit("metadata.yaml must expose description or desc")
+    _check_plugin_logo()
+
+
+def _check_plugin_logo() -> None:
+    logo = ROOT / "logo.png"
+    if not logo.exists():
+        raise SystemExit("plugin logo.png is missing")
+
+    with logo.open("rb") as file:
+        signature = file.read(26)
+
+    if not signature.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise SystemExit("plugin logo.png must be a PNG file")
+
+    width = int.from_bytes(signature[16:20], "big")
+    height = int.from_bytes(signature[20:24], "big")
+    if (width, height) != (256, 256):
+        raise SystemExit("plugin logo.png must be 256x256 as recommended by AstrBot")
+
+    color_type = signature[25] if len(signature) > 25 else None
+    if color_type not in {4, 6}:
+        raise SystemExit("plugin logo.png must include an alpha channel")
 
 
 def _read_simple_yaml(path: Path) -> dict[str, str]:

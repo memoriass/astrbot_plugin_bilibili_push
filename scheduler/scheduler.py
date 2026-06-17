@@ -31,7 +31,6 @@ class BilibiliScheduler:
         request_jitter_sec: float = 5.0,
         live_batch_size: int = 50,
         push_on_startup: bool = False,
-        render_type: str = "image",
         on_new_post: Callable[[str, str, list[MessageSegment]], Awaitable[None]]
         | None = None,
         star: "Star" = None,
@@ -44,7 +43,6 @@ class BilibiliScheduler:
         self.live_check_interval = int(live_check_interval or check_interval)
         self.request_jitter_sec = max(0.0, float(request_jitter_sec))
         self.push_on_startup = push_on_startup
-        self.render_type = render_type
         self.on_new_post = on_new_post
         self.star = star
 
