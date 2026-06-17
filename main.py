@@ -26,7 +26,7 @@ from .workflows import (
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.5"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.6"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
