@@ -38,6 +38,16 @@ EXPECTED_WEB_ENDPOINTS = {
     "subscriptions/update",
     "pending/clear",
 }
+SKIP_LINE_LIMIT_DIRS = {
+    ".git",
+    ".venv",
+    "__pycache__",
+    "data",
+    "env",
+    "node_modules",
+    "template_previews",
+    "venv",
+}
 
 
 def main() -> None:
@@ -149,7 +159,7 @@ def _check_web_api_modules() -> None:
 def _oversized_text_files() -> list[tuple[str, int]]:
     oversized = []
     for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts or "__pycache__" in path.parts:
+        if not path.is_file() or any(part in SKIP_LINE_LIMIT_DIRS for part in path.parts):
             continue
         try:
             count = sum(1 for _ in path.open("r", encoding="utf-8"))

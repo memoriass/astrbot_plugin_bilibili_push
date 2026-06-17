@@ -11,11 +11,16 @@ from .models import WorkflowRequest
 from .pending import store_pending_task
 from .results import WorkflowResult
 from .runtime import event_origin
+from .selection import choose_confident_candidate
 from .search import search_up_candidates
 from .utils import first_text, is_uid, normalize_sub_type
 
 
-async def run_add_subscription(plugin, event, request: WorkflowRequest) -> str:
+async def run_add_subscription(
+    plugin,
+    event,
+    request: WorkflowRequest,
+) -> WorkflowResult | str:
     payload = {"target": request.target, **request.params}
     target = first_text(payload, "uid", "target", "mid")
     sub_type = normalize_sub_type(first_text(payload, "sub_type", "type") or "dynamic")
@@ -31,6 +36,25 @@ async def run_add_subscription(plugin, event, request: WorkflowRequest) -> str:
         return error
     if not candidates:
         return f"未找到关键词“{keyword}”对应的 UP 主。"
+
+    selection = choose_confident_candidate(
+        keyword,
+        candidates,
+        threshold=float(getattr(plugin, "ai_auto_select_confidence", 0.88)),
+    ) if _can_auto_select_candidates(plugin, request) else None
+    if selection:
+        result = await build_confirm_task(plugin, event, request, selection.candidate)
+        base_display = result.display_text or result.text
+        prefix = (
+            "已根据候选匹配度自动选择："
+            f"{selection.candidate.get('username')} | UID={selection.candidate.get('uid')} "
+            f"| 置信度 {selection.confidence:.0%}\n"
+            f"依据：{selection.reason}。\n"
+            "仍需你确认后才会写入订阅。\n\n"
+        )
+        result.text = prefix + result.text
+        result.display_text = prefix + base_display
+        return result
 
     task_id = await store_pending_task(
         plugin,
@@ -120,7 +144,12 @@ async def run_remove_subscription(plugin, event, request: WorkflowRequest) -> Wo
     return await _remove_one(plugin, event, uid, sub_type)
 
 
-async def build_confirm_task(plugin, event, request: WorkflowRequest, candidate: dict) -> str:
+async def build_confirm_task(
+    plugin,
+    event,
+    request: WorkflowRequest,
+    candidate: dict,
+) -> WorkflowResult:
     sub_type = normalize_sub_type(str(request.params.get("sub_type") or "dynamic"))
     task_id = await store_pending_task(
         plugin,
@@ -179,3 +208,9 @@ async def _remove_one(plugin, event, uid: str, sub_type: str) -> WorkflowResult:
 
 def _default_categories(sub_type: str) -> list[int]:
     return [1, 2, 3, 4, 5, 6] if sub_type == "dynamic" else [1, 2, 3]
+
+
+def _can_auto_select_candidates(plugin, request: WorkflowRequest) -> bool:
+    if not getattr(plugin, "enable_ai_auto_select_candidates", True):
+        return False
+    return request.source in {"tool", "natural"}

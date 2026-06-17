@@ -70,6 +70,8 @@ LLM 工具返回稳定文本；显式 workflow 命令和 pending 续跑会额外
 - **`ai_tool_timeout_sec`**: Agent 工具调用超时（秒）。
 - **`ai_max_steps`**: Agent 最大执行步数。
 - **`ai_pending_timeout_sec`**: AI workflow pending task 有效期（秒）。
+- **`enable_ai_auto_select_candidates`**: AI/自然语言模糊订阅候选置信度较高时，自动进入确认流程，默认开启。
+- **`ai_auto_select_confidence`**: 自动候选选择阈值，默认 `0.88`。
 - **`verify_ssl`**: HTTPS 请求是否校验证书（建议保持开启）。
 
 ---

@@ -63,6 +63,13 @@ class BilibiliPush(Star):
         self.ai_tool_timeout_sec = int(config.get("ai_tool_timeout_sec", 20))
         self.ai_max_steps = int(config.get("ai_max_steps", 8))
         self.ai_pending_timeout_sec = int(config.get("ai_pending_timeout_sec", 300))
+        self.enable_ai_auto_select_candidates = config.get(
+            "enable_ai_auto_select_candidates",
+            True,
+        )
+        self.ai_auto_select_confidence = float(
+            config.get("ai_auto_select_confidence", 0.88),
+        )
         self.pending_store = PendingTaskStore(self, ttl_sec=self.ai_pending_timeout_sec)
 
         # 核心组件初始化

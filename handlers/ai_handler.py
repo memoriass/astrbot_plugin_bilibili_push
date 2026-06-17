@@ -113,7 +113,8 @@ class AiToolHandler:
         return (
             "你正在使用 Bilibili 推送插件的 workflow 工具。"
             "当用户只给出 UP 主名称或模糊关键词时，先调用 search_up 或 add_subscription 生成候选任务，"
-            "不要自行猜 UID。只有用户给出明确 UID，或用户通过 pending task 确认后，才可以写入订阅。"
+            "不要自行猜 UID。AI workflow 会在候选可信度较高时自动进入确认流程；"
+            "只有用户给出明确 UID，或用户通过 pending task 确认后，才可以写入订阅。"
             "删除订阅时必须要求明确 UID 和订阅类型。"
             "\n\n"
             + format_workflow_list()

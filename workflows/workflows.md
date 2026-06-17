@@ -17,6 +17,7 @@
 - `pending.py`: pending task 创建、引用 marker 解析、候选选择和确认续跑。
 - `pending_store.py`: pending task KV 持久化、匹配、过期清理。
 - `search.py`: UP 主搜索 workflow。
+- `selection.py`: 高置信候选选择器，仅用于自动分支推进。
 - `subscription.py`: 添加、确认添加和删除订阅 workflow。
 - `manage.py`: 订阅列表、账号状态和诊断 workflow。
 - `formatting.py`: workflow 输出文本格式化。
@@ -66,6 +67,14 @@ flowchart TD
 ```
 
 需要用户确认的节点：搜索结果多候选、模糊添加订阅、订阅写入前确认和 pending 续跑。明确 UID 的当前会话订阅可直接执行，删除订阅必须限定当前会话。
+
+## 自动分支推进
+
+- `add_subscription` 遇到模糊 UP 名称时会先搜索候选。
+- 仅 AI tool 和自然语言入口启用自动分支推进；显式 workflow 命令仍展示候选卡片让用户选择。
+- 如果第一阶段候选匹配度超过 `ai_auto_select_confidence`，且领先其他候选足够明显，workflow 会自动选中该候选并进入确认订阅流程。
+- 自动推进不会直接写库；最终写入仍需要用户引用确认卡片回复“确认”。
+- 可通过 `enable_ai_auto_select_candidates=false` 关闭，或调高 `ai_auto_select_confidence` 降低误选概率。
 
 ## 聊天卡片
 
