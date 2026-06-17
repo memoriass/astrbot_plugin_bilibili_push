@@ -18,5 +18,6 @@
 - 任何跨 Pydantic v1/v2 的调用都应通过 `compat.py`，避免业务模块直接依赖版本差异。
 - 长期 HTTP client 统一走 `HttpClient.get_client()`；新增网络访问时不要在 handler 或 workflow 中创建全局 client。
 - Cookie 账号池、风控账号轮换和 SSL 配置集中在 `http.py`，新增接口请求应复用这套能力。
+- 账号触发 `352/403/412` 风控后进入 `risk_cooldown_sec` 冷却，不应直接永久失效；冷却结束后会自动恢复参与轮换。
 - 插件生命周期、资源初始化、临时文件清理和最终消息发送放 `runtime.py`，`main.py` 只负责装配和注册。
 - `types.py` 是内部稳定契约。修改 `Post`、`SubUnit`、`MessageSegment` 时，需要同步 `scheduler/`、`utils/renderers/` 和模板字段。

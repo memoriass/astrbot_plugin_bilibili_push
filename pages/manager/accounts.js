@@ -52,6 +52,7 @@ function accountCard(account) {
         <div class="account-media-overlay">
           <h2>${escapeHtml(account.name || "Bilibili 账号")}</h2>
           <p>UID: ${escapeHtml(account.uid || "-")}</p>
+          ${account.status_label ? `<p>${escapeHtml(account.status_label)}</p>` : ""}
         </div>
       </div>
     </article>

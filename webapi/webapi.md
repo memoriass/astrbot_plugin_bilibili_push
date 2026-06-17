@@ -23,7 +23,7 @@
 - `POST accounts/upsert`: 新增或编辑账号；Cookie 只允许写入/替换，不从接口回显。
 - `POST accounts/delete`: 按 UID 删除账号。
 - `POST accounts/valid`: 按 UID 标记账号有效或失效。
-- `POST checks/live`: 对指定会话执行手动直播检查；`target_id="__all__"` 时按启用直播订阅所在群会话逐个检查。
+- `POST checks/live`: 对指定会话执行手动直播检查；`target_id="__all__"` 时按全局唯一 UID 批量检查，再按订阅目标分发。
 - `POST pending/clear`: 清空 workflow pending task。
 
 ## 维护说明

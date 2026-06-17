@@ -27,7 +27,7 @@ from .workflows import (
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.1"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.2"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
@@ -52,7 +52,17 @@ class BilibiliPush(Star):
         # 获取插件配置
         config = context.get_config() or {}
         self.push_on_startup = config.get("push_on_startup", False)
-        self.check_interval = config.get("check_interval", 30)
+        self.check_interval = int(config.get("check_interval", 30))
+        self.dynamic_check_interval = int(
+            config.get("dynamic_check_interval", max(self.check_interval, 120))
+        )
+        self.live_check_interval = int(
+            config.get("live_check_interval", self.check_interval)
+        )
+        self.request_delay_sec = float(config.get("request_delay_sec", 0.8))
+        self.request_jitter_sec = float(config.get("request_jitter_sec", 5.0))
+        self.live_batch_size = int(config.get("live_batch_size", 50))
+        self.risk_cooldown_sec = int(config.get("risk_cooldown_sec", 1800))
         self.render_type = config.get("render_type", "image")
 
         self.enable_link_parser = config.get("enable_link_parser", True)
@@ -75,6 +85,11 @@ class BilibiliPush(Star):
         self.scheduler = BilibiliScheduler(
             db=self.db,
             check_interval=self.check_interval,
+            dynamic_check_interval=self.dynamic_check_interval,
+            live_check_interval=self.live_check_interval,
+            request_delay_sec=self.request_delay_sec,
+            request_jitter_sec=self.request_jitter_sec,
+            live_batch_size=self.live_batch_size,
             push_on_startup=self.push_on_startup,
             render_type=self.render_type,
             on_new_post=self._handle_new_post,

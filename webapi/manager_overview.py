@@ -42,9 +42,12 @@ class ManagerOverviewService:
         dynamic_count = sum(1 for sub in subscriptions if sub["sub_type"] == "dynamic")
         live_count = sum(1 for sub in subscriptions if sub["sub_type"] == "live")
         enabled_count = sum(1 for sub in subscriptions if sub["enabled"])
-        valid_accounts = sum(1 for acc in accounts if acc.get("valid", True))
+        valid_accounts = sum(1 for acc in accounts if acc.get("available", True))
         return {
             "check_interval": self.plugin.check_interval,
+            "dynamic_check_interval": self.plugin.dynamic_check_interval,
+            "live_check_interval": self.plugin.live_check_interval,
+            "risk_cooldown_sec": self.plugin.risk_cooldown_sec,
             "render_type": self.plugin.render_type,
             "enable_link_parser": self.plugin.enable_link_parser,
             "enable_ai_tools": self.plugin.enable_ai_tools,

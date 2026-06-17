@@ -1,5 +1,6 @@
 """HTTP 客户端封装"""
 
+import time
 from typing import TYPE_CHECKING, Optional
 
 import httpx
@@ -13,6 +14,7 @@ class HttpClient:
     _buvid_initialized: bool = False
     _star_instance: Optional["Star"] = None
     _verify_ssl: bool = True
+    _risk_cooldown_sec: int = 1800
 
     # Account Pool
     # Structure: [{"uid": str, "name": str, "face": str, "cookies": dict, "valid": bool}]
@@ -37,6 +39,7 @@ class HttpClient:
             conf = getattr(star, "config", {}) or {}
 
         cls._verify_ssl = conf.get("verify_ssl", True)
+        cls._risk_cooldown_sec = int(conf.get("risk_cooldown_sec", 1800))
         await cls.load_accounts()
 
     @classmethod
@@ -69,6 +72,7 @@ class HttpClient:
 
             # Reset index
             cls._current_account_index = 0
+            await cls._refresh_account_states()
 
     @classmethod
     async def save_accounts(cls):
@@ -86,6 +90,7 @@ class HttpClient:
                 acc["face"] = face
                 acc["cookies"] = cookies
                 acc["valid"] = True
+                cls._clear_transient_status(acc)
                 await cls.save_accounts()
                 # Update current client if it matches
                 if cls._client:
@@ -120,6 +125,8 @@ class HttpClient:
                 acc["valid"] = valid
                 if cookies is not None:
                     acc["cookies"] = cookies
+                if valid:
+                    cls._clear_transient_status(acc)
                 await cls.save_accounts()
                 await cls.close()
                 return
@@ -156,7 +163,7 @@ class HttpClient:
         for acc in cls._accounts:
             if str(acc.get("uid")) == str(uid):
                 acc["valid"] = valid
-                acc.pop("status_code", None)
+                cls._clear_transient_status(acc)
                 await cls.save_accounts()
                 await cls.close()
                 return True
@@ -166,6 +173,7 @@ class HttpClient:
     async def get_accounts(cls) -> list[dict]:
         if not cls._accounts and cls._star_instance:
             await cls.load_accounts()
+        await cls._refresh_account_states()
         return cls._accounts
 
     @classmethod
@@ -175,11 +183,12 @@ class HttpClient:
         total = len(cls._accounts)
         if total == 0:
             return False
+        await cls._refresh_account_states()
 
         while attempts < total:
             cls._current_account_index = (cls._current_account_index + 1) % total
             acc = cls._accounts[cls._current_account_index]
-            if acc.get("valid", True):
+            if cls._is_account_available(acc):
                 if cls._client:
                     cls._client.cookies.clear()
                     cls._client.cookies.update(acc["cookies"])
@@ -201,7 +210,10 @@ class HttpClient:
             return
         acc = cls._accounts[cls._current_account_index]
         acc["valid"] = valid
-        acc["status_code"] = status_code
+        if valid and status_code is None:
+            cls._clear_transient_status(acc)
+        else:
+            acc["status_code"] = status_code
         await cls.save_accounts()
 
     @classmethod
@@ -209,12 +221,15 @@ class HttpClient:
         if not cls._accounts:
             return False
         acc = cls._accounts[cls._current_account_index]
-        acc["valid"] = False
+        acc["valid"] = True
         acc["status_code"] = status_code
+        acc["cooldown_until"] = int(time.time() + cls._risk_cooldown_sec)
+        acc["failure_count"] = int(acc.get("failure_count") or 0) + 1
         from ..utils.logger import logger
 
         logger.warning(
-            f"Marking account invalid (Code {status_code}): {acc.get('name')} (UID: {acc.get('uid')})"
+            f"Cooling down account (Code {status_code}): {acc.get('name')} "
+            f"(UID: {acc.get('uid')}) for {cls._risk_cooldown_sec}s"
         )
         await cls.save_accounts()
         return await cls.rotate_account()
@@ -239,16 +254,20 @@ class HttpClient:
             # Load accounts if not loaded
             if not cls._accounts:
                 await cls.load_accounts()
+            await cls._refresh_account_states()
 
             # Apply current account cookies
             if cls._accounts:
                 acc = cls._accounts[cls._current_account_index]
-                if not acc.get("valid", True):
+                if not cls._is_account_available(acc):
                     # Try to find a valid one
-                    await cls.rotate_account()
+                    rotated = await cls.rotate_account()
+                    if not rotated:
+                        cls._client.cookies.clear()
+                        return cls._client
                     acc = cls._accounts[cls._current_account_index]
 
-                if acc.get("valid", True):
+                if cls._is_account_available(acc):
                     cls._client.cookies.update(acc["cookies"])
                     cls._buvid_initialized = True
 
@@ -271,3 +290,27 @@ class HttpClient:
         if cls._client:
             await cls._client.aclose()
             cls._client = None
+
+    @classmethod
+    def _is_account_available(cls, account: dict) -> bool:
+        if not account.get("valid", True):
+            return False
+        return int(account.get("cooldown_until") or 0) <= int(time.time())
+
+    @classmethod
+    async def _refresh_account_states(cls):
+        changed = False
+        now = int(time.time())
+        for acc in cls._accounts:
+            cooldown_until = int(acc.get("cooldown_until") or 0)
+            if cooldown_until and cooldown_until <= now:
+                cls._clear_transient_status(acc)
+                changed = True
+        if changed:
+            await cls.save_accounts()
+
+    @staticmethod
+    def _clear_transient_status(account: dict):
+        account.pop("status_code", None)
+        account.pop("cooldown_until", None)
+        account.pop("failure_count", None)

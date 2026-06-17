@@ -64,17 +64,8 @@ class BilibiliManagerApi:
         if not target_id:
             return error("target_id 参数不能为空。")
         if target_id == "__all__":
-            targets = sorted(
-                {
-                    sub.target_id
-                    for sub in self.plugin.db.get_enabled_subscriptions()
-                    if sub.sub_type == "live"
-                }
-            )
-            pushed = 0
-            for target in targets:
-                pushed += await self.plugin.scheduler.manual_live_check(target)
-            return ok({"target_id": target_id, "targets": len(targets), "pushed": pushed})
+            target_count, pushed = await self.plugin.scheduler.manual_live_check_all()
+            return ok({"target_id": target_id, "targets": target_count, "pushed": pushed})
         pushed = await self.plugin.scheduler.manual_live_check(target_id)
         return ok({"target_id": target_id, "pushed": pushed})
 

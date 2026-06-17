@@ -16,6 +16,7 @@ from ..core.compat import (
 # Core Imports
 from ..core.platform import StatusChangePlatform
 from ..core.types import Category, Post, RawPost, Tag, Target
+from ..utils.logger import logger
 
 # Model Imports
 from ..core.models import UserAPI
@@ -134,8 +135,12 @@ class BilibiliLive(StatusChangePlatform):
             params={"uids[]": targets},
             timeout=10.0,
         )
+        if res.status_code in {403, 412}:
+            return await self._retry_batch_after_risk(targets, res.status_code)
         res_dict = res.json()
         if res_dict["code"] != 0:
+            if str(res_dict["code"]) in {"-352", "352", "403", "412"}:
+                return await self._retry_batch_after_risk(targets, int(res_dict["code"]))
             raise Exception("API Error")
 
         data = res_dict.get("data", {})
@@ -146,6 +151,30 @@ class BilibiliLive(StatusChangePlatform):
             else:
                 infos.append(self._gen_empty_info(int(target)))
         return infos
+
+    async def _retry_batch_after_risk(self, targets: list[Target], status_code: int):
+        from ..core.http import HttpClient
+
+        logger.warning(f"直播接口触发风控 ({status_code})，正在切换账号后重试...")
+        if not await HttpClient.invalidate_current_account(status_code=status_code):
+            raise Exception(f"Live API risk control: {status_code}")
+        client = await self.get_client()
+        res = await client.get(
+            "https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids",
+            params={"uids[]": targets},
+            timeout=10.0,
+        )
+        res.raise_for_status()
+        res_dict = res.json()
+        if res_dict["code"] != 0:
+            raise Exception(f"Live API Error after retry: {res_dict['code']}")
+        data = res_dict.get("data", {})
+        return [
+            type_validate_python(self.Info, data[target])
+            if target in data.keys()
+            else self._gen_empty_info(int(target))
+            for target in targets
+        ]
 
     def compare_status(
         self, target: Target, old_status: Info, new_status: Info

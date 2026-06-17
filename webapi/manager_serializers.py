@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 from ..core.http import HttpClient
 
@@ -21,13 +22,29 @@ def serialize_subscription(sub) -> dict:
 
 
 def serialize_account(account: dict) -> dict:
+    cooldown_until = int(account.get("cooldown_until") or 0)
+    available = bool(account.get("valid", True)) and cooldown_until <= int(time.time())
     return {
         "uid": str(account.get("uid") or ""),
         "name": str(account.get("name") or ""),
         "face": str(account.get("face") or ""),
         "valid": bool(account.get("valid", True)),
+        "available": available,
         "status_code": account.get("status_code"),
+        "cooldown_until": cooldown_until or None,
+        "status_label": account_status_label(account, available, cooldown_until),
     }
+
+
+def account_status_label(account: dict, available: bool, cooldown_until: int) -> str:
+    if not account.get("valid", True):
+        return "已停用"
+    if cooldown_until > int(time.time()):
+        return "风控冷却中"
+    status_code = account.get("status_code")
+    if status_code:
+        return f"Code {status_code}"
+    return "可用" if available else "不可用"
 
 
 def serialize_pending_task(task: dict) -> dict:

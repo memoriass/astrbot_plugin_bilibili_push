@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from .models import COMPILED_WORKFLOWS
 
 
@@ -47,10 +49,18 @@ def format_accounts(accounts: list[dict], current_index: int) -> str:
     lines = ["Bilibili 账号池状态："]
     for index, account in enumerate(accounts):
         active = "当前" if index == current_index else "备用"
-        valid = "有效" if account.get("valid", True) else "失效"
+        valid = _account_status_text(account)
         status_code = account.get("status_code")
-        status = f"{valid}, code={status_code}" if status_code else valid
+        status = f"{valid}, code={status_code}" if status_code and valid != "冷却中" else valid
         lines.append(
             f"- [{active}] {account.get('name') or '-'} | UID={account.get('uid') or '-'} | {status}"
         )
     return "\n".join(lines)
+
+
+def _account_status_text(account: dict) -> str:
+    if not account.get("valid", True):
+        return "失效"
+    if int(account.get("cooldown_until") or 0) > int(time.time()):
+        return "冷却中"
+    return "有效"

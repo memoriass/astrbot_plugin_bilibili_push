@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Iterable
 
 from ..core.http import HttpClient
@@ -76,7 +77,7 @@ def account_status_card(accounts: list[dict], current_index: int) -> WorkflowCar
     rows = []
     for index, account in enumerate(accounts):
         active = index == current_index
-        valid = bool(account.get("valid", True))
+        valid = _account_available(account)
         rows.append({
             "uid": str(account.get("uid") or ""),
             "username": str(account.get("name") or "Bilibili 账号"),
@@ -85,7 +86,7 @@ def account_status_card(accounts: list[dict], current_index: int) -> WorkflowCar
             "has_live": False,
             "is_live": False,
             "is_active_account": active,
-            "status_label": _account_status_label(active, valid),
+            "status_label": _account_status_label(active, valid, account),
             "status_class": "badge-live-on" if valid else "badge-risk",
         })
     return WorkflowCard(
@@ -142,10 +143,20 @@ def subscription_confirm_card(
     )
 
 
-def _account_status_label(active: bool, valid: bool) -> str:
+def _account_status_label(active: bool, valid: bool, account: dict) -> str:
+    if _account_cooling(account):
+        return "当前冷却" if active else "备用冷却"
     if active:
         return "当前有效" if valid else "当前失效"
     return "备用有效" if valid else "备用失效"
+
+
+def _account_available(account: dict) -> bool:
+    return bool(account.get("valid", True)) and not _account_cooling(account)
+
+
+def _account_cooling(account: dict) -> bool:
+    return int(account.get("cooldown_until") or 0) > int(time.time())
 
 
 async def _fetch_face_map(uids) -> dict[str, str]:

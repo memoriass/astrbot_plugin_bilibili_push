@@ -93,10 +93,12 @@ function capabilityPanel(diagnostics, targets) {
         </div>
       </div>
       <div class="capability-list">
-        ${capabilityItem("动态检查", `${diagnostics.check_interval || "-"} 秒`)}
+        ${capabilityItem("动态检查", `${diagnostics.dynamic_check_interval || diagnostics.check_interval || "-"} 秒`)}
+        ${capabilityItem("直播检查", `${diagnostics.live_check_interval || diagnostics.check_interval || "-"} 秒`)}
         ${capabilityItem("渲染", diagnostics.render_type || "-")}
         ${capabilityItem("链接解析", diagnostics.enable_link_parser ? "启用" : "停用")}
         ${capabilityItem("AI 工具", diagnostics.enable_ai_tools ? "启用" : "停用")}
+        ${capabilityItem("账号冷却", `${diagnostics.risk_cooldown_sec || "-"} 秒`)}
       </div>
       <div class="overview-live-check">
         <select id="overviewManualTargetSelect" aria-label="目标会话">

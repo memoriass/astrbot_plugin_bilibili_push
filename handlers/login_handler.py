@@ -115,11 +115,14 @@ class LoginHandler:
         for i, acc in enumerate(accounts):
             is_valid = acc.get("valid", True)
             status_code = acc.get("status_code")
+            cooldown_until = int(acc.get("cooldown_until") or 0)
 
             status_label = None
             status_class = "badge-risk"
 
-            if status_code:
+            if cooldown_until:
+                status_label = "风控冷却中"
+            elif status_code:
                 status_label = f"Code {status_code}"
                 if str(status_code) == "412":
                     status_label = "风控 412"
