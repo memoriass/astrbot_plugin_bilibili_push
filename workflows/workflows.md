@@ -25,7 +25,7 @@
 
 ## 当前 workflow
 
-- `search_up`: 搜索 UP 主并返回候选卡。
+- `search_up`: 搜索 UP 主并返回候选；命令侧会展示候选卡，AI 工具侧只把候选文本回传模型，避免自动推进到确认时重复抛出中间卡。
 - `add_subscription`: 按 UID 或关键词进入订阅流程；关键词命中高置信候选时直接进入确认卡。
 - `remove_subscription`: 删除当前会话订阅。
 - `list_subscriptions`: 列出当前会话订阅。
@@ -78,7 +78,7 @@ flowchart TD
 - `account_status`: 使用 `sub_list.html.jinja`。
 - 添加/删除成功: 使用 `sub_add.html.jinja`。
 - `check_status` 保持纯文本，避免诊断信息被卡片截断。
-- LLM tool 返回给模型的是文本；`handlers/ai_handler.py` 会把卡片作为用户侧消息主动发送。
+- LLM tool 返回给模型的是文本；`handlers/ai_handler.py` 只在用户需要介入的 workflow 结果上主动发送卡片。纯 `search_up` 工具调用被视为模型内部检索，不主动发聊天卡片。
 
 ## 维护说明
 

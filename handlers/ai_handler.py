@@ -21,7 +21,7 @@ class AiToolHandler:
         actual_event = message_event_from_tool_arg(event)
         request = workflow_from_tool(workflow, target, params)
         result = await run_bili_workflow(self.star, actual_event, request)
-        await self._send_cards(actual_event, result)
+        await self._send_cards(actual_event, request, result)
         return result.text
 
     async def search_up(self, event, keyword: str) -> str:
@@ -56,7 +56,9 @@ class AiToolHandler:
     async def list_subscriptions(self, event: AstrMessageEvent) -> str:
         return await self.run_workflow(event, "list_subscriptions")
 
-    async def _send_cards(self, event: AstrMessageEvent, result) -> None:
+    async def _send_cards(self, event: AstrMessageEvent, request, result) -> None:
+        if getattr(request, "workflow", "") == "search_up":
+            return
         if not getattr(result, "cards", None):
             return
         rendered = await render_workflow_result(event, self.star.renderer, result)
