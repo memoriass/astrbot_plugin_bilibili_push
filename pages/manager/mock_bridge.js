@@ -113,7 +113,6 @@ function createMockOverview() {
       render_type: "image",
       enable_link_parser: true,
       enable_ai_tools: true,
-      enable_ai_agent_entry: true,
     },
     subscriptions: [
       {

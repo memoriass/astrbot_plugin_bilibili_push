@@ -59,9 +59,6 @@ class BilibiliPush(Star):
         self.search_cache_expiry_hours = config.get("search_cache_expiry_hours", 24)
         self.platform_name = config.get("platform_name", "auto")
         self.enable_ai_tools = config.get("enable_ai_tools", True)
-        self.enable_ai_agent_entry = config.get("enable_ai_agent_entry", True)
-        self.ai_tool_timeout_sec = int(config.get("ai_tool_timeout_sec", 20))
-        self.ai_max_steps = int(config.get("ai_max_steps", 8))
         self.ai_pending_timeout_sec = int(config.get("ai_pending_timeout_sec", 300))
         self.enable_ai_auto_select_candidates = config.get(
             "enable_ai_auto_select_candidates",
@@ -185,11 +182,6 @@ class BilibiliPush(Star):
             event, self.parser, self.enable_link_parser
         ):
             yield ret
-
-    @filter.command("b站助手", alias={"bilibili 助手", "bili 助手"})
-    async def bilibili_agent(self, event: AstrMessageEvent, query: GreedyStr):
-        """显式 Agent 入口（可选）"""
-        yield await self.ai_handler.run_agent(event, query.strip())
 
     @filter.command("b站工作流", alias={"bili workflow", "biliwf"})
     async def bilibili_workflow_command(

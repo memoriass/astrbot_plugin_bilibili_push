@@ -22,7 +22,6 @@ EXPECTED_COMMANDS = {
     "b站登录",
     "b站登录状态",
     "b站搜索",
-    "b站助手",
     "b站工作流",
 }
 PLUGIN_NAME = "astrbot_plugin_bilibili_push"

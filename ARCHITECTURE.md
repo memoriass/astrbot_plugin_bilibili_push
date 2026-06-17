@@ -35,7 +35,7 @@ flowchart LR
 
 ## AI 与管理页
 
-- AI 入口统一走 `workflows/`，`bili_workflow` 是推荐工具；旧的分散 LLM tools 仅作为兼容 wrapper。
+- AI 入口统一走 AstrBot LLM tools，`bili_workflow` 是推荐工具；旧的分散 LLM tools 仅作为兼容 wrapper。
 - 模糊 UP 名称会先生成候选和 pending task；AI/自然语言入口允许高置信候选自动推进到确认卡片，但不会绕过用户确认写库。
 - 显式聊天 workflow 和 pending 续跑可以渲染 HTML 图片卡片；LLM tool 只返回稳定文本，避免把图片消息组件交给模型。
 - Plugin Pages 当前落地 `pages/manager/`，用于订阅、账号、pending task 和手动直播检查管理，不承载模板预览和聊天 help。
@@ -79,7 +79,7 @@ flowchart LR
 - 调整直播状态判断：改 `live/bilibili.py`。
 - 调整卡片样式：改 `utils/resources/templates/` 和 `utils/renderers/`。
 - 调整账号或 Cookie 行为：改 `core/http.py` 和 `handlers/login_handler.py`。
-- 调整 AI 接入：以 `workflows/` 为主，`handlers/ai_handler.py` 只做入口适配。
+- 调整 AI 接入：以 `workflows/` 为主，`handlers/ai_handler.py` 只做 LLM tool 适配。
 - 调整 WebUI 管理页：改 `pages/` 和 `webapi/`，避免把页面逻辑写进命令 handler。
 
 ## 文档命名

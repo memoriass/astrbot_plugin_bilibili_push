@@ -97,7 +97,6 @@ function capabilityPanel(diagnostics, targets) {
         ${capabilityItem("渲染", diagnostics.render_type || "-")}
         ${capabilityItem("链接解析", diagnostics.enable_link_parser ? "启用" : "停用")}
         ${capabilityItem("AI 工具", diagnostics.enable_ai_tools ? "启用" : "停用")}
-        ${capabilityItem("Agent", diagnostics.enable_ai_agent_entry ? "启用" : "停用")}
       </div>
       <div class="overview-live-check">
         <select id="overviewManualTargetSelect" aria-label="目标会话">

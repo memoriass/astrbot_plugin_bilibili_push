@@ -26,7 +26,7 @@
 ## 维护说明
 
 - `main.py` 只注册入口，不承载 workflow 业务。
-- `handlers/ai_handler.py` 只做 Agent 入口和旧工具兼容。
+- `handlers/ai_handler.py` 只做 LLM tool 和旧工具兼容。
 - workflow handler 返回 `WorkflowResult`，其中 `text` 是后端和 LLM 工具使用的稳定文本。
 - 显式命令和 pending 续跑可通过 `presenter.py` 把 `WorkflowResult.cards` 渲染为 HTML 图片卡片。
 - LLM tool 只返回 `WorkflowResult.text`，不要把图片消息组件传给模型。

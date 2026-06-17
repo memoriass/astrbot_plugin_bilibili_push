@@ -48,7 +48,6 @@ class ManagerOverviewService:
             "render_type": self.plugin.render_type,
             "enable_link_parser": self.plugin.enable_link_parser,
             "enable_ai_tools": self.plugin.enable_ai_tools,
-            "enable_ai_agent_entry": self.plugin.enable_ai_agent_entry,
             "subscriptions": len(subscriptions),
             "enabled_subscriptions": enabled_count,
             "dynamic_subscriptions": dynamic_count,
