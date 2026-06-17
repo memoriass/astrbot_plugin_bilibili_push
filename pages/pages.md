@@ -6,13 +6,16 @@
 
 - `manager/`: Bilibili Push 管理面板，详见 `manager/manager.md`。
 
-## 边界
+## 维护说明
 
 - 页面只通过 `window.AstrBotPluginPage` bridge 调用后端 API。
 - 不手写 `/api/plug/...` 绝对路径。
 - 不直接读取 Dashboard cookie、LocalStorage 或同源 DOM。
 - 不放聊天 help 内容；聊天侧的自然语言能力交给 AI workflow。
 - 无构建步骤，静态资源保持相对路径。
+- 新增页面时建立独立目录并提供 `index.html`，同时更新 `scripts/check_astrbot_embed.py`。
+- 页面静态资源应放在所属页面目录下，避免与推送卡片模板混放。
+- 嵌入 AstrBot iframe 后交互空间有限，危险操作统一走页面内确认弹窗。
 
 ## AstrBot 嵌入契约
 

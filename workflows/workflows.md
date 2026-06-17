@@ -23,7 +23,7 @@
 - `formatting.py`: workflow 输出文本格式化。
 - `filters.py`: AstrBot pending shortcut filter。
 
-## 边界
+## 维护说明
 
 - `main.py` 只注册入口，不承载 workflow 业务。
 - `handlers/ai_handler.py` 只做 Agent 入口和旧工具兼容。
@@ -36,6 +36,10 @@
 - 明确 UID 的添加订阅可以直接写库，但仍限定当前会话。
 - 删除订阅必须使用当前事件的 `unified_msg_origin`。
 - pending task 默认写入 AstrBot KV，重载插件后仍可在有效期内继续。
+- 新增 workflow 时先在 `models.py` 增加别名和说明，再在 `runner.py` 注册 handler，并同步 `handlers/ai_handler.py` 的系统提示。
+- workflow 不直接发送消息；显式聊天入口统一经 `presenter.py` 渲染，LLM tool 统一返回文本。
+- pending 任务需要包含可恢复的完整 payload，不能依赖内存对象或一次性事件状态。
+- 自动分支推进只能推进流程节点，不允许绕过最终确认写库。
 
 ## 当前 workflow
 
@@ -86,3 +90,9 @@ flowchart TD
 - 确认 pending: 使用 `workflow_confirm.html.jinja` 展示引用回复确认和取消方式。
 - `add_subscription` 和 `remove_subscription` 成功后: 使用 `sub_add.html.jinja` 展示订阅变更。
 - `check_status` 仍保持纯文本，避免诊断信息被卡片截断。
+
+## 验证
+
+- workflow 注册、命令和工具检查：`python scripts/check_workflow_integration.py`。
+- AstrBot 运行时导入检查：使用 AstrBot venv 导入插件入口。
+- 修改 pending 或 marker 后，需要人工验证引用回复序号、确认和取消三条路径。

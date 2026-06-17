@@ -26,7 +26,7 @@
 - `POST checks/live`: 对指定会话执行手动直播检查；`target_id="__all__"` 时按启用直播订阅所在群会话逐个检查。
 - `POST pending/clear`: 清空 workflow pending task。
 
-## 边界
+## 维护说明
 
 - `main.py` 只调用注册函数，不写具体接口逻辑。
 - 接口返回普通 `dict`，避免给插件增加新的顶层 Web 依赖。
@@ -37,3 +37,6 @@
 - 手动直播检查会触发实际消息推送，页面侧必须显式确认。
 - 管理 API 不提供模板预览、模板渲染或预览生成能力；模板渲染测试保留在开发脚本层。
 - Web API 路由前缀必须与 `metadata.yaml` 的 `name` 和 `main.py` 注册名一致，当前为 `astrbot_plugin_bilibili_push`。AstrBot Plugin Pages bridge 会按插件名拼接 `/api/plug/<pluginName>/<endpoint>`。
+- 新增 endpoint 时同步 `pages/manager/api.js`、`scripts/check_workflow_integration.py` 和本文件的路由列表。
+- 输出字段应由 `manager_serializers.py` 统一整理，避免前端适配多个后端形状。
+- 写接口必须返回明确 `ok/message/data` 结构，前端弹窗和 toast 依赖这些字段。

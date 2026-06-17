@@ -12,9 +12,11 @@
 - `runtime.py`: 插件运行期资源初始化、临时文件清理和最终消息发送。
 - `utils.py`: 通用算法和 Bilibili WBI 签名。
 
-## 接手注意
+## 维护说明
 
-- Bilibili API 响应字段变化时，优先更新 `models.py`。
-- 任何跨 Pydantic 版本调用应通过 `compat.py`。
-- 不要在业务模块里新建长期 HTTP client，统一走 `HttpClient.get_client()`。
-- 插件生命周期相关逻辑放 `runtime.py`，不要塞回 `main.py`。
+- Bilibili API 响应字段变化时，优先更新 `models.py`，再调整 `dynamic/`、`live/` 或 `parser/` 的转换逻辑。
+- 任何跨 Pydantic v1/v2 的调用都应通过 `compat.py`，避免业务模块直接依赖版本差异。
+- 长期 HTTP client 统一走 `HttpClient.get_client()`；新增网络访问时不要在 handler 或 workflow 中创建全局 client。
+- Cookie 账号池、风控账号轮换和 SSL 配置集中在 `http.py`，新增接口请求应复用这套能力。
+- 插件生命周期、资源初始化、临时文件清理和最终消息发送放 `runtime.py`，`main.py` 只负责装配和注册。
+- `types.py` 是内部稳定契约。修改 `Post`、`SubUnit`、`MessageSegment` 时，需要同步 `scheduler/`、`utils/renderers/` 和模板字段。
