@@ -5,7 +5,7 @@
 ## 模板职责
 
 - `sub_add.html.jinja`: 添加和删除订阅结果卡片。
-- `sub_list.html.jinja`: 订阅列表、登录账号状态和旧搜索结果列表复用卡片。
+- `sub_list.html.jinja`: 订阅列表和登录账号状态复用卡片。
 - `workflow_candidates.html.jinja`: workflow 搜索候选卡片，提示用户引用消息回复序号。
 - `workflow_confirm.html.jinja`: workflow 订阅最终确认卡片，提示用户引用消息确认/取消。
 - `parser_bili.html.jinja`: 链接解析卡片。

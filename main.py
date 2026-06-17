@@ -157,7 +157,6 @@ class BilibiliPush(Star):
             yield ret
 
     async def list_subscriptions(self, event: AstrMessageEvent):
-        # 兼容旧版调用或者直接在这里实现
         async for ret in self.sub_handler.list_subscriptions(event, self.scheduler):
             yield ret
 

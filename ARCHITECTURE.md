@@ -33,6 +33,13 @@ flowchart LR
     Theme --> Send["AstrBot send_message"]
 ```
 
+## AI 与管理页
+
+- AI 入口统一走 `workflows/`，`bili_workflow` 是推荐工具；旧的分散 LLM tools 仅作为兼容 wrapper。
+- 模糊 UP 名称会先生成候选和 pending task；AI/自然语言入口允许高置信候选自动推进到确认卡片，但不会绕过用户确认写库。
+- 显式聊天 workflow 和 pending 续跑可以渲染 HTML 图片卡片；LLM tool 只返回稳定文本，避免把图片消息组件交给模型。
+- Plugin Pages 当前落地 `pages/manager/`，用于订阅、账号、pending task 和手动直播检查管理，不承载模板预览和聊天 help。
+
 ## 模块边界
 
 - `main.py`: AstrBot 插件入口，只做装配、命令注册和生命周期管理。
@@ -60,7 +67,7 @@ flowchart LR
 - 订阅写入不要覆盖用户已有配置，重复订阅应明确返回已存在。
 - 账号风控切换只轮换一次，避免跳过可用账号。
 - 对外公共类名尽量保持稳定，例如 `BilibiliDynamic`、`BilibiliScheduler`。
-- AI 工具写订阅前必须有明确 UID；搜索候选多于 1 个时应走 pending 确认。
+- AI 工具不能凭模糊候选直接写库；高置信候选只能自动推进到确认节点，最终仍需用户确认。
 - AI workflow 的 LLM tool 返回文本；显式聊天入口可把同一结果渲染为 HTML 图片卡片。
 - Plugin Pages 写操作应复用 workflow 或 service 层，不直接操作 SQLite。
 
@@ -72,7 +79,7 @@ flowchart LR
 - 调整直播状态判断：改 `live/bilibili.py`。
 - 调整卡片样式：改 `utils/resources/templates/` 和 `utils/renderers/`。
 - 调整账号或 Cookie 行为：改 `core/http.py` 和 `handlers/login_handler.py`。
-- 调整 AI 接入：以 `workflows/` 为主，`handlers/ai_handler.py` 只做入口适配；背景计划见 `AI_WORKFLOW_REFACTOR_PLAN.md`。
+- 调整 AI 接入：以 `workflows/` 为主，`handlers/ai_handler.py` 只做入口适配。
 - 调整 WebUI 管理页：改 `pages/` 和 `webapi/`，避免把页面逻辑写进命令 handler。
 
 ## 文档命名
@@ -85,5 +92,5 @@ flowchart LR
 
 - 拆分检查：运行 `python scripts/check_workflow_integration.py`，其中包含全仓库文本文件 500 行限制检查。
 - AstrBot 嵌入检查：运行 `python scripts/check_astrbot_embed.py`，对照本机 AstrBot 源码验证 Plugin Pages 发现规则、bridge API、`/api/plug` 转发和页面 endpoint 注册。
-- 模板渲染检查：运行 `python scripts/generate_template_previews.py --output-dir template_previews/final_review`，输出透明底 HTML 卡片图片和总览图。
+- 模板渲染检查：运行 `python scripts/generate_template_previews.py --output-dir template_previews/final_review`，输出透明底 HTML 卡片图片和总览图；该目录为生成产物，不纳入版本库。
 - `metadata.yaml` 的 `name` 必须与 Web API 前缀一致，当前固定为 `astrbot_plugin_bilibili_push`。AstrBot Dashboard bridge 会拼接 `/api/plug/<pluginName>/<endpoint>`，此处不一致会导致页面嵌入后 API 找不到路由。

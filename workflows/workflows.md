@@ -58,6 +58,8 @@ flowchart TD
     Runner --> Remove["remove_subscription"]
     Runner --> Manage["list/account/check"]
     Search --> Pending["pending task"]
+    Add --> Select["高置信候选自动推进"]
+    Select --> Pending
     Add --> Pending
     Pending --> Confirm["引用回复确认/取消"]
     Confirm --> Write["写订阅或取消"]
@@ -72,7 +74,7 @@ flowchart TD
 
 - `add_subscription` 遇到模糊 UP 名称时会先搜索候选。
 - 仅 AI tool 和自然语言入口启用自动分支推进；显式 workflow 命令仍展示候选卡片让用户选择。
-- 如果第一阶段候选匹配度超过 `ai_auto_select_confidence`，且领先其他候选足够明显，workflow 会自动选中该候选并进入确认订阅流程。
+- 如果候选匹配度超过 `ai_auto_select_confidence`，且领先其他候选足够明显，workflow 会自动选中该候选并进入确认订阅流程。
 - 自动推进不会直接写库；最终写入仍需要用户引用确认卡片回复“确认”。
 - 可通过 `enable_ai_auto_select_candidates=false` 关闭，或调高 `ai_auto_select_confidence` 降低误选概率。
 
