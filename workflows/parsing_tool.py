@@ -12,7 +12,7 @@ def workflow_from_tool(
     parsed = parse_params(params)
     selected = normalize_workflow(workflow or str(parsed.get("workflow") or ""))
     return WorkflowRequest(
-        workflow=selected or "search_up",
+        workflow=selected or "ai_dispatch",
         target=str(target or parsed.get("target") or ""),
         params=parsed,
         source="tool",

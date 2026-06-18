@@ -67,6 +67,8 @@ def main() -> None:
     if any("帮助" in name or "help" in func.lower() for func, name in commands):
         raise SystemExit("help command residue detected")
     _check_plugin_pages()
+    _check_ai_workflow_modules()
+    _check_alias_schema()
     _check_web_api_modules()
     _check_web_api_routes()
 
@@ -154,6 +156,56 @@ def _check_web_api_modules() -> None:
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
         raise SystemExit(f"missing web api modules: {missing}")
+
+
+def _check_ai_workflow_modules() -> None:
+    required = [
+        ROOT / "workflows" / "branches.py",
+        ROOT / "workflows" / "dispatch.py",
+        ROOT / "workflows" / "entity_resolver.py",
+        ROOT / "workflows" / "resolver_stats.py",
+    ]
+    missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
+    if missing:
+        raise SystemExit(f"missing ai workflow modules: {missing}")
+
+    models = (ROOT / "workflows" / "models.py").read_text(encoding="utf-8")
+    runner = (ROOT / "workflows" / "runner.py").read_text(encoding="utf-8")
+    if "ai_dispatch" not in models or "ai_dispatch" not in runner:
+        raise SystemExit("ai_dispatch workflow is not registered")
+    if "REMOVE_CONFIRM_REPLIES" not in models:
+        raise SystemExit("remove confirmation replies are not defined")
+
+    visible_task_text = (
+        ROOT / "workflows" / "subscription.py"
+    ).read_text(encoding="utf-8") + (
+        ROOT / "workflows" / "search.py"
+    ).read_text(encoding="utf-8")
+    forbidden = ("任务ID:", "发送 `bili{task_id")
+    if any(item in visible_task_text for item in forbidden):
+        raise SystemExit("visible pending task id text residue detected")
+    if "confirm_remove_subscription" not in visible_task_text:
+        raise SystemExit("remove workflow confirmation task is missing")
+    ai_handler = (ROOT / "handlers" / "ai_handler.py").read_text(encoding="utf-8")
+    if 'workflow", "") == "search_up"' in ai_handler:
+        raise SystemExit("search_up cards are still suppressed unconditionally")
+    if "_should_present_tool_result" not in ai_handler:
+        raise SystemExit("llm tool foreground presentation gate is missing")
+    pending = (ROOT / "workflows" / "pending.py").read_text(encoding="utf-8")
+    parsing_pending = (ROOT / "workflows" / "parsing_pending.py").read_text(
+        encoding="utf-8"
+    )
+    if "looks_like_standalone_pending_action" not in pending + parsing_pending:
+        raise SystemExit("standalone pending continuation fallback is missing")
+
+
+def _check_alias_schema() -> None:
+    schema = (ROOT / "database" / "schema.py").read_text(encoding="utf-8")
+    manager = (ROOT / "database" / "db_manager.py").read_text(encoding="utf-8")
+    if "up_aliases" not in schema:
+        raise SystemExit("up_aliases schema is missing")
+    if "AliasStoreMixin" not in manager:
+        raise SystemExit("DatabaseManager does not include AliasStoreMixin")
 
 
 def _oversized_text_files() -> list[tuple[str, int]]:

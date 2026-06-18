@@ -9,6 +9,7 @@
 - `models.py`: 订阅和目标会话的轻量数据对象。
 - `subscriptions.py`: 订阅增删改查，以及按 target 启用状态过滤调度数据。
 - `accounts.py`: Bilibili 账号池持久化，包括 Cookie、启停状态、风控冷却和失败计数。
+- `aliases.py`: UP 主简称、网络代称和确认历史映射，用于减少 AI workflow 重复搜索和候选确认。
 - `targets.py`: 群/会话目标索引，提供启停能力，后续分群策略从这里扩展。
 
 ## 当前表
@@ -16,6 +17,7 @@
 - `subscriptions`: 用户订阅，主键为 `uid + sub_type + target_id`，`enabled` 控制是否参与调度。
 - `accounts`: Bilibili 账号池，存登录 Cookie、启停状态、风控冷却和失败计数。
 - `targets`: 会话/群目标索引，存 `target_id`、渠道和启停状态；订阅写入时会自动登记。
+- `up_aliases`: UP 主别名和历史确认映射，主键为 `normalized_alias + uid + target_id`，支持当前会话优先和全局用户名兜底。
 
 ## KV 边界
 
@@ -36,4 +38,6 @@
 - WebUI 和 workflow 写操作必须提供完整定位字段，避免跨会话误改。
 - 账号属于长期业务数据，必须通过 `accounts` 表读写；不要再保存到 AstrBot KV。
 - `targets` 当前作为分群管理基础表，后续新增群别名、默认通知策略或账号绑定时优先扩展这里。
+- `up_aliases` 只记录用户确认过的简称、搜索候选选择历史和全局用户名映射；它是可解释的实体解析层，不是向量库。
+- UP 解析统计是运行态诊断数据，保存在插件内存中，不写入 SQLite；不要为短期命中率统计新增持久表。
 - 新增表或字段后，同步更新 `webapi/manager_serializers.py`、`pages/manager/` 表单字段和 `scripts/check_workflow_integration.py` 的覆盖范围。

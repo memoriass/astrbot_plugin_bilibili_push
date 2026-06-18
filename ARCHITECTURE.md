@@ -36,7 +36,11 @@ flowchart LR
 ## AI 与管理页
 
 - AI 入口统一走 AstrBot LLM tools，`bili_workflow` 是推荐工具；分散 LLM tools 用作能力说明入口，实际业务仍汇入 workflow。
+- `ai_dispatch` 会把规则候选和语义召回候选放在同一层交给 LLM 判断，识别自然语言意图、UP 查询词和订阅类型；失败、超时或低置信时回退到规则分流。
+- B 站搜索返回候选后，AI 可继续参与候选分析，结合名称、搜索排序和粉丝数判断是否推进到确认卡；失败时回退确定性评分。
 - 模糊 UP 名称会先生成候选和 pending task；AI/自然语言入口允许高置信候选自动推进到确认卡片，但不会绕过用户确认写库。
+- UP 主简称和网络代称优先通过当前订阅、标签和 SQLite 历史别名解析；用户确认后会学习映射，减少后续重复搜索和候选验证。
+- UP 解析采用可解释分层评分：明确 UID、当前会话订阅/标签、当前会话别名、全局用户名映射、Bili 搜索兜底。分差过小视为歧义，不自动推进。
 - 自然语言和 AI 入口统一走 LLM tools；pending 续跑可以渲染 HTML 图片卡片，LLM tool 只返回稳定文本，避免把图片消息组件交给模型。
 - Plugin Pages 当前落地 `pages/manager/`，用于订阅、账号、pending task 和手动直播检查管理，不承载模板预览和聊天 help。
 
@@ -70,7 +74,9 @@ flowchart LR
 - 账号风控切换只轮换一次，避免跳过可用账号。
 - 对外公共类名尽量保持稳定，例如 `BilibiliDynamic`、`BilibiliScheduler`。
 - AI 工具不能凭模糊候选直接写库；高置信候选只能自动推进到确认节点，最终仍需用户确认。
+- 语义召回、LLM 分流、搜索候选分析、实体解析和向量/别名检索都只能作为候选增强层，不得绕过确认边界。
 - AI workflow 的 LLM tool 返回文本；pending 续跑可把同一结果渲染为 HTML 图片卡片。
+- 解析统计属于运行态诊断，不写入 SQLite；长期业务数据仍限于订阅、账号、目标和别名。
 - Plugin Pages 写操作应走 `webapi/` service 层，不把 SQL 逻辑写到前端或命令 handler。
 
 ## 常见改动入口

@@ -4,7 +4,12 @@ import re
 import secrets
 import time
 
-from .models import CANCEL_REPLIES, CONFIRM_REPLIES, WorkflowRequest
+from .models import (
+    CANCEL_REPLIES,
+    CONFIRM_REPLIES,
+    REMOVE_CONFIRM_REPLIES,
+    WorkflowRequest,
+)
 from .markers import decode_task_marker
 from .runtime import event_message_text, event_origin, event_text_bundle
 from .utils import normalize_reply
@@ -39,10 +44,15 @@ async def store_pending_task(
     return task_id
 
 
-async def run_continue_pending(plugin, event, request: WorkflowRequest) -> str:
+async def run_continue_pending(plugin, event, request: WorkflowRequest) -> object:
     task_ref = _task_ref_from_request_or_event(request, event)
+    action = _action_from_request_or_text(request, event_message_text(event), task_ref)
     if not task_ref:
-        return "请引用待处理消息回复序号、确认或取消。"
+        task_ref, ambiguous = await _single_pending_task_ref(plugin, event, action)
+        if ambiguous:
+            return "当前有多个待处理事项，请引用对应消息回复。"
+        if not task_ref:
+            return "请引用待处理消息回复序号、确认或取消。"
 
     task_id, matches = await plugin.pending_store.resolve(
         task_ref,
@@ -57,15 +67,23 @@ async def run_continue_pending(plugin, event, request: WorkflowRequest) -> str:
     if not task:
         return "待处理事项不存在或已过期。"
 
-    action = _action_from_request_or_text(request, event_message_text(event), task_ref)
     if task.get("kind") == "up_candidates":
         return await _continue_candidates(plugin, event, request, task_id, task, action)
     if task.get("kind") == "confirm_add_subscription":
-        return await _continue_confirm(plugin, event, task_id, task, action)
+        return await _continue_add_confirm(plugin, event, task_id, task, action)
+    if task.get("kind") == "confirm_remove_subscription":
+        return await _continue_remove_confirm(plugin, event, task_id, task, action)
     return f"未知任务类型：{task.get('kind')}"
 
 
-async def _continue_candidates(plugin, event, request, task_id: str, task: dict, action: str) -> str:
+async def _continue_candidates(
+    plugin,
+    event,
+    request,
+    task_id: str,
+    task: dict,
+    action: str,
+) -> object:
     if normalize_reply(action) in CANCEL_REPLIES:
         await plugin.pending_store.delete(task_id)
         return "已取消待处理事项。"
@@ -77,7 +95,23 @@ async def _continue_candidates(plugin, event, request, task_id: str, task: dict,
 
     candidate = candidates[index]
     await plugin.pending_store.delete(task_id)
+    if task.get("mode") == "remove_subscription":
+        from .subscription import build_remove_confirm_task
+
+        next_request = WorkflowRequest(
+            workflow="remove_subscription",
+            target=str(candidate.get("uid") or ""),
+            params={"sub_type": candidate.get("sub_type") or task.get("sub_type") or "dynamic"},
+            source=request.source,
+        )
+        return await build_remove_confirm_task(plugin, event, next_request, candidate)
+
     if task.get("mode") != "add_subscription":
+        alias = str(task.get("keyword") or "").strip()
+        if alias:
+            from .entity_resolver import learn_up_alias
+
+            learn_up_alias(plugin, event, alias, candidate, source="search_selection")
         return f"已选择：{candidate.get('username')} | UID={candidate.get('uid')}"
 
     from .subscription import build_confirm_task
@@ -85,13 +119,22 @@ async def _continue_candidates(plugin, event, request, task_id: str, task: dict,
     next_request = WorkflowRequest(
         workflow="add_subscription",
         target=str(candidate.get("uid") or ""),
-        params={"sub_type": task.get("sub_type") or "dynamic"},
+        params={
+            "sub_type": task.get("sub_type") or "dynamic",
+            "alias": task.get("keyword") or "",
+        },
         source=request.source,
     )
     return await build_confirm_task(plugin, event, next_request, candidate)
 
 
-async def _continue_confirm(plugin, event, task_id: str, task: dict, action: str) -> str:
+async def _continue_add_confirm(
+    plugin,
+    event,
+    task_id: str,
+    task: dict,
+    action: str,
+) -> object:
     normalized = normalize_reply(action)
     if normalized in CANCEL_REPLIES:
         await plugin.pending_store.delete(task_id)
@@ -106,7 +149,47 @@ async def _continue_confirm(plugin, event, task_id: str, task: dict, action: str
 
     from .subscription import add_subscription_by_uid
 
-    return await add_subscription_by_uid(plugin, event, uid, sub_type)
+    result = await add_subscription_by_uid(plugin, event, uid, sub_type)
+    alias = _alias_from_confirm_task(task)
+    if alias:
+        from .entity_resolver import learn_up_alias
+
+        learn_up_alias(plugin, event, alias, candidate)
+    return result
+
+
+async def _continue_remove_confirm(
+    plugin,
+    event,
+    task_id: str,
+    task: dict,
+    action: str,
+) -> object:
+    normalized = normalize_reply(action)
+    if normalized in CANCEL_REPLIES:
+        await plugin.pending_store.delete(task_id)
+        return "已取消待处理事项。"
+    if normalized not in REMOVE_CONFIRM_REPLIES:
+        return "请引用这条消息回复“确认删除”或“取消”。"
+
+    candidate = task.get("candidate") or {}
+    uid = str(candidate.get("uid") or "")
+    sub_type = str(task.get("sub_type") or "dynamic")
+    await plugin.pending_store.delete(task_id)
+
+    from .subscription import remove_subscription_by_uid
+
+    return await remove_subscription_by_uid(plugin, event, uid, sub_type)
+
+
+def _alias_from_confirm_task(task: dict) -> str:
+    request = task.get("request") or {}
+    params = request.get("params") or {}
+    for key in ("alias", "query", "keyword", "target", "name"):
+        value = params.get(key) if key != "target" else request.get("target")
+        if value and str(value).strip():
+            return str(value).strip()
+    return str(task.get("keyword") or "").strip()
 
 
 def extract_task_ref(text: str) -> str:
@@ -153,6 +236,47 @@ def _action_from_request_or_text(request: WorkflowRequest, text: str, task_ref: 
     if target and not task_ref_from_text(target):
         return target
     return raw_text
+
+
+async def _single_pending_task_ref(plugin, event, action: str) -> tuple[str, bool]:
+    if not looks_like_pending_action(action):
+        return "", False
+    tasks = await plugin.pending_store.list_tasks()
+    origin = event_origin(event)
+    matches = [
+        str(task.get("task_id") or "")
+        for task in tasks
+        if task.get("origin") == origin and str(task.get("task_id") or "")
+    ]
+    if len(matches) == 1:
+        return matches[0], False
+    return "", len(matches) > 1
+
+
+def looks_like_pending_action(action: str) -> bool:
+    normalized = normalize_reply(action)
+    if normalized in CANCEL_REPLIES or normalized in CONFIRM_REPLIES:
+        return True
+    if normalized in REMOVE_CONFIRM_REPLIES:
+        return True
+    return bool(
+        re.fullmatch(
+            r"(?:选|选择|第)?\s*\d{1,2}\s*(?:个|项)?",
+            str(action or "").strip(),
+        )
+    )
+
+
+def looks_like_standalone_pending_action(action: str) -> bool:
+    normalized = normalize_reply(action)
+    if normalized in {"确认", "确认删除", "取消", "放弃", "cancel"}:
+        return True
+    return bool(
+        re.fullmatch(
+            r"(?:选|选择|第)?\s*\d{1,2}\s*(?:个|项)?",
+            str(action or "").strip(),
+        )
+    )
 
 
 def _choice_index(action: str, max_index: int) -> int | None:

@@ -71,6 +71,42 @@
     "default": 300,
     "hint": "候选选择和确认卡片的引用续跑有效时间。"
   },
+  "enable_ai_semantic_dispatch": {
+    "description": "启用 AI 语义前置分流",
+    "type": "bool",
+    "default": true,
+    "hint": "自然语言或 ai_dispatch 会先由当前大模型判断意图，再进入搜索、订阅、删除或状态 workflow。"
+  },
+  "ai_semantic_dispatch_confidence": {
+    "description": "AI 语义分流阈值",
+    "type": "float",
+    "default": 0.82,
+    "hint": "范围 0 到 1。低于阈值时回退到规则分流或让用户补充说明。"
+  },
+  "ai_semantic_dispatch_timeout_sec": {
+    "description": "AI 语义分流超时（秒）",
+    "type": "float",
+    "default": 8.0,
+    "hint": "前置判断的最大等待时间。超时后会自动回退，不阻断原有 workflow。"
+  },
+  "enable_ai_candidate_analysis": {
+    "description": "启用 AI 搜索候选分析",
+    "type": "bool",
+    "default": true,
+    "hint": "B 站搜索返回多个 UP 时，让大模型结合名称、排序和粉丝数判断是否可直接进入确认卡。"
+  },
+  "ai_candidate_analysis_confidence": {
+    "description": "AI 候选分析阈值",
+    "type": "float",
+    "default": 0.86,
+    "hint": "范围 0 到 1。低于阈值时回退本地评分或展示候选卡。"
+  },
+  "ai_candidate_analysis_timeout_sec": {
+    "description": "AI 候选分析超时（秒）",
+    "type": "float",
+    "default": 8.0,
+    "hint": "搜索后候选分析的最大等待时间。超时后自动回退。"
+  },
   "enable_ai_auto_select_candidates": {
     "description": "AI 高置信候选自动进入确认",
     "type": "bool",

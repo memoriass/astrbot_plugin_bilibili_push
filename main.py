@@ -28,7 +28,7 @@ from .workflows import (
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.8"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.9"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
@@ -65,8 +65,15 @@ class BilibiliPush(Star):
         self.search_cache_expiry_hours = config.search_cache_expiry_hours
         self.enable_ai_tools = config.enable_ai_tools
         self.ai_pending_timeout_sec = config.ai_pending_timeout_sec
+        self.enable_ai_semantic_dispatch = config.enable_ai_semantic_dispatch
+        self.ai_semantic_dispatch_confidence = config.ai_semantic_dispatch_confidence
+        self.ai_semantic_dispatch_timeout_sec = config.ai_semantic_dispatch_timeout_sec
+        self.enable_ai_candidate_analysis = config.enable_ai_candidate_analysis
+        self.ai_candidate_analysis_confidence = config.ai_candidate_analysis_confidence
+        self.ai_candidate_analysis_timeout_sec = config.ai_candidate_analysis_timeout_sec
         self.enable_ai_auto_select_candidates = config.enable_ai_auto_select_candidates
         self.ai_auto_select_confidence = config.ai_auto_select_confidence
+        self.workflow_resolver_stats = {"counters": {}}
         self.pending_store = PendingTaskStore(self, ttl_sec=self.ai_pending_timeout_sec)
 
         # 核心组件初始化
@@ -216,12 +223,16 @@ class BilibiliPush(Star):
 
         当用户提到 Bilibili、B站、UP 主、动态订阅、直播订阅、账号状态、
         搜索 UP、删除订阅或查看订阅时，优先使用本工具。
-        模糊 UP 名称会生成候选 pending task，不会直接写入订阅。
+        不确定具体 workflow 时，使用 ai_dispatch 让插件先做受控分流。
+        添加和删除订阅都会生成候选或确认 pending task，不会直接写入订阅。
+        工具调用默认后台处理，只把文本结果回传给模型；只有确实需要用户立刻介入
+        且确认只会出现一条时，才传 {"present": true} 主动展示卡片。
 
         常用 workflow：
-        - search_up：搜索 UP 主并返回候选。
-        - add_subscription：按明确 UID 添加订阅；按关键词时生成候选任务。
-        - remove_subscription：删除当前会话订阅。
+        - ai_dispatch：分析自然语言并转入具体 workflow。
+        - search_up：搜索 UP 主并返回候选；默认作为模型内部判断。
+        - add_subscription：按明确 UID 或关键词生成确认任务，用户确认后写入。
+        - remove_subscription：定位当前会话订阅并生成确认任务，用户确认后删除。
         - list_subscriptions：查看当前会话订阅。
         - account_status：查看登录账号池状态。
         - check_status：诊断插件状态。
@@ -230,10 +241,11 @@ class BilibiliPush(Star):
         Args:
             workflow(string): workflow id，例如 search_up、add_subscription、
                 remove_subscription、list_subscriptions、account_status、
-                check_status、continue_pending。
+                check_status、continue_pending；不确定时传 ai_dispatch 或留空。
             target(string): UID、关键词或 task id。
             params(object): 可选 JSON，例如 {"sub_type":"dynamic"}、
-                {"sub_type":"live"}、{"task_id":"bili1a2b3c4d","choice":"1"}。
+                {"sub_type":"live"}、{"present":true}、
+                {"task_id":"bili1a2b3c4d","choice":"1"}。
         """
         return await self.ai_handler.run_workflow(event, workflow, target, params)
 
@@ -248,7 +260,7 @@ class BilibiliPush(Star):
 
     @filter.llm_tool(name="bili_add_dynamic_sub")
     async def bili_add_dynamic_sub_tool(self, event: AstrMessageEvent, target: str) -> str:
-        """添加 B站动态订阅。target 可以是明确 UID 或 UP 主关键词。
+        """添加 B站动态订阅。target 可以是明确 UID 或 UP 主关键词，写入前需要用户确认。
 
         Args:
             target(string): UP 主 UID 或搜索关键词。
@@ -257,7 +269,7 @@ class BilibiliPush(Star):
 
     @filter.llm_tool(name="bili_add_live_sub")
     async def bili_add_live_sub_tool(self, event: AstrMessageEvent, target: str) -> str:
-        """添加 B站直播订阅。target 可以是明确 UID 或 UP 主关键词。
+        """添加 B站直播订阅。target 可以是明确 UID 或 UP 主关键词，写入前需要用户确认。
 
         Args:
             target(string): UP 主 UID 或搜索关键词。
@@ -284,11 +296,11 @@ class BilibiliPush(Star):
         uid: str,
         sub_type: str,
     ) -> str:
-        """删除 B站订阅。
+        """删除 B站订阅。会先生成删除确认任务，用户确认后才会移除。
 
         Args:
-            uid(string): UP 主 UID。
-            sub_type(string): 订阅类型，dynamic 或 live。
+            uid(string): UP 主 UID、已确认简称或当前订阅名称。
+            sub_type(string): 订阅类型，dynamic、live 或 both。
         """
         return await self.ai_handler.remove_subscription(event, uid, sub_type)
 

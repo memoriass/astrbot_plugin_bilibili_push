@@ -4,12 +4,17 @@ from ..core.http import HttpClient
 from .cards import account_status_card, subscription_list_card
 from .formatting import format_accounts, format_subscriptions, format_workflow_list
 from .models import WorkflowRequest
+from .resolver_stats import format_resolver_stats
 from .results import WorkflowResult
 from .runtime import event_origin
+from .utils import first_text, normalize_sub_type
 
 
 async def run_list_subscriptions(plugin, event, request: WorkflowRequest) -> WorkflowResult:
     subscriptions = plugin.db.get_subscriptions(event_origin(event))
+    sub_type = normalize_sub_type(first_text(request.params, "sub_type", "type") or "both")
+    if sub_type in {"dynamic", "live"}:
+        subscriptions = [sub for sub in subscriptions if sub.sub_type == sub_type]
     text = format_subscriptions(subscriptions)
     if not subscriptions:
         return WorkflowResult(text)
@@ -34,5 +39,6 @@ async def run_check_status(plugin, event, request: WorkflowRequest) -> str:
         f"- LLM tools: bili_workflow + 能力说明工具\n"
         f"- accounts: {len(accounts)}\n"
         f"- renderer: {browser_ready}\n\n"
+        f"{format_resolver_stats(plugin)}\n\n"
         + format_workflow_list()
     )

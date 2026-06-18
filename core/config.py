@@ -18,6 +18,12 @@ class PluginConfig:
     search_cache_expiry_hours: int = 24
     enable_ai_tools: bool = True
     ai_pending_timeout_sec: int = 300
+    enable_ai_semantic_dispatch: bool = True
+    ai_semantic_dispatch_confidence: float = 0.82
+    ai_semantic_dispatch_timeout_sec: float = 8.0
+    enable_ai_candidate_analysis: bool = True
+    ai_candidate_analysis_confidence: float = 0.86
+    ai_candidate_analysis_timeout_sec: float = 8.0
     enable_ai_auto_select_candidates: bool = True
     ai_auto_select_confidence: float = 0.88
     verify_ssl: bool = True
@@ -73,6 +79,38 @@ def load_plugin_config(raw: dict | None) -> PluginConfig:
             raw.get("ai_pending_timeout_sec"),
             300,
             min_value=30,
+        ),
+        enable_ai_semantic_dispatch=safe_bool(
+            raw.get("enable_ai_semantic_dispatch"),
+            True,
+        ),
+        ai_semantic_dispatch_confidence=safe_float(
+            raw.get("ai_semantic_dispatch_confidence"),
+            0.82,
+            min_value=0.0,
+            max_value=1.0,
+        ),
+        ai_semantic_dispatch_timeout_sec=safe_float(
+            raw.get("ai_semantic_dispatch_timeout_sec"),
+            8.0,
+            min_value=1.0,
+            max_value=30.0,
+        ),
+        enable_ai_candidate_analysis=safe_bool(
+            raw.get("enable_ai_candidate_analysis"),
+            True,
+        ),
+        ai_candidate_analysis_confidence=safe_float(
+            raw.get("ai_candidate_analysis_confidence"),
+            0.86,
+            min_value=0.0,
+            max_value=1.0,
+        ),
+        ai_candidate_analysis_timeout_sec=safe_float(
+            raw.get("ai_candidate_analysis_timeout_sec"),
+            8.0,
+            min_value=1.0,
+            max_value=30.0,
         ),
         enable_ai_auto_select_candidates=safe_bool(
             raw.get("enable_ai_auto_select_candidates"),

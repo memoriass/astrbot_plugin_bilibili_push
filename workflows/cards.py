@@ -15,6 +15,8 @@ def candidate_list_card(
     candidates: list[dict],
     title: str,
     note: str,
+    *,
+    recommended_uid: str = "",
 ) -> WorkflowCard:
     return WorkflowCard(
         template_name="workflow_candidates.html.jinja",
@@ -22,21 +24,29 @@ def candidate_list_card(
             "page_title": title,
             "note": note,
             "candidates": [
-                {
-                    "uid": item.get("uid") or item.get("mid") or "",
-                    "username": item.get("username") or item.get("uname") or "",
-                    "face": item.get("face") or NO_FACE,
-                    "has_dynamic": True,
-                    "has_live": True,
-                    "is_live": False,
-                    "status_label": f"候选 {index}",
-                    "status_class": "badge-warn",
-                }
+                _candidate_card_row(item, index, recommended_uid)
                 for index, item in enumerate(candidates, start=1)
             ],
         },
         selector=".workflow-board",
     )
+
+
+def _candidate_card_row(item: dict, index: int, recommended_uid: str) -> dict:
+    uid = str(item.get("uid") or item.get("mid") or "")
+    is_recommended = bool(recommended_uid) and uid == str(recommended_uid)
+    sub_type = str(item.get("sub_type") or "")
+    status_label = "AI 推荐" if is_recommended else f"候选 {index}"
+    return {
+        "uid": item.get("uid") or item.get("mid") or "",
+        "username": item.get("username") or item.get("uname") or "",
+        "face": item.get("face") or NO_FACE,
+        "has_dynamic": sub_type in {"", "dynamic", "both"} or bool(item.get("has_dynamic")),
+        "has_live": sub_type in {"", "live", "both"} or bool(item.get("has_live")),
+        "is_live": False,
+        "status_label": status_label,
+        "status_class": "badge-live-on" if is_recommended else "badge-warn",
+    }
 
 
 async def subscription_list_card(plugin, subscriptions: Iterable) -> WorkflowCard:
@@ -123,8 +133,27 @@ def subscription_confirm_card(
     face: str,
     uid: str,
     sub_type: str,
+    action: str = "add",
 ) -> WorkflowCard:
-    label = "直播" if sub_type == "live" else "动态"
+    label = {
+        "live": "直播",
+        "both": "动态和直播",
+        "dynamic": "动态",
+    }.get(sub_type, "动态")
+    is_remove = action == "remove"
+    action_label = {
+        "add": "待确认",
+        "remove": "待删除",
+    }.get(action, "待确认")
+    title = {
+        "add": f"确认订阅{label}吗？",
+        "remove": f"确认删除{label}订阅吗？",
+    }.get(action, f"确认订阅{label}吗？")
+    summary = {
+        "add": "确认后会写入当前会话；取消则不会改动订阅。",
+        "remove": "确认后会从当前会话移除；取消则不会改动订阅。",
+    }.get(action, "确认后会写入当前会话；取消则不会改动订阅。")
+    confirm_text = "引用回复 确认删除" if is_remove else "引用回复 确认"
     return WorkflowCard(
         template_name="workflow_confirm.html.jinja",
         templates={
@@ -132,10 +161,10 @@ def subscription_confirm_card(
             "face": face or NO_FACE,
             "uid": uid,
             "sub_type": sub_type,
-            "action_label": "待确认",
-            "title": f"确认订阅{label}吗？",
-            "summary": "确认后会写入当前会话；取消则不会改动订阅。",
-            "confirm_text": "引用回复 确认",
+            "action_label": action_label,
+            "title": title,
+            "summary": summary,
+            "confirm_text": confirm_text,
             "cancel_text": "引用回复 取消",
         },
         viewport={"width": 560, "height": 620},

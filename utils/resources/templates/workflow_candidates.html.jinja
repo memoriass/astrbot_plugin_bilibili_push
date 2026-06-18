@@ -155,6 +155,8 @@
 
         .badge-dyn { background: linear-gradient(135deg, #00a1d6, #33b5e5); }
         .badge-live { background: linear-gradient(135deg, #fb7299, #ff8da1); }
+        .badge-warn { background: linear-gradient(135deg, #ff9800, #ffc107); }
+        .badge-live-on { background: linear-gradient(135deg, #00c853, #64dd17); }
 
         .footer {
             flex: 0 0 100%;
@@ -189,7 +191,9 @@
         {% for item in candidates %}
         <div class="card">
             <img src="{{ item.face }}" class="card-image" onerror="this.src='http://i0.hdslb.com/bfs/face/member/noface.jpg'">
-            <div class="candidate-badge">候选 {{ loop.index }}</div>
+            <div class="candidate-badge {{ item.status_class | default('badge-warn') }}">
+                {{ item.status_label | default('候选 ' ~ loop.index) }}
+            </div>
             <div class="type-badges">
                 {% if item.has_dynamic %}<div class="type-badge badge-dyn">DYNAMIC</div>{% endif %}
                 {% if item.has_live %}<div class="type-badge badge-live">LIVE</div>{% endif %}

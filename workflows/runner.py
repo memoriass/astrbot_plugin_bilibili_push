@@ -5,6 +5,7 @@ from typing import Any
 
 from astrbot.api.event import AstrMessageEvent
 
+from .dispatch import run_ai_dispatch
 from .formatting import format_workflow_list
 from .manage import run_account_status, run_check_status, run_list_subscriptions
 from .models import COMPILED_WORKFLOWS, WorkflowRequest
@@ -19,6 +20,7 @@ WorkflowHandler = Callable[[Any, AstrMessageEvent, WorkflowRequest], Awaitable[A
 
 
 WORKFLOW_HANDLERS: dict[str, WorkflowHandler] = {
+    "ai_dispatch": run_ai_dispatch,
     "search_up": run_search_up,
     "add_subscription": run_add_subscription,
     "remove_subscription": run_remove_subscription,

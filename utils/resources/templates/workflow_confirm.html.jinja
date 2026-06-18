@@ -93,6 +93,7 @@
 
         .badge-live { background: linear-gradient(135deg, #fb7299, #ff8da1); }
         .badge-dyn { background: linear-gradient(135deg, #00a1d6, #33b5e5); }
+        .badge-both { background: linear-gradient(135deg, #22c55e, #00a1d6); }
 
         .identity {
             position: absolute;
@@ -189,6 +190,8 @@
                 <div class="action-label">{{ action_label | default('待确认') }}</div>
                 {% if sub_type == 'live' %}
                     <div class="type-badge badge-live">LIVE</div>
+                {% elif sub_type == 'both' %}
+                    <div class="type-badge badge-both">BOTH</div>
                 {% else %}
                     <div class="type-badge badge-dyn">DYNAMIC</div>
                 {% endif %}

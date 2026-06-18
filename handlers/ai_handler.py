@@ -57,7 +57,9 @@ class AiToolHandler:
         return await self.run_workflow(event, "list_subscriptions")
 
     async def _send_cards(self, event: AstrMessageEvent, request, result) -> None:
-        if getattr(request, "workflow", "") == "search_up":
+        if not _should_present_tool_result(request):
+            return
+        if getattr(result, "card_intent", "") == "model_context":
             return
         if not getattr(result, "cards", None):
             return
@@ -65,3 +67,11 @@ class AiToolHandler:
         if not getattr(rendered, "chain", None):
             return
         await event.send(MessageChain(chain=rendered.chain))
+
+
+def _should_present_tool_result(request) -> bool:
+    params = getattr(request, "params", {}) or {}
+    return any(
+        params.get(key) is True
+        for key in ("present", "foreground", "show_card", "show_cards")
+    )

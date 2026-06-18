@@ -24,7 +24,7 @@ def choose_confident_candidate(
         return None
 
     scored = [
-        (_candidate_score(keyword, item, index), index, item)
+        (score_candidate(keyword, item, index), index, item)
         for index, item in enumerate(candidates)
     ]
     scored.sort(key=lambda row: row[0], reverse=True)
@@ -41,7 +41,7 @@ def choose_confident_candidate(
     )
 
 
-def _candidate_score(keyword: str, item: dict, index: int) -> float:
+def score_candidate(keyword: str, item: dict, index: int) -> float:
     query = _normalize_name(keyword)
     name = _normalize_name(item.get("username") or item.get("uname") or "")
     if not query or not name:
