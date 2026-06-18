@@ -107,7 +107,7 @@ def _build_prompt(
             "fallback_branches": [_branch_hint(branch) for branch in branches[:5]],
             "semantic_recall": recall_candidates,
             "output_schema": {
-                "workflow": "search_up | add_subscription | remove_subscription | list_subscriptions | account_status | check_status | continue_pending | none",
+                "workflow": "one value from allowed_workflows, or none",
                 "query": "UP name, nickname, UID, or empty string",
                 "sub_type": "dynamic | live | both",
                 "confidence": "0.0-1.0",

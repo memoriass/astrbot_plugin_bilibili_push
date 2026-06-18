@@ -3,6 +3,7 @@ from __future__ import annotations
 from astrbot.api import logger
 
 from ..core.http import HttpClient
+from ..core.network_retry import get_with_retry
 from .candidate_analysis import analyze_search_candidates
 from .cards import candidate_list_card
 from .entity_resolver import resolve_up_reference
@@ -20,8 +21,10 @@ async def search_up_candidates(keyword: str, limit: int = 8) -> tuple[list[dict]
 
     client = await HttpClient.get_client()
     try:
-        response = await client.get(
+        response = await get_with_retry(
+            client,
             "https://api.bilibili.com/x/web-interface/search/type",
+            label=f"Bilibili UP 搜索 {keyword}",
             params={"search_type": "bili_user", "keyword": keyword, "page": 1},
             timeout=10,
         )
@@ -56,13 +59,31 @@ async def run_search_up(plugin, event, request: WorkflowRequest) -> WorkflowResu
     limit = int(payload.get("limit") or 8)
     resolved = await resolve_up_reference(plugin, event, keyword)
     if resolved and resolved.source != "uid":
+        candidates = [resolved.as_candidate()]
+        task_id = await store_pending_task(
+            plugin,
+            event,
+            request,
+            kind="up_candidates",
+            payload={
+                "keyword": keyword,
+                "candidates": candidates,
+                "mode": "search_only",
+            },
+        )
         return WorkflowResult(
-            (
-                f"已根据{_resolver_source_label(resolved.source)}优先命中：\n"
-                f"- {resolved.username} | UID={resolved.uid} | 置信度 {resolved.confidence:.0%}\n"
-                f"- 依据：{resolved.reason or '历史解析记录'}"
+            text=format_candidates(candidates, title=f"搜索结果（{keyword}）"),
+            display_text=(
+                format_candidates(candidates, title=f"搜索结果（{keyword}）")
+                + "\n\n引用这条消息回复序号即可选择候选。"
             ),
-            card_intent="model_context",
+            task_id=task_id,
+            card_intent=_search_card_intent(request),
+            cards=[candidate_list_card(
+                candidates,
+                f"搜索结果: {keyword}",
+                "引用这条消息回复序号即可选择候选。",
+            )],
         )
 
     candidates, error = await search_up_candidates(keyword, limit=limit)
@@ -124,14 +145,6 @@ async def run_search_up(plugin, event, request: WorkflowRequest) -> WorkflowResu
             recommended_uid=recommended_uid,
         )],
     )
-
-
-def _resolver_source_label(source: str) -> str:
-    if source == "current_subscription":
-        return "当前会话订阅"
-    if source.startswith("alias:"):
-        return "历史别名"
-    return "历史记录"
 
 
 def _search_card_intent(request: WorkflowRequest) -> str:

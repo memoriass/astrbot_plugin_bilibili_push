@@ -6,10 +6,10 @@ from .models import COMPILED_WORKFLOWS
 
 
 def format_workflow_list() -> str:
-    lines = ["可用 Bilibili workflow："]
+    lines = ["可用 Bilibili 能力："]
     for spec in COMPILED_WORKFLOWS.values():
         if spec.user_visible:
-            lines.append(f"- {spec.workflow}: {spec.title} - {spec.purpose}")
+            lines.append(f"- {spec.title}：{spec.purpose}")
     return "\n".join(lines)
 
 
@@ -38,8 +38,8 @@ def format_subscriptions(subs) -> str:
 
     lines = ["当前会话订阅列表："]
     for uid in sorted(grouped.keys()):
-        sub_types = "/".join(sorted(grouped[uid]))
-        lines.append(f"- {names.get(uid, uid)} | UID={uid} | type={sub_types}")
+        sub_types = "/".join(_sub_type_text(item) for item in sorted(grouped[uid]))
+        lines.append(f"- {names.get(uid, uid)} | UID={uid} | 类型={sub_types}")
     return "\n".join(lines)
 
 
@@ -51,7 +51,7 @@ def format_accounts(accounts: list[dict], current_index: int) -> str:
         active = "当前" if index == current_index else "备用"
         valid = _account_status_text(account)
         status_code = account.get("status_code")
-        status = f"{valid}, code={status_code}" if status_code and valid != "冷却中" else valid
+        status = f"{valid}，状态码={status_code}" if status_code and valid != "冷却中" else valid
         lines.append(
             f"- [{active}] {account.get('name') or '-'} | UID={account.get('uid') or '-'} | {status}"
         )
@@ -64,3 +64,7 @@ def _account_status_text(account: dict) -> str:
     if int(account.get("cooldown_until") or 0) > int(time.time()):
         return "冷却中"
     return "有效"
+
+
+def _sub_type_text(sub_type: str) -> str:
+    return {"dynamic": "动态", "live": "直播"}.get(sub_type, sub_type)

@@ -44,17 +44,7 @@ async def run_add_subscription(
 
     resolved = await resolve_up_reference(plugin, event, keyword)
     if resolved and resolved.source != "uid":
-        result = await build_confirm_task(plugin, event, request, resolved.as_candidate())
-        base_display = result.display_text or result.text
-        prefix = (
-            f"已根据{_resolver_source_label(resolved.source)}命中："
-            f"{resolved.username} | UID={resolved.uid} | 置信度 {resolved.confidence:.0%}\n"
-            f"依据：{resolved.reason or '历史解析记录'}。\n"
-            "仍需你确认后才会写入订阅。\n\n"
-        )
-        result.text = prefix + result.text
-        result.display_text = prefix + base_display
-        return result
+        return await build_confirm_task(plugin, event, request, resolved.as_candidate())
 
     candidates, error = await search_up_candidates(keyword)
     if error:
@@ -80,18 +70,7 @@ async def run_add_subscription(
                 threshold=float(getattr(plugin, "ai_auto_select_confidence", 0.88)),
             )
     if selection:
-        result = await build_confirm_task(plugin, event, request, selection.candidate)
-        base_display = result.display_text or result.text
-        prefix = (
-            "已根据候选匹配度自动选择："
-            f"{selection.candidate.get('username')} | UID={selection.candidate.get('uid')} "
-            f"| 置信度 {selection.confidence:.0%}\n"
-            f"依据：{selection.reason}。\n"
-            "仍需你确认后才会写入订阅。\n\n"
-        )
-        result.text = prefix + result.text
-        result.display_text = prefix + base_display
-        return result
+        return await build_confirm_task(plugin, event, request, selection.candidate)
 
     task_id = await store_pending_task(
         plugin,
@@ -227,23 +206,12 @@ async def _remove_with_subscription_candidates(
         )
     if selection:
         selected_type = str(selection.candidate.get("sub_type") or sub_type)
-        result = await build_remove_confirm_task(
+        return await build_remove_confirm_task(
             plugin,
             event,
             _request_with_sub_type(request, selected_type),
             selection.candidate,
         )
-        base_display = result.display_text or result.text
-        prefix = (
-            "已根据当前订阅候选定位待删除项："
-            f"{selection.candidate.get('username')} | UID={selection.candidate.get('uid')} "
-            f"| 置信度 {selection.confidence:.0%}\n"
-            f"依据：{selection.reason}。\n"
-            "仍需你确认后才会删除订阅。\n\n"
-        )
-        result.text = prefix + result.text
-        result.display_text = prefix + base_display
-        return result
 
     task_id = await store_pending_task(
         plugin,
@@ -465,14 +433,6 @@ def _request_with_sub_type(request: WorkflowRequest, sub_type: str) -> WorkflowR
 
 def _default_categories(sub_type: str) -> list[int]:
     return [1, 2, 3, 4, 5, 6] if sub_type == "dynamic" else [1, 2, 3]
-
-
-def _resolver_source_label(source: str) -> str:
-    if source == "current_subscription":
-        return "当前会话订阅"
-    if source.startswith("alias:"):
-        return "历史别名"
-    return "历史记录"
 
 
 def _can_auto_select_candidates(plugin, request: WorkflowRequest) -> bool:

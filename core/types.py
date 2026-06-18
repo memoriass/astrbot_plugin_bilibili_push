@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NamedTuple, Optional, Union
 
-# ... (保留之前的定义)
 Target = str
 RawPost = Any
 Category = int
@@ -32,8 +31,8 @@ class Post:
     timestamp: int
     url: str
     nickname: str
-    images: list[str | bytes]  # URL 或二进制数据
-    id: str  # 唯一标识符
+    images: list[str | bytes]
+    id: str
     avatar: str | None = None
     repost: Optional["Post"] = None
     category: Optional[int] = None
@@ -49,7 +48,6 @@ class ApiError(Exception):
         super().__init__(f"API Error: {url}")
 
 
-# 新增消息段定义
 @dataclass
 class MsgText:
     text: str
@@ -57,7 +55,6 @@ class MsgText:
 
 @dataclass
 class MsgImage:
-    # URL, Path, or Bytes
     data: str | Path | bytes
 
 

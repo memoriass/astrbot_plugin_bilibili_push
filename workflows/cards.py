@@ -172,6 +172,34 @@ def subscription_confirm_card(
     )
 
 
+def operation_confirm_card(
+    *,
+    title: str,
+    summary: str,
+    username: str,
+    uid: str = "-",
+    action_label: str = "需要确认",
+    confirm_text: str = "引用回复 确认",
+    cancel_text: str = "引用回复 取消",
+) -> WorkflowCard:
+    return WorkflowCard(
+        template_name="workflow_confirm.html.jinja",
+        templates={
+            "username": username,
+            "face": NO_FACE,
+            "uid": uid,
+            "sub_type": "both",
+            "action_label": action_label,
+            "title": title,
+            "summary": summary,
+            "confirm_text": confirm_text,
+            "cancel_text": cancel_text,
+        },
+        viewport={"width": 560, "height": 620},
+        selector=".workflow-confirm",
+    )
+
+
 def _account_status_label(active: bool, valid: bool, account: dict) -> str:
     if _account_cooling(account):
         return "当前冷却" if active else "备用冷却"

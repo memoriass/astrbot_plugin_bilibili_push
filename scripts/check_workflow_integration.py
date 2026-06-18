@@ -164,6 +164,9 @@ def _check_ai_workflow_modules() -> None:
         ROOT / "workflows" / "dispatch.py",
         ROOT / "workflows" / "entity_resolver.py",
         ROOT / "workflows" / "resolver_stats.py",
+        ROOT / "workflows" / "workflow-map.md",
+        ROOT / "workflows" / "workflow-map.mmd",
+        ROOT / "workflows" / "workflow-map.drawio",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
@@ -175,6 +178,15 @@ def _check_ai_workflow_modules() -> None:
         raise SystemExit("ai_dispatch workflow is not registered")
     if "REMOVE_CONFIRM_REPLIES" not in models:
         raise SystemExit("remove confirmation replies are not defined")
+    for workflow in (
+        "find_subscription",
+        "diagnose_health",
+        "diagnose_resolver",
+        "check_live_current_group",
+        "check_live_all_groups",
+    ):
+        if workflow not in models or workflow not in runner:
+            raise SystemExit(f"{workflow} workflow is not registered")
 
     visible_task_text = (
         ROOT / "workflows" / "subscription.py"
@@ -202,10 +214,18 @@ def _check_ai_workflow_modules() -> None:
 def _check_alias_schema() -> None:
     schema = (ROOT / "database" / "schema.py").read_text(encoding="utf-8")
     manager = (ROOT / "database" / "db_manager.py").read_text(encoding="utf-8")
+    aliases = (ROOT / "database" / "aliases.py").read_text(encoding="utf-8")
+    resolver = (ROOT / "workflows" / "entity_resolver.py").read_text(encoding="utf-8")
     if "up_aliases" not in schema:
         raise SystemExit("up_aliases schema is missing")
+    if "up_alias_evidence" not in schema:
+        raise SystemExit("up_alias_evidence schema is missing")
     if "AliasStoreMixin" not in manager:
         raise SystemExit("DatabaseManager does not include AliasStoreMixin")
+    if "find_shared_up_aliases" not in aliases or "upsert_up_alias_evidence" not in aliases:
+        raise SystemExit("shared alias evidence store is missing")
+    if "_shared_alias_candidates" not in resolver or "alias:shared" not in resolver:
+        raise SystemExit("shared alias resolver layer is missing")
 
 
 def _oversized_text_files() -> list[tuple[str, int]]:

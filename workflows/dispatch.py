@@ -9,7 +9,19 @@ from .branches import (
     format_dispatch_options,
     select_dispatch_branch,
 )
-from .manage import run_account_status, run_check_status, run_list_subscriptions
+from .manage import (
+    run_account_status,
+    run_check_live_all_groups,
+    run_check_live_current_group,
+    run_check_status,
+    run_diagnose_health,
+    run_diagnose_resolver,
+    run_find_subscription,
+    run_list_all_subscriptions,
+    run_list_dynamic_subscriptions,
+    run_list_live_subscriptions,
+    run_list_subscriptions,
+)
 from .models import WorkflowRequest
 from .pending import run_continue_pending
 from .results import WorkflowResult, ensure_workflow_result
@@ -24,7 +36,15 @@ NEXT_WORKFLOW_HANDLERS = {
     "add_subscription": run_add_subscription,
     "remove_subscription": run_remove_subscription,
     "list_subscriptions": run_list_subscriptions,
+    "list_all_subscriptions": run_list_all_subscriptions,
+    "list_live_subscriptions": run_list_live_subscriptions,
+    "list_dynamic_subscriptions": run_list_dynamic_subscriptions,
+    "find_subscription": run_find_subscription,
     "account_status": run_account_status,
+    "diagnose_health": run_diagnose_health,
+    "diagnose_resolver": run_diagnose_resolver,
+    "check_live_current_group": run_check_live_current_group,
+    "check_live_all_groups": run_check_live_all_groups,
     "check_status": run_check_status,
     "continue_pending": run_continue_pending,
 }

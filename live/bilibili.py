@@ -12,13 +12,12 @@ from ..core.compat import (
     type_validate_json,
     type_validate_python,
 )
+from ..core.network_retry import get_with_retry
 
-# Core Imports
 from ..core.platform import StatusChangePlatform
 from ..core.types import Category, Post, RawPost, Tag, Target
 from ..utils.logger import logger
 
-# Model Imports
 from ..core.models import UserAPI
 
 
@@ -57,7 +56,7 @@ class BilibiliLive(StatusChangePlatform):
         room_id: int
         uid: int
         live_time: int
-        live_status: int  # 使用 int 方便处理
+        live_status: int
         area_name: str = Field(alias="area_v2_name")
         uname: str
         face: str
@@ -68,7 +67,6 @@ class BilibiliLive(StatusChangePlatform):
         def get_live_action(
             self, old_info: "BilibiliLive.Info"
         ) -> "BilibiliLive.LiveAction":
-            # 状态判定逻辑
             if old_info.live_status in [0, 2] and self.live_status == 1:
                 return BilibiliLive.LiveAction.TURN_ON
             elif old_info.live_status == 1 and self.live_status in [0, 2]:
@@ -82,14 +80,17 @@ class BilibiliLive(StatusChangePlatform):
 
     async def get_target_name(self, target: Target) -> str | None:
         client = await self.get_client()
-        # 使用更稳定的 card 接口
-        res = await client.get(
-            "https://api.bilibili.com/x/web-interface/card", params={"mid": target}
+        res = await get_with_retry(
+            client,
+            "https://api.bilibili.com/x/web-interface/card",
+            label=f"获取直播目标名称 {target}",
+            params={"mid": target},
         )
         if res.status_code != 200:
-            # Fallback to live master info
-            res = await client.get(
+            res = await get_with_retry(
+                client,
                 "https://api.live.bilibili.com/live_user/v1/Master/info",
+                label=f"获取直播目标备用名称 {target}",
                 params={"uid": target},
             )
             if res.status_code != 200:
@@ -122,16 +123,16 @@ class BilibiliLive(StatusChangePlatform):
             keyframe="",
         )
 
-    # 批量获取状态由 Scheduler 调用，这里提供单个或批量方法
     async def get_status(self, target: Target) -> Info:
-        # 复用 batch 接口
         infos = await self.batch_get_status([target])
         return infos[0]
 
     async def batch_get_status(self, targets: list[Target]) -> list[Info]:
         client = await self.get_client()
-        res = await client.get(
+        res = await get_with_retry(
+            client,
             "https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids",
+            label=f"直播状态批量检查 {len(targets)} 个 UID",
             params={"uids[]": targets},
             timeout=10.0,
         )
@@ -159,8 +160,10 @@ class BilibiliLive(StatusChangePlatform):
         if not await HttpClient.invalidate_current_account(status_code=status_code):
             raise Exception(f"Live API risk control: {status_code}")
         client = await self.get_client()
-        res = await client.get(
+        res = await get_with_retry(
+            client,
             "https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids",
+            label=f"直播风控切换账号后重试 {len(targets)} 个 UID",
             params={"uids[]": targets},
             timeout=10.0,
         )
@@ -230,5 +233,4 @@ class BilibiliLive(StatusChangePlatform):
         return raw_post.category
 
     async def fetch_new_post(self, sub_unit):
-        # 实时状态由 Scheduler 维护，这里不实现
         return []

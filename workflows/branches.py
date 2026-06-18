@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from .utils import first_text, is_uid, normalize_sub_type, normalize_workflow
+from .utils import first_text, normalize_sub_type, normalize_workflow
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +24,15 @@ ALLOWED_NEXT_WORKFLOWS = {
     "add_subscription",
     "remove_subscription",
     "list_subscriptions",
+    "list_all_subscriptions",
+    "list_live_subscriptions",
+    "list_dynamic_subscriptions",
+    "find_subscription",
     "account_status",
+    "diagnose_health",
+    "diagnose_resolver",
+    "check_live_current_group",
+    "check_live_all_groups",
     "check_status",
     "continue_pending",
 }
@@ -50,38 +58,12 @@ def build_dispatch_branches(
     sub_type = _subscription_type(raw, params)
     branches: list[DispatchBranch] = []
 
-    if _wants_account_status(raw):
-        branches.append(
-            _branch(
-                "account_status",
-                "账号状态",
-                "account_status",
-                0.94,
-                "用户询问 Bilibili 登录账号状态",
-            )
-        )
-    if _wants_check_status(raw):
-        branches.append(
-            _branch(
-                "check_status",
-                "插件诊断",
-                "check_status",
-                0.92,
-                "用户要求检查插件或连接状态",
-            )
-        )
+    from .branch_readonly import build_readonly_branches, list_branch
+
+    branches.extend(build_readonly_branches(DispatchBranch, raw, params, query))
     if _wants_list(raw):
         list_sub_type = _list_sub_type(raw, params)
-        branches.append(
-            DispatchBranch(
-                branch_id="list_subscriptions",
-                title="查看订阅",
-                workflow="list_subscriptions",
-                params={"sub_type": list_sub_type},
-                confidence=0.93,
-                reason="用户询问当前会话订阅列表",
-            )
-        )
+        branches.append(list_branch(DispatchBranch, list_sub_type))
     if _wants_remove(raw):
         branches.append(_remove_branch(query, sub_type))
     if _wants_add(raw, params):
@@ -171,7 +153,11 @@ def _explicit_branch(raw: str, params: dict[str, Any]) -> DispatchBranch | None:
         params=_params_for_workflow(workflow, query, sub_type, params),
         confidence=0.98,
         reason="AI 工具显式给出了受支持的后续 workflow",
-        requires_confirmation=workflow in {"add_subscription", "remove_subscription"},
+        requires_confirmation=workflow in {
+            "add_subscription",
+            "remove_subscription",
+            "check_live_all_groups",
+        },
     )
 
 
@@ -238,6 +224,14 @@ def _params_for_workflow(
         return {"uid": query, "sub_type": sub_type}
     if workflow == "search_up":
         return {"query": query}
+    if workflow == "find_subscription":
+        return {"query": query, "sub_type": sub_type}
+    if workflow == "list_live_subscriptions":
+        return {"sub_type": "live"}
+    if workflow == "list_dynamic_subscriptions":
+        return {"sub_type": "dynamic"}
+    if workflow == "list_all_subscriptions":
+        return {"sub_type": "both"}
     if workflow == "continue_pending":
         return dict(params)
     return {}
@@ -317,6 +311,13 @@ def _has_bili_context(raw: str, params: dict[str, Any]) -> bool:
         return True
     if _contains_any(raw, _BILI_TOKENS):
         return True
+    if "全部检查" in raw or "全部群检查" in raw:
+        return True
+    if _contains_any(raw, ("插件", "账号", "别名", "解析", "命中", "歧义", "召回")) and _contains_any(
+        raw,
+        ("检查", "诊断", "统计", "状态", "情况", "健康"),
+    ):
+        return True
     if _has_subscription_context(raw):
         return True
     return _contains_any(raw, ("订阅", "直播", "动态", "推送", "提醒")) and _contains_any(
@@ -336,6 +337,9 @@ def _has_bili_context(raw: str, params: dict[str, Any]) -> bool:
             "查看",
             "列表",
             "检查",
+            "检测",
+            "查找",
+            "搜索",
         ),
     )
 
@@ -347,17 +351,6 @@ def _has_subscription_context(raw: str) -> bool:
     ) and _contains_any(
         raw,
         ("直播", "动态", "推送", "提醒", "通知", "UP", "up"),
-    )
-
-
-def _wants_account_status(raw: str) -> bool:
-    return _contains_any(raw, ("账号", "登录")) and _contains_any(raw, ("状态", "情况", "可用"))
-
-
-def _wants_check_status(raw: str) -> bool:
-    return _contains_any(raw, ("诊断", "检查", "测试")) and _contains_any(
-        raw,
-        ("状态", "连接", "插件", "b站", "B站"),
     )
 
 

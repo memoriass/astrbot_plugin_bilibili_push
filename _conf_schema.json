@@ -5,6 +5,24 @@
     "default": true,
     "hint": "开启后，聊天中出现 Bilibili 视频、动态、opus、直播间或短链时会自动解析。"
   },
+  "enable_parser_video_download": {
+    "description": "解析视频时追加视频附件",
+    "type": "bool",
+    "default": false,
+    "hint": "默认关闭。开启后，仅在解析到 Bilibili 视频且文件不超过大小限制时，才下载低清 MP4 并随解析卡片发送。"
+  },
+  "parser_video_max_size_mb": {
+    "description": "解析视频附件大小上限（MB）",
+    "type": "int",
+    "default": 30,
+    "hint": "超过该大小会跳过视频附件，只发送解析卡片。插件运行时限制在 1 到 200。"
+  },
+  "parser_video_download_timeout_sec": {
+    "description": "解析视频下载超时（秒）",
+    "type": "int",
+    "default": 30,
+    "hint": "下载视频附件的最大等待时间。超时会跳过视频附件，不影响解析卡片。"
+  },
   "push_on_startup": {
     "description": "启动时推送当前直播状态",
     "type": "bool",

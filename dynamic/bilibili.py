@@ -6,6 +6,7 @@ from typing import ClassVar
 
 from ..core.compat import type_validate_json
 from ..core.models import DynRawPost, PostAPI, UserAPI
+from ..core.network_retry import get_with_retry
 from ..core.platform import NewMessagePlatform
 from ..core.types import ApiError, Category, Post, Target
 from ..core.utils import wbi_sign
@@ -34,7 +35,11 @@ class BilibiliDynamic(DynamicPostParser, FallbackCardConverter, NewMessagePlatfo
             return self._wbi_keys
 
         client = await self.get_client()
-        res = await client.get("https://api.bilibili.com/x/web-interface/nav")
+        res = await get_with_retry(
+            client,
+            "https://api.bilibili.com/x/web-interface/nav",
+            label="获取 WBI Keys",
+        )
         res_json = res.json()
         if "data" not in res_json or "wbi_img" not in res_json["data"]:
             raise ApiError(f"获取 WBI Keys 失败: {res_json.get('message', '未知错误')}")
@@ -49,12 +54,17 @@ class BilibiliDynamic(DynamicPostParser, FallbackCardConverter, NewMessagePlatfo
 
     async def get_target_name(self, target: Target) -> str | None:
         client = await self.get_client()
-        res = await client.get(
-            "https://api.bilibili.com/x/web-interface/card", params={"mid": target}
+        res = await get_with_retry(
+            client,
+            "https://api.bilibili.com/x/web-interface/card",
+            label=f"获取动态目标名称 {target}",
+            params={"mid": target},
         )
         if res.status_code != 200:
-            res = await client.get(
+            res = await get_with_retry(
+                client,
                 "https://api.live.bilibili.com/live_user/v1/Master/info",
+                label=f"获取动态目标备用名称 {target}",
                 params={"uid": target},
             )
             if res.status_code != 200:
@@ -79,14 +89,13 @@ class BilibiliDynamic(DynamicPostParser, FallbackCardConverter, NewMessagePlatfo
     async def _try_polymer_then_fallback(self, target: Target) -> list[DynRawPost]:
         try:
             posts = await self._get_sub_list_polymer(target)
-            if posts:
-                from ..core.http import HttpClient
+            from ..core.http import HttpClient
 
-                await HttpClient.set_current_account_status(
-                    valid=True, status_code=None
-                )
+            await HttpClient.set_current_account_status(valid=True, status_code=None)
+            if posts:
                 return posts
-            logger.warning(f"Polymer 接口返回为空 {target}, 尝试备用接口...")
+            logger.debug(f"Polymer 接口返回空动态列表 {target}")
+            return []
         except ApiError as exc:
             posts = await self._retry_after_risk_control(
                 exc, target, self._get_sub_list_polymer
@@ -138,8 +147,10 @@ class BilibiliDynamic(DynamicPostParser, FallbackCardConverter, NewMessagePlatfo
 
         img_key, sub_key = await self._get_wbi_keys()
         signed_params = wbi_sign(params.copy(), img_key, sub_key)
-        res = await client.get(
+        res = await get_with_retry(
+            client,
             "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space",
+            label=f"获取动态列表 Polymer {target}",
             params=signed_params,
             headers={"Referer": f"https://space.bilibili.com/{target}/dynamic"},
             timeout=10.0,
@@ -159,8 +170,10 @@ class BilibiliDynamic(DynamicPostParser, FallbackCardConverter, NewMessagePlatfo
 
     async def _get_sub_list_fallback(self, target: Target) -> list[DynRawPost]:
         client = await self.get_client()
-        res = await client.get(
+        res = await get_with_retry(
+            client,
             "https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history",
+            label=f"获取动态列表 Fallback {target}",
             params={
                 "host_uid": target,
                 "offset_dynamic_id": 0,

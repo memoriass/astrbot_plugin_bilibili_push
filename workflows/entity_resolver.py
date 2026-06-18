@@ -12,6 +12,8 @@ from .utils import is_uid
 
 MIN_CONFIDENCE = 0.84
 MIN_MARGIN = 0.03
+SHARED_ALIAS_BASE_CONFIDENCE = 0.88
+SHARED_ALIAS_MIN_TARGETS = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +78,7 @@ async def resolve_up_reference(plugin, event, query: str) -> ResolvedUp | None:
     candidates = resolve_up_candidates(plugin, target_id, text)
     resolved = select_resolver_candidate(candidates)
     if resolved:
-        outcome = "alias" if resolved.source.startswith("alias:") else resolved.source
+        outcome = _resolver_outcome(resolved.source)
         record_resolver_event(
             plugin,
             outcome,
@@ -98,6 +100,7 @@ def resolve_up_candidates(plugin, target_id: str, query: str) -> list[ResolverCa
     for collector in (
         _current_subscription_candidates,
         _alias_candidates,
+        _shared_alias_candidates,
     ):
         try:
             candidates.extend(collector(plugin, target_id, query))
@@ -148,7 +151,15 @@ def learn_up_alias(
         source=source,
         confidence=1.0,
     )
-    if username and normalize_alias(username) != normalize_alias(raw_alias):
+    plugin.db.upsert_up_alias_evidence(
+        alias=raw_alias,
+        uid=uid,
+        username=username,
+        face=face,
+        target_id=target_id,
+        source=source,
+    )
+    if username:
         plugin.db.upsert_up_alias(
             alias=username,
             uid=uid,
@@ -214,6 +225,29 @@ def _alias_candidates(plugin, target_id: str, query: str) -> list[ResolverCandid
     return candidates
 
 
+def _shared_alias_candidates(plugin, target_id: str, query: str) -> list[ResolverCandidate]:
+    min_targets = int(getattr(plugin, "shared_alias_min_targets", SHARED_ALIAS_MIN_TARGETS))
+    rows = plugin.db.find_shared_up_aliases(query, min_targets=min_targets, limit=5)
+    candidates: list[ResolverCandidate] = []
+    for row in rows:
+        confidence = _shared_alias_confidence(row)
+        source = "alias:shared_conflict" if row.get("conflict_count") else "alias:shared"
+        reason = _shared_alias_reason(row, query)
+        candidates.append(
+            ResolverCandidate(
+                uid=str(row["uid"]),
+                username=str(row.get("username") or row["uid"]),
+                face=str(row.get("face") or ""),
+                confidence=confidence,
+                source=source,
+                alias=query,
+                reason=reason,
+                layer_rank=12 if not row.get("conflict_count") else 6,
+            )
+        )
+    return candidates
+
+
 def _dedupe_candidates(candidates: list[ResolverCandidate]) -> list[ResolverCandidate]:
     best_by_uid: dict[str, ResolverCandidate] = {}
     for candidate in candidates:
@@ -240,7 +274,40 @@ def _match_score(query: str, candidate: str, label: str) -> tuple[float, str]:
     return 0.0, ""
 
 
+def _shared_alias_confidence(row: dict) -> float:
+    target_count = int(row.get("target_count") or 0)
+    confirm_count = int(row.get("confirm_count") or 0)
+    if int(row.get("conflict_count") or 0) > 0:
+        return min(0.80, 0.72 + min(target_count, 4) * 0.02)
+    bonus = min(max(target_count - 2, 0), 5) * 0.01
+    repeat_bonus = min(max(confirm_count - target_count, 0), 5) * 0.004
+    return min(0.92, SHARED_ALIAS_BASE_CONFIDENCE + bonus + repeat_bonus)
+
+
+def _shared_alias_reason(row: dict, query: str) -> str:
+    target_count = int(row.get("target_count") or 0)
+    confirm_count = int(row.get("confirm_count") or 0)
+    conflict_count = int(row.get("conflict_count") or 0)
+    if conflict_count:
+        return (
+            f"跨会话别名“{query}”有 {target_count} 个会话确认过该 UID，"
+            f"但存在 {conflict_count} 个竞争 UID"
+        )
+    return f"跨会话别名“{query}”已有 {target_count} 个会话、{confirm_count} 次确认"
+
+
+def _resolver_outcome(source: str) -> str:
+    if source == "alias:shared":
+        return "shared_alias"
+    if source.startswith("alias:"):
+        return "alias"
+    return source
+
+
 def _touch_alias_if_needed(plugin, target_id: str, query: str, resolved: ResolvedUp) -> None:
+    if resolved.source == "alias:shared":
+        plugin.db.touch_up_alias_evidence(query, resolved.uid)
+        return
     if not resolved.source.startswith("alias:"):
         return
     plugin.db.touch_up_alias(query, resolved.uid, target_id)

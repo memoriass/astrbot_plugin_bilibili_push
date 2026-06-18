@@ -1,6 +1,4 @@
-import datetime
 import markdown
-from pathlib import Path
 from .base import Theme
 from ...core.types import Post
 import astrbot.api.message_components as Comp
@@ -12,9 +10,6 @@ class DynamicCardTheme(Theme):
         self.template_name = template_name
 
     async def render(self, post: Post) -> list:
-        dt = datetime.datetime.fromtimestamp(post.timestamp)
-        date_str = dt.strftime("%Y-%m-%d %H:%M:%S")
-
         md_lines = []
         if post.title:
             md_lines.append(f"## {post.title}")

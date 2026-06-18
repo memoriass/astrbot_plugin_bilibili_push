@@ -19,6 +19,7 @@
 - 聊天侧需要卡片展示时，优先复用 `workflows/presenter.py` 或现有模板，不要在 handler 内重写渲染协议。
 - `search_handler.py` 只做命令到 workflow 的适配，不再保留独立 Bilibili 搜索实现。
 - `ai_handler.py` 返回给模型的是 `WorkflowResult.text`；工具调用默认后台处理，不主动渲染 HTML 图片卡片。只有参数显式包含 `present`、`foreground` 或 `show_card` 时，才把 `WorkflowResult.cards` 发到用户侧。
+- `link_handler.py` 可以在配置开启时为视频解析追加视频附件；下载失败或超过大小限制时必须只保留解析卡片。
 - 最终写入或删除订阅仍由 workflow pending 确认控制，AI 工具不得绕过确认直接替用户修改订阅。
 - Web 管理 API 不放在普通 handler 中，避免聊天入口与 Plugin Pages 管理入口耦合。
 - 登录账号状态涉及 Cookie 敏感信息，输出必须过滤 Cookie，只展示账号和有效性状态。

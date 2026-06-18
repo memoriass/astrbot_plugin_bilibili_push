@@ -12,6 +12,7 @@ from .handlers.login_handler import LoginHandler
 from .handlers.search_handler import SearchHandler
 from .handlers.subscription_handler import SubscriptionHandler
 from .parser.bilibili_parser import BilibiliParser
+from .parser.video_downloader import BilibiliVideoDownloader
 from .rendering import HtmlRendererAdapter
 from .scheduler import BilibiliScheduler
 from .utils.resource import get_template_path
@@ -28,14 +29,13 @@ from .workflows import (
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.9"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.10"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
         super().__init__(context)
         self.config = load_plugin_config(context.get_config() or {})
 
-        # 路径初始化
         self.plugin_dir = Path(__file__).parent
         from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
@@ -50,7 +50,6 @@ class BilibiliPush(Star):
         self.bg_dir = self.data_dir / "backgrounds"
         self.bg_dir.mkdir(parents=True, exist_ok=True)
 
-        # 获取插件配置
         config = self.config
         self.push_on_startup = config.push_on_startup
         self.check_interval = config.check_interval
@@ -62,6 +61,7 @@ class BilibiliPush(Star):
         self.risk_cooldown_sec = config.risk_cooldown_sec
 
         self.enable_link_parser = config.enable_link_parser
+        self.enable_parser_video_download = config.enable_parser_video_download
         self.search_cache_expiry_hours = config.search_cache_expiry_hours
         self.enable_ai_tools = config.enable_ai_tools
         self.ai_pending_timeout_sec = config.ai_pending_timeout_sec
@@ -76,7 +76,6 @@ class BilibiliPush(Star):
         self.workflow_resolver_stats = {"counters": {}}
         self.pending_store = PendingTaskStore(self, ttl_sec=self.ai_pending_timeout_sec)
 
-        # 核心组件初始化
         self.db = DatabaseManager(self.data_dir / "data.db")
         self.parser = BilibiliParser()
         self.scheduler = BilibiliScheduler(
@@ -92,7 +91,6 @@ class BilibiliPush(Star):
             star=self,
         )
 
-        # 渲染器与指令处理器初始化 (解耦)
         self.renderer = HtmlRendererAdapter(get_template_path())
         self.sub_handler = SubscriptionHandler(
             context,
@@ -115,6 +113,12 @@ class BilibiliPush(Star):
             context,
             renderer=self.renderer,
             template_name="parser_bili",
+            video_downloader=BilibiliVideoDownloader(
+                self.temp_dir / "parser_videos",
+                max_size_mb=config.parser_video_max_size_mb,
+                timeout_sec=config.parser_video_download_timeout_sec,
+            ),
+            enable_video_download=self.enable_parser_video_download,
         )
         self.ai_handler = AiToolHandler(self)
         self.runtime = PluginRuntime(self)
@@ -125,8 +129,6 @@ class BilibiliPush(Star):
         """插件启动入口"""
         await self.pending_store.ensure_loaded()
         await self.runtime.start()
-
-    # --- 指令入口 ---
 
     @filter.command("添加b站订阅", alias={"bilibili 添加订阅", "add_bili_sub"})
     async def add_sub(self, event: AstrMessageEvent, uid: str):

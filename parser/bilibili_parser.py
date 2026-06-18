@@ -1,7 +1,7 @@
 import re
-import time
 from typing import Optional, Dict, Any
 from ..core.http import HttpClient
+from ..core.network_retry import get_with_retry
 from ..utils.logger import logger
 
 
@@ -39,13 +39,20 @@ class BilibiliParser:
         client = await HttpClient.get_client()
         params = {"bvid": bvid} if bvid else {"aid": avid}
         try:
-            res = await client.get(
-                "https://api.bilibili.com/x/web-interface/view", params=params
+            res = await get_with_retry(
+                client,
+                "https://api.bilibili.com/x/web-interface/view",
+                label=f"解析视频 {bvid or avid}",
+                params=params,
             )
             data = res.json()
             if data.get("code") == 0 and (v := data.get("data")):
                 return {
                     "type": "video",
+                    "bvid": v.get("bvid") or bvid or "",
+                    "aid": v.get("aid") or avid or "",
+                    "cid": v.get("cid")
+                    or (v.get("pages") or [{}])[0].get("cid", ""),
                     "title": v.get("title", ""),
                     "description": v.get("desc", ""),
                     "cover": v.get("pic", ""),
@@ -65,8 +72,10 @@ class BilibiliParser:
     async def get_dynamic_info(self, dynamic_id: str) -> Optional[Dict[str, Any]]:
         client = await HttpClient.get_client()
         try:
-            res = await client.get(
+            res = await get_with_retry(
+                client,
                 "https://api.bilibili.com/x/polymer/web-dynamic/v1/detail",
+                label=f"解析动态 {dynamic_id}",
                 params={"id": dynamic_id, "features": "itemOpusStyle"},
             )
             data = res.json()
@@ -74,14 +83,13 @@ class BilibiliParser:
                 modules = item.get("modules", {})
                 module_author = modules.get("module_author", {})
                 module_dynamic = modules.get("module_dynamic", {})
+                major = module_dynamic.get("major") or {}
+                desc = module_dynamic.get("desc") or {}
                 return {
                     "type": "dynamic",
-                    "title": "B站动态",
-                    "description": module_dynamic.get("desc", {}).get("text", ""),
-                    "cover": module_dynamic.get("major", {})
-                    .get("draw", {})
-                    .get("items", [{}])[0]
-                    .get("src", ""),
+                    "title": self._dynamic_title(major),
+                    "description": desc.get("text", "") or self._dynamic_description(major),
+                    "cover": self._dynamic_cover(major),
                     "nickname": module_author.get("name", ""),
                     "avatar": module_author.get("face", ""),
                     "pub_time": module_author.get("pub_ts", 0),
@@ -93,8 +101,10 @@ class BilibiliParser:
     async def get_live_info(self, room_id: str) -> Optional[Dict[str, Any]]:
         client = await HttpClient.get_client()
         try:
-            res = await client.get(
+            res = await get_with_retry(
+                client,
                 "https://api.live.bilibili.com/room/v1/Room/get_info",
+                label=f"解析直播间 {room_id}",
                 params={"id": room_id},
             )
             data = res.json()
@@ -102,8 +112,10 @@ class BilibiliParser:
                 uid = r.get("uid")
                 nickname, avatar = "未知主播", ""
                 if uid:
-                    res_u = await client.get(
+                    res_u = await get_with_retry(
+                        client,
                         "https://api.live.bilibili.com/live_user/v1/Master/info",
+                        label=f"解析直播间主播 {uid}",
                         params={"uid": uid},
                     )
                     u_info = res_u.json().get("data", {}).get("info")
@@ -128,8 +140,10 @@ class BilibiliParser:
     async def get_user_info(self, uid: str) -> Optional[Dict[str, Any]]:
         client = await HttpClient.get_client()
         try:
-            res = await client.get(
+            res = await get_with_retry(
+                client,
                 "https://api.bilibili.com/x/web-interface/card",
+                label=f"获取用户信息 {uid}",
                 params={"mid": uid},
                 timeout=5,
             )
@@ -140,6 +154,43 @@ class BilibiliParser:
         except Exception as e:
             logger.error(f"获取用户信息失败: {e}")
         return None
+
+    def _dynamic_title(self, major: dict) -> str:
+        if not isinstance(major, dict):
+            return "B站动态"
+        for key in ("archive", "article", "live", "opus"):
+            title = (major.get(key) or {}).get("title")
+            if title:
+                return title
+        return "B站动态"
+
+    def _dynamic_description(self, major: dict) -> str:
+        if not isinstance(major, dict):
+            return ""
+        article = major.get("article") or {}
+        if article.get("desc"):
+            return article["desc"]
+        opus = major.get("opus") or {}
+        summary = opus.get("summary") or {}
+        return summary.get("text", "")
+
+    def _dynamic_cover(self, major: dict) -> str:
+        if not isinstance(major, dict):
+            return ""
+        draw_items = (major.get("draw") or {}).get("items") or []
+        if draw_items:
+            return draw_items[0].get("src", "")
+        opus_pics = (major.get("opus") or {}).get("pics") or []
+        if opus_pics:
+            return opus_pics[0].get("url", "")
+        archive = major.get("archive") or {}
+        if archive.get("cover"):
+            return archive["cover"]
+        article_covers = (major.get("article") or {}).get("covers") or []
+        if article_covers:
+            return article_covers[0]
+        live = major.get("live") or {}
+        return live.get("cover", "")
 
     def _format_duration(self, seconds: int) -> str:
         m, s = divmod(seconds, 60)

@@ -73,6 +73,8 @@ async def run_continue_pending(plugin, event, request: WorkflowRequest) -> objec
         return await _continue_add_confirm(plugin, event, task_id, task, action)
     if task.get("kind") == "confirm_remove_subscription":
         return await _continue_remove_confirm(plugin, event, task_id, task, action)
+    if task.get("kind") == "confirm_live_check_all":
+        return await _continue_live_check_all(plugin, event, task_id, action)
     return f"未知任务类型：{task.get('kind')}"
 
 
@@ -180,6 +182,20 @@ async def _continue_remove_confirm(
     from .subscription import remove_subscription_by_uid
 
     return await remove_subscription_by_uid(plugin, event, uid, sub_type)
+
+
+async def _continue_live_check_all(plugin, event, task_id: str, action: str) -> object:
+    normalized = normalize_reply(action)
+    if normalized in CANCEL_REPLIES:
+        await plugin.pending_store.delete(task_id)
+        return "已取消全部群直播检查。"
+    if normalized not in CONFIRM_REPLIES:
+        return "请引用这条消息回复“确认”或“取消”。"
+    await plugin.pending_store.delete(task_id)
+
+    from .manage import execute_live_check_all
+
+    return await execute_live_check_all(plugin, event)
 
 
 def _alias_from_confirm_task(task: dict) -> str:

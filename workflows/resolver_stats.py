@@ -8,6 +8,7 @@ COUNTER_KEYS = (
     "uid",
     "current_subscription",
     "alias",
+    "shared_alias",
     "ambiguous",
     "miss",
     "bili_search",
@@ -41,23 +42,26 @@ def format_resolver_stats(plugin: Any) -> str:
         "uid",
         "current_subscription",
         "alias",
+        "shared_alias",
         "ambiguous",
         "miss",
         "error",
     ))
     if attempts <= 0 and not counters.get("bili_search"):
-        return "- resolver: 尚无解析记录"
+        return "- 解析统计：尚无解析记录"
 
     hits = sum(int(counters.get(key) or 0) for key in (
         "uid",
         "current_subscription",
         "alias",
+        "shared_alias",
     ))
     fallback = int(counters.get("bili_search") or 0)
     parts = [
-        f"- resolver: 命中 {hits}/{attempts or hits}",
+        f"- 解析统计：命中 {hits}/{attempts or hits}",
         f"当前订阅 {int(counters.get('current_subscription') or 0)}",
         f"历史别名 {int(counters.get('alias') or 0)}",
+        f"共享别名 {int(counters.get('shared_alias') or 0)}",
         f"UID {int(counters.get('uid') or 0)}",
         f"搜索回退 {fallback}",
         f"歧义 {int(counters.get('ambiguous') or 0)}",

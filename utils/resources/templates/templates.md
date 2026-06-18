@@ -21,6 +21,7 @@
 - 如果引入轻量 HTML 渲染器，应单独维护 lite 模板，避免直接复用这些模板。
 - 模板字段来源分散在 `handlers/`、`workflows/cards.py`、`utils/renderers/` 和 `parser/`，改字段时需要同步调用方。
 - 推送动态和直播模板保留原 HTML 风格；订阅列表、账号状态和 workflow 卡片默认透明背景。
+- `dynamic_movie_card.html.jinja` 的首图只作为顶部 hero 使用，不再重复进入正文图片网格；纯文字动态没有 cover 时不渲染顶部 hero。
 - 新增模板时提供明确 selector，避免截图裁剪到整页空白。
 
 ## 预览

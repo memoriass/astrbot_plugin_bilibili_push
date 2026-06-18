@@ -11,7 +11,7 @@ from .models import Subscription
 class SubscriptionStoreMixin:
     def add_subscription(self, sub: Subscription) -> bool:
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 self._ensure_target(conn, sub.target_id)
                 conn.execute(
                     """
@@ -30,7 +30,7 @@ class SubscriptionStoreMixin:
             return False
 
     def remove_subscription(self, uid: str, sub_type: str, target_id: str) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             cursor = conn.execute(
                 """
                 DELETE FROM subscriptions
@@ -48,7 +48,7 @@ class SubscriptionStoreMixin:
         target_id: str,
         enabled: bool,
     ) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             cursor = conn.execute(
                 """
                 UPDATE subscriptions
@@ -68,7 +68,7 @@ class SubscriptionStoreMixin:
         sub: Subscription,
     ) -> bool:
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with self._connect() as conn:
                 self._ensure_target(conn, sub.target_id)
                 cursor = conn.execute(
                     """
@@ -90,7 +90,7 @@ class SubscriptionStoreMixin:
             return False
 
     def get_subscriptions(self, target_id: Optional[str] = None) -> list[Subscription]:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             if target_id:
                 cursor = conn.execute(
                     """
@@ -119,7 +119,7 @@ class SubscriptionStoreMixin:
         if target_id:
             where.append("s.target_id = ?")
             params.append(target_id)
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             cursor = conn.execute(
                 f"""
                 SELECT s.uid, s.username, s.sub_type, s.target_id,

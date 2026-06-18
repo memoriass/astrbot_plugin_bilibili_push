@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sqlite3
 import time
 
 from .models import Target
@@ -8,7 +7,7 @@ from .models import Target
 
 class TargetStoreMixin:
     def get_targets(self) -> list[Target]:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             cursor = conn.execute(
                 """
                 SELECT target_id, channel, title, enabled, created_at, updated_at
@@ -19,7 +18,7 @@ class TargetStoreMixin:
             return [self._target_from_row(row) for row in cursor]
 
     def set_target_enabled(self, target_id: str, enabled: bool) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             self._ensure_target(conn, target_id)
             cursor = conn.execute(
                 """

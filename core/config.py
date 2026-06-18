@@ -15,6 +15,9 @@ class PluginConfig:
     live_batch_size: int = 50
     risk_cooldown_sec: int = 1800
     enable_link_parser: bool = True
+    enable_parser_video_download: bool = False
+    parser_video_max_size_mb: int = 30
+    parser_video_download_timeout_sec: int = 30
     search_cache_expiry_hours: int = 24
     enable_ai_tools: bool = True
     ai_pending_timeout_sec: int = 300
@@ -69,6 +72,22 @@ def load_plugin_config(raw: dict | None) -> PluginConfig:
             min_value=60,
         ),
         enable_link_parser=safe_bool(raw.get("enable_link_parser"), True),
+        enable_parser_video_download=safe_bool(
+            raw.get("enable_parser_video_download"),
+            False,
+        ),
+        parser_video_max_size_mb=safe_int(
+            raw.get("parser_video_max_size_mb"),
+            30,
+            min_value=1,
+            max_value=200,
+        ),
+        parser_video_download_timeout_sec=safe_int(
+            raw.get("parser_video_download_timeout_sec"),
+            30,
+            min_value=5,
+            max_value=300,
+        ),
         search_cache_expiry_hours=safe_int(
             raw.get("search_cache_expiry_hours"),
             24,

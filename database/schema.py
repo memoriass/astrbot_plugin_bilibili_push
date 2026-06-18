@@ -59,6 +59,27 @@ SCHEMA_SQL = (
     CREATE INDEX IF NOT EXISTS idx_up_aliases_lookup
     ON up_aliases (normalized_alias, target_id, confidence, updated_at)
     """,
+    """
+    CREATE TABLE IF NOT EXISTS up_alias_evidence (
+        alias TEXT,
+        normalized_alias TEXT,
+        uid TEXT,
+        username TEXT,
+        face TEXT,
+        target_id TEXT DEFAULT '',
+        source TEXT,
+        confirm_count INTEGER DEFAULT 1,
+        hit_count INTEGER DEFAULT 0,
+        created_at INTEGER DEFAULT 0,
+        updated_at INTEGER DEFAULT 0,
+        last_used_at INTEGER DEFAULT 0,
+        PRIMARY KEY (normalized_alias, uid, target_id)
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_up_alias_evidence_lookup
+    ON up_alias_evidence (normalized_alias, uid, target_id, updated_at)
+    """,
 )
 
 

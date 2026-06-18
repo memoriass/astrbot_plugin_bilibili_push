@@ -36,7 +36,10 @@ body {
   box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
 
-/* Hero Section */
+.container.no-hero {
+  padding-top: 24px;
+}
+
 .hero {
   height: 260px; 
   margin: 0;
@@ -55,7 +58,6 @@ body {
   background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.4));
 }
 
-/* Avatar */
 .cover {
   position: absolute;
   top: 200px; 
@@ -70,13 +72,23 @@ body {
   border: 4px solid #fff; 
 }
 
-/* Description Section */
+.container.no-hero .cover {
+  position: relative;
+  top: auto;
+  left: 24px;
+  display: block;
+}
+
 .description {
   background: #fff;
   padding: 50px 24px 24px 24px;
   color: #555;
   position: relative;
   z-index: 2;
+}
+
+.container.no-hero .description {
+  padding-top: 16px;
 }
 
 .row-title {
@@ -137,7 +149,6 @@ body {
     word-break: break-all;
 }
 
-/* Image Grid */
 .image-grid {
     display: grid;
     gap: 8px;
@@ -145,7 +156,6 @@ body {
     width: 100%;
 }
 
-/* Layout for different image counts */
 .grid-1 { grid-template-columns: 1fr; }
 .grid-2 { grid-template-columns: 1fr 1fr; }
 .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -161,7 +171,6 @@ body {
     background: #f4f4f4;
 }
 
-/* Special Case for single image if it's not square */
 .grid-1 .grid-item {
     aspect-ratio: auto;
     max-height: 500px;
@@ -189,12 +198,12 @@ body {
 <body>
 
 <div class="movie-card">
-  <div class="container">
+  <div class="container{% if not cover %} no-hero{% endif %}">
     
-    <!-- Hero (Background of first image or placeholder) -->
+    {% if cover %}
     <div class="hero"></div>
+    {% endif %}
     
-    <!-- Avatar -->
     <img src="{{ post.avatar }}" alt="avatar" class="cover" />
     
     <div class="description">
@@ -211,12 +220,15 @@ body {
         <div class="row-title">{{ post.title }}</div>
         {% endif %}
         
-        <div class="content-text">{% if post.repost %}{{ post.repost.content }}{% else %}{{ post.content }}{% endif %}</div>
+        <div class="content-text">{{ post.content }}</div>
 
-        <!-- Multi-image Grid -->
-        {% set display_images = post.images %}
+        {% set raw_images = post.images %}
         {% if post.repost and post.repost.images %}
-            {% set display_images = post.repost.images %}
+            {% set raw_images = post.repost.images %}
+        {% endif %}
+        {% set display_images = raw_images %}
+        {% if cover and raw_images and raw_images|length > 0 and raw_images[0] == cover %}
+            {% set display_images = raw_images[1:] %}
         {% endif %}
 
         {% if display_images and display_images|length > 0 %}
