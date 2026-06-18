@@ -81,7 +81,6 @@ def wbi_sign(params: dict, img_key: str, sub_key: str) -> dict:
     curr_time = int(time.time())
     params["wts"] = curr_time
     params = dict(sorted(params.items()))
-    # 过滤特殊字符
     params = {
         k: "".join(c for c in str(v) if c not in "!'()*") for k, v in params.items()
     }

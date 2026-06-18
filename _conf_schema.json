@@ -32,31 +32,31 @@
   "check_interval": {
     "description": "基础检查间隔（秒）",
     "type": "int",
-    "default": 30,
-    "hint": "用于直播默认间隔和调度兜底；动态默认不会低于 120 秒。"
+    "default": 60,
+    "hint": "用于调度兜底。默认偏保守，降低新安装后的请求频率。"
   },
   "dynamic_check_interval": {
     "description": "动态检查间隔（秒）",
     "type": "int",
-    "default": 120,
-    "hint": "建议保持 120 秒或更高，降低空间动态接口请求压力。"
+    "default": 300,
+    "hint": "默认 5 分钟，降低空间动态接口请求压力。"
   },
   "live_check_interval": {
     "description": "直播检查间隔（秒）",
     "type": "int",
-    "default": 30,
-    "hint": "直播状态接口已批量查询，建议 30 秒或更高。"
+    "default": 90,
+    "hint": "直播状态接口已批量查询，默认 90 秒，兼顾及时性和限流风险。"
   },
   "request_delay_sec": {
     "description": "批次间请求间隔（秒）",
     "type": "float",
-    "default": 0.8,
+    "default": 1.5,
     "hint": "同一轮检查中不同 UP 或批次之间的轻量限速。"
   },
   "request_jitter_sec": {
     "description": "调度随机抖动（秒）",
     "type": "float",
-    "default": 5.0,
+    "default": 30.0,
     "hint": "避免固定整点集中请求。"
   },
   "live_batch_size": {
@@ -68,13 +68,13 @@
   "risk_cooldown_sec": {
     "description": "账号风控冷却时间（秒）",
     "type": "int",
-    "default": 1800,
+    "default": 3600,
     "hint": "账号触发 352、403 或 412 后暂时退出轮换，冷却后自动恢复。"
   },
   "search_cache_expiry_hours": {
     "description": "搜索缓存有效期（小时）",
     "type": "int",
-    "default": 24,
+    "default": 48,
     "hint": "聊天搜索 UP 主结果的缓存时间。"
   },
   "enable_ai_tools": {

@@ -16,10 +16,8 @@ class HttpClient:
     _buvid_initialized: bool = False
     _star_instance: Optional["Star"] = None
     _verify_ssl: bool = True
-    _risk_cooldown_sec: int = 1800
+    _risk_cooldown_sec: int = 3600
 
-    # Account Pool
-    # Structure: [{"uid": str, "name": str, "face": str, "cookies": dict, "valid": bool}]
     _accounts: list[dict] = []
     _current_account_index: int = 0
 
@@ -64,7 +62,6 @@ class HttpClient:
 
     @classmethod
     async def add_account(cls, uid: str, name: str, face: str, cookies: dict):
-        # Update if exists
         for acc in cls._accounts:
             if str(acc.get("uid")) == str(uid):
                 acc["name"] = name
@@ -76,7 +73,6 @@ class HttpClient:
                 await cls.close()
                 return
 
-        # Add new
         cls._accounts.append(
             {
                 "uid": str(uid),
@@ -165,7 +161,7 @@ class HttpClient:
 
     @classmethod
     async def rotate_account(cls) -> bool:
-        """Switch to next valid account. Returns True if successful, False if no valid accounts."""
+        """轮换到下一个可用账号。"""
         attempts = 0
         total = len(cls._accounts)
         if total == 0:
@@ -238,16 +234,13 @@ class HttpClient:
             )
             cls._buvid_initialized = False
 
-            # Load accounts if not loaded
             if not cls._accounts:
                 await cls.load_accounts()
             await cls._refresh_account_states()
 
-            # Apply current account cookies
             if cls._accounts:
                 acc = cls._accounts[cls._current_account_index]
                 if not cls._is_account_available(acc):
-                    # Try to find a valid one
                     rotated = await cls.rotate_account()
                     if not rotated:
                         cls._client.cookies.clear()

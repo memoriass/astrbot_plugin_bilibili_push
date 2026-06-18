@@ -7,18 +7,18 @@ from typing import Any
 @dataclass(slots=True)
 class PluginConfig:
     push_on_startup: bool = False
-    check_interval: int = 30
-    dynamic_check_interval: int = 120
-    live_check_interval: int = 30
-    request_delay_sec: float = 0.8
-    request_jitter_sec: float = 5.0
+    check_interval: int = 60
+    dynamic_check_interval: int = 300
+    live_check_interval: int = 90
+    request_delay_sec: float = 1.5
+    request_jitter_sec: float = 30.0
     live_batch_size: int = 50
-    risk_cooldown_sec: int = 1800
+    risk_cooldown_sec: int = 3600
     enable_link_parser: bool = True
     enable_parser_video_download: bool = False
     parser_video_max_size_mb: int = 30
     parser_video_download_timeout_sec: int = 30
-    search_cache_expiry_hours: int = 24
+    search_cache_expiry_hours: int = 48
     enable_ai_tools: bool = True
     ai_pending_timeout_sec: int = 300
     enable_ai_semantic_dispatch: bool = True
@@ -34,29 +34,29 @@ class PluginConfig:
 
 def load_plugin_config(raw: dict | None) -> PluginConfig:
     raw = raw or {}
-    check_interval = safe_int(raw.get("check_interval"), 30, min_value=5)
+    check_interval = safe_int(raw.get("check_interval"), 60, min_value=5)
     return PluginConfig(
         push_on_startup=safe_bool(raw.get("push_on_startup"), False),
         check_interval=check_interval,
         dynamic_check_interval=safe_int(
             raw.get("dynamic_check_interval"),
-            max(check_interval, 120),
+            max(check_interval, 300),
             min_value=30,
         ),
         live_check_interval=safe_int(
             raw.get("live_check_interval"),
-            check_interval,
+            max(check_interval, 90),
             min_value=5,
         ),
         request_delay_sec=safe_float(
             raw.get("request_delay_sec"),
-            0.8,
+            1.5,
             min_value=0.0,
             max_value=30.0,
         ),
         request_jitter_sec=safe_float(
             raw.get("request_jitter_sec"),
-            5.0,
+            30.0,
             min_value=0.0,
             max_value=120.0,
         ),
@@ -68,7 +68,7 @@ def load_plugin_config(raw: dict | None) -> PluginConfig:
         ),
         risk_cooldown_sec=safe_int(
             raw.get("risk_cooldown_sec"),
-            1800,
+            3600,
             min_value=60,
         ),
         enable_link_parser=safe_bool(raw.get("enable_link_parser"), True),
@@ -90,7 +90,7 @@ def load_plugin_config(raw: dict | None) -> PluginConfig:
         ),
         search_cache_expiry_hours=safe_int(
             raw.get("search_cache_expiry_hours"),
-            24,
+            48,
             min_value=1,
         ),
         enable_ai_tools=safe_bool(raw.get("enable_ai_tools"), True),

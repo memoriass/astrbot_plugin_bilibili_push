@@ -5,11 +5,11 @@ from pathlib import Path
 
 
 def get_random_background(folder_path: Path) -> dict:
-    """浠庢寚瀹氭枃浠跺す闅忔満鑾峰彇涓€寮犺儗鏅浘锛屽苟杞负 base64 URI"""
+    """随机读取背景图并转为 data URI。"""
     if not folder_path.exists():
         try:
             folder_path.mkdir(parents=True, exist_ok=True)
-        except:
+        except Exception:
             pass
         return {"uri": "", "width": 800, "height": 600}
 
@@ -32,7 +32,7 @@ def get_random_background(folder_path: Path) -> dict:
                 "width": 800,
                 "height": 600,
             }
-    except:
+    except Exception:
         return {"uri": "", "width": 800, "height": 600}
 
 
@@ -42,5 +42,5 @@ def get_assets_path() -> Path:
 
 
 def get_template_path() -> Path:
-    """鑾峰彇妯℃澘鏂囦欢鐩綍"""
+    """获取模板目录。"""
     return get_assets_path() / "templates"

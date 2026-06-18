@@ -6,7 +6,7 @@ from .subscription_group import group_subscriptions
 
 
 class DynamicSubscriptionChecker:
-    def __init__(self, platform, dispatcher, star=None, request_delay_sec: float = 0.8):
+    def __init__(self, platform, dispatcher, star=None, request_delay_sec: float = 1.5):
         self.platform = platform
         self.dispatcher = dispatcher
         self.star = star

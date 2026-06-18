@@ -13,7 +13,6 @@ class MovieCardTheme(Theme):
         dt = datetime.datetime.fromtimestamp(post.timestamp)
         date_str = dt.strftime("%Y-%m-%d %H:%M:%S")
 
-        # 获取封面图
         cover = ""
         if post.images and len(post.images) > 0:
             cover = post.images[0]

@@ -24,11 +24,11 @@ class BilibiliScheduler:
     def __init__(
         self,
         db: DatabaseManager,
-        check_interval: int = 30,
+        check_interval: int = 60,
         dynamic_check_interval: int | None = None,
         live_check_interval: int | None = None,
-        request_delay_sec: float = 0.8,
-        request_jitter_sec: float = 5.0,
+        request_delay_sec: float = 1.5,
+        request_jitter_sec: float = 30.0,
         live_batch_size: int = 50,
         push_on_startup: bool = False,
         on_new_post: Callable[[str, str, list[MessageSegment]], Awaitable[None]]
@@ -38,9 +38,9 @@ class BilibiliScheduler:
         self.db = db
         self.check_interval = check_interval
         self.dynamic_check_interval = int(
-            dynamic_check_interval or max(check_interval, 120)
+            dynamic_check_interval or max(check_interval, 300)
         )
-        self.live_check_interval = int(live_check_interval or check_interval)
+        self.live_check_interval = int(live_check_interval or max(check_interval, 90))
         self.request_jitter_sec = max(0.0, float(request_jitter_sec))
         self.push_on_startup = push_on_startup
         self.on_new_post = on_new_post

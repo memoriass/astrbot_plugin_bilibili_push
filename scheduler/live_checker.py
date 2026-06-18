@@ -18,7 +18,7 @@ class LiveSubscriptionChecker:
         dispatcher,
         push_on_startup=False,
         star=None,
-        request_delay_sec: float = 0.8,
+        request_delay_sec: float = 1.5,
         batch_size: int = 50,
     ):
         self.db = db

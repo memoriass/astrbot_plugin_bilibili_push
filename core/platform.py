@@ -16,7 +16,6 @@ class Platform(ABC):
     enabled: ClassVar[bool] = True
 
     def __init__(self):
-        # 移除了 ProcessContext，直接使用 HttpClient
         pass
 
     @classmethod

@@ -153,6 +153,7 @@ UP 主解析采用确定性分层，不默认依赖 embedding 或向量库：
 - 搜索候选层的 AI 只能返回推荐候选和理由；高置信也只能进入确认卡，不得直接调用写库逻辑。
 - 新用户可见卡片统一走 `WorkflowResult.cards`，不要在业务 handler 中直接拼图片消息。
 - 新 LLM tool 默认保持后台处理；只有能保证单条最终确认或用户明确要求展示时，才设置 `present=true`。
+- `main.py` 的 LLM tool docstring 只保留调用入口、关键边界和参数说明；完整 workflow 列表、分叉和确认边界维护在本文档与 `workflow-map.md`。
 - pending 任务必须包含可恢复 payload，不能依赖一次性事件状态。
 - task id 不直接展示给用户；文本兜底可用不可见 marker 解析真实 task id，卡片路径优先依赖当前会话 pending 兜底。
 - 实体解析层必须保持可解释：当前订阅和 SQLite 别名优先，Bili 搜索兜底；如后续接向量检索，只能作为候选增强，不得直接写库。
