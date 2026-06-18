@@ -86,19 +86,19 @@ async def run_add_subscription(
     )
     text = (
         format_candidates(candidates, title=f"请选择要订阅的 UP（{keyword}）")
-        + "\n\n请引用这条消息回复序号；选择后还需要确认才会写入订阅。"
+        + "\n\n引用这条消息回复序号即视为确认，会直接写入订阅；回复“取消”则不改动。"
     )
     return WorkflowResult(
         text=text,
         display_text=(
             format_candidates(candidates, title=f"请选择要订阅的 UP（{keyword}）")
-            + "\n\n引用这条消息回复序号即可选择候选；选择后还需要确认才会写入订阅。"
+            + "\n\n引用这条消息回复序号即视为确认，会直接写入订阅。"
         ),
         task_id=task_id,
         cards=[candidate_list_card(
             candidates,
             f"请选择要订阅的 UP: {keyword}",
-            "引用这条消息回复序号即可选择候选；确认前不会写入订阅。",
+            "引用这条消息回复序号即视为确认，会直接写入订阅。",
         )],
     )
 

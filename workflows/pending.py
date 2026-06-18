@@ -127,6 +127,21 @@ async def _continue_candidates(
         },
         source=request.source,
     )
+    if _can_direct_confirm_candidate(request):
+        from .subscription import add_subscription_by_uid
+
+        result = await add_subscription_by_uid(
+            plugin,
+            event,
+            str(candidate.get("uid") or ""),
+            str(task.get("sub_type") or "dynamic"),
+        )
+        alias = str(task.get("keyword") or "").strip()
+        if alias:
+            from .entity_resolver import learn_up_alias
+
+            learn_up_alias(plugin, event, alias, candidate, source="search_selection")
+        return result
     return await build_confirm_task(plugin, event, next_request, candidate)
 
 
@@ -206,6 +221,10 @@ def _alias_from_confirm_task(task: dict) -> str:
         if value and str(value).strip():
             return str(value).strip()
     return str(task.get("keyword") or "").strip()
+
+
+def _can_direct_confirm_candidate(request: WorkflowRequest) -> bool:
+    return request.source == "pending" and request.params.get("via_reply") is True
 
 
 def extract_task_ref(text: str) -> str:

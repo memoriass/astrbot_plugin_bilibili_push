@@ -56,7 +56,7 @@ flowchart TD
     RemoveConfirm --> Pending
     AllLiveConfirm --> Pending
 
-    Pending --> Write["确认后写库 / 删除 / 执行检查"]
+    Pending --> Write["确认或引用序号后写库 / 删除 / 执行检查"]
     Pending --> Cancel["取消或过期"]
 ```
 
@@ -99,8 +99,8 @@ flowchart LR
     Shared --> Search
     AI --> Confirm
     AI --> Candidates["候选卡"]
-    Candidates --> Continue["引用序号"]
-    Continue --> Confirm
+    Candidates --> Continue["引用序号即确认"]
+    Continue --> DB
     Confirm --> User["引用确认"]
     User --> DB["写入 SQLite"]
 ```
@@ -161,16 +161,16 @@ flowchart TD
 
 ## 确认边界
 
-- `add_subscription` 不直接写库；明确 UID、高置信候选、候选序号选择后都必须进入确认卡。
+- `add_subscription` 对明确 UID 和高置信候选仍进入确认卡；低置信候选卡被用户明确引用并回复序号时，序号即视为最终确认并写库。
 - `remove_subscription` 只在当前会话订阅内定位目标，确认删除后才删除。
 - `check_live_all_groups` 会触发全局直播请求，必须先生成确认任务。
 - `search_up`、`list_*`、`find_subscription`、`account_status`、`diagnose_*` 都是只读，不需要确认。
-- `continue_pending` 只接受引用消息、唯一 pending 兜底或明确短词，避免普通聊天误触。
+- `continue_pending` 只接受引用消息、唯一 pending 兜底或明确短词，避免普通聊天误触；只有引用添加候选卡的序号选择可跳过确认。
 - 跨会话共享别名只在至少两个会话确认同一 UID 且无竞争 UID 时自动推进；有冲突时降级到搜索或候选卡。
 
 ## 维护说明
 
 - 新增 workflow: 先改 `models.py` 和 `runner.py`，再在 `branches.py` 加受控分支。
 - 新增 AI 可选分支: 必须加入 `ALLOWED_NEXT_WORKFLOWS`，并确认 `semantic_dispatch.py` 的 prompt 使用动态 allowed list。
-- 新增写操作: 必须有 pending task 和确认卡，不能由 LLM 直接写库。
+- 新增写操作: 必须有 pending task 和明确用户动作，不能由 LLM 直接写库；如需跳过确认卡，只能用于用户引用候选卡的低风险正向选择。
 - 新增请求型操作: 至少要评估限频、确认边界和日志输出。

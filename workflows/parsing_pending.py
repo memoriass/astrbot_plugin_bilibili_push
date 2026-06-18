@@ -19,21 +19,21 @@ def workflow_from_pending_event(event) -> WorkflowRequest | None:
         return WorkflowRequest(
             workflow="continue_pending",
             target=task_ref,
-            params={"task_id": task_ref, "action": text.strip()},
+            params={"task_id": task_ref, "action": text.strip(), "via_reply": True},
             source="pending",
         )
     if event_reply_texts(event) and looks_like_pending_action(text):
         return WorkflowRequest(
             workflow="continue_pending",
             target="",
-            params={"action": text.strip()},
+            params={"action": text.strip(), "via_reply": True},
             source="pending",
         )
     if getattr(event, "is_wake", False) and looks_like_standalone_pending_action(text):
         return WorkflowRequest(
             workflow="continue_pending",
             target="",
-            params={"action": text.strip()},
+            params={"action": text.strip(), "via_reply": False},
             source="pending",
         )
     return None

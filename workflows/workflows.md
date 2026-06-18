@@ -46,7 +46,7 @@
 - `check_live_current_group`: 手动检查当前会话直播订阅。
 - `check_live_all_groups`: 生成确认任务，用户确认后检查全部群直播订阅。
 - `check_status`: 输出插件诊断文本。
-- `continue_pending`: 处理引用卡片后的序号、确认或取消。
+- `continue_pending`: 处理引用卡片后的序号、确认或取消；添加订阅候选卡被明确引用并回复序号时，序号即视为最终确认。
 
 ## 工作图谱
 
@@ -93,7 +93,7 @@ flowchart TD
 
 - 模糊 UP 名称添加订阅必须先生成 pending 任务。
 - 高置信候选只能自动推进到“确认订阅卡”，不能直接写库。
-- 用户必须引用确认卡回复“确认”后才会写入订阅。
+- 用户引用添加订阅候选卡回复序号时，序号即视为最终确认并写入订阅；非引用兜底序号仍进入确认卡。
 - 明确 UID 添加订阅也必须先生成确认卡，不能由 AI 工具直接写库。
 - 删除订阅必须限定当前事件的 `unified_msg_origin`，并引用删除确认卡回复“确认删除”后才会移除。
 - 全部群直播检查会触发全局请求，必须引用确认卡回复“确认”后才执行。
@@ -116,7 +116,7 @@ flowchart TD
 - 删除订阅找不到明确 UID 时，`candidate_analysis.py` 会在当前会话订阅候选内代理判断；高置信只进入删除确认卡，低置信展示删除候选卡。
 - 纯 `search_up` 只会用候选分析高亮推荐结果，不会自动转成订阅流程。
 - 如果候选匹配度超过 `ai_auto_select_confidence` 且领先其他候选，会直接返回确认卡。
-- 若置信度不足，则返回候选卡，用户引用回复序号后再进入确认卡。
+- 若置信度不足，则返回候选卡；添加订阅候选卡被明确引用并回复序号时直接写入订阅，非引用兜底仍会进入确认卡。
 - 用户选择搜索候选或确认订阅后，`entity_resolver.py` 会把本次查询词和 UID 写入 `up_aliases`，并在 `up_alias_evidence` 记录当前会话确认；后续相同会话优先用历史别名直接命中对应 UP。
 
 ## 实体解析策略
@@ -136,7 +136,7 @@ UP 主解析采用确定性分层，不默认依赖 embedding 或向量库：
 ## 聊天卡片
 
 - `search_up` 和模糊 `add_subscription`: 使用 `workflow_candidates.html.jinja`。
-- UID 添加、高置信自动选择、候选选择后的订阅确认和删除确认: 使用 `workflow_confirm.html.jinja`。
+- UID 添加、高置信自动选择和删除确认使用 `workflow_confirm.html.jinja`；添加订阅候选卡被明确引用并回复序号时直接写库，不再生成确认卡。
 - `list_subscriptions`: 使用 `sub_list.html.jinja`。
 - `account_status`: 使用 `sub_list.html.jinja`。
 - 添加/删除成功: 使用 `sub_add.html.jinja`。
@@ -162,6 +162,6 @@ UP 主解析采用确定性分层，不默认依赖 embedding 或向量库：
 ## 前台展示策略
 
 - 当前订阅、标签和历史别名命中都属于后台证据，不直接把“历史别名命中”之类的解释抛给用户。
-- `search_up` 命中历史别名时仍返回正常候选卡片；用户需要继续选择时引用卡片序号即可。
+- `search_up` 命中历史别名时仍返回正常候选卡片；用户需要继续选择时引用卡片序号即可，不写入订阅。
 - `add_subscription` 和 `remove_subscription` 高置信命中时直接进入最终确认卡，不额外发送候选分析文本。
 - 候选分析理由保留在后端 workflow 判断中；前台只展示用户需要操作的卡片或最终结果，避免 ChatUI 刷屏。

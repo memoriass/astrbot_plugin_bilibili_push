@@ -51,7 +51,7 @@ flowchart TD
     RemoveConfirm --> Pending
     AllLiveConfirm --> Pending
 
-    Pending --> Write["确认后写库 / 删除 / 执行检查"]
+    Pending --> Write["确认或引用序号后写库 / 删除 / 执行检查"]
     Pending --> Cancel["取消或过期"]
 
     classDef readonly fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
