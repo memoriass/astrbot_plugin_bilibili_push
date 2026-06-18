@@ -132,6 +132,17 @@ function createMockOverview() {
         enabled: true,
       },
       {
+        uid: "946974",
+        username: "哔哩哔哩番剧",
+        sub_type: "live",
+        target_id: "aiocqhttp:GroupMessage:10001",
+        face: mockFace("番剧", "#3b82f6"),
+        is_live: false,
+        categories: ["直播"],
+        tags: ["官方"],
+        enabled: true,
+      },
+      {
         uid: "19577966",
         username: "哔哩哔哩直播",
         sub_type: "live",

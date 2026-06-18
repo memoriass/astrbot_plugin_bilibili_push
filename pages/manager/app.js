@@ -8,8 +8,8 @@ import {
   renderSubscriptions,
   renderTabs,
   showLoading,
-} from "./renderers.js?v=manager-multitype-ai";
-import { groupSubscriptionEditorItem } from "./subscriptions.js?v=manager-multitype-ai";
+} from "./renderers.js?v=manager-dual-badges";
+import { groupSubscriptionEditorItem } from "./subscriptions.js?v=manager-dual-badges";
 
 const bridge = getBridge();
 const api = createApi(bridge);
@@ -176,7 +176,12 @@ function startDeleteSubscription(dataset) {
     showToast("未找到订阅");
     return;
   }
-  state.subscriptionDelete = { item };
+  state.subscriptionDelete = {
+    item: {
+      ...item,
+      sub_types: uniqueTypes(String(dataset.subTypes || item.sub_type || "dynamic").split(",")),
+    },
+  };
   state.subscriptionEditor = null;
   render();
 }
@@ -319,7 +324,10 @@ async function submitAccount(data) {
 
 async function deleteSubscription(dataset) {
   try {
-    await api.deleteSubscription(subscriptionPayload(dataset));
+    const subTypes = uniqueTypes(String(dataset.subTypes || dataset.subType || "dynamic").split(","));
+    for (const subType of subTypes) {
+      await api.deleteSubscription(subscriptionPayload({ ...dataset, subType }));
+    }
     showToast("订阅已删除");
     state.subscriptionDelete = null;
     await refreshAll();

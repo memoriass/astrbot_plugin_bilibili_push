@@ -27,16 +27,17 @@ const PAGE_SIZE = 12;
 
 export function renderSubscriptionCards(panel, subscriptions, filters, actions, editor, deleteConfirm, pagination = {}) {
   const filtered = filterSubscriptions(subscriptions, filters);
+  const cardItems = groupSubscriptionCards(filtered);
   const enabledCount = filtered.filter((sub) => sub.enabled).length;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(cardItems.length / PAGE_SIZE));
   const page = clamp(Number(pagination.page || 1), 1, totalPages);
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageItems = cardItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   panel.innerHTML = `
     <section class="subscription-summary">
       <div>
         <h2>订阅卡片</h2>
-        <p>当前匹配 ${escapeHtml(filtered.length)} 个订阅，启用 ${escapeHtml(enabledCount)} 个。</p>
+        <p>当前匹配 ${escapeHtml(cardItems.length)} 张卡片，包含 ${escapeHtml(filtered.length)} 个订阅，启用 ${escapeHtml(enabledCount)} 个。</p>
       </div>
       <div class="subscription-summary-badges">
         ${summaryBadge("动态", filtered.filter((sub) => sub.sub_type === "dynamic").length)}
@@ -107,20 +108,51 @@ function filterSubscriptions(subscriptions, filters) {
   });
 }
 
+function groupSubscriptionCards(subscriptions) {
+  const groups = new Map();
+  for (const sub of subscriptions) {
+    const key = `${sub.uid || ""}\u0000${sub.target_id || ""}`;
+    const current = groups.get(key);
+    if (!current) {
+      groups.set(key, {
+        ...sub,
+        sub_types: uniqueTypes([sub.sub_type]),
+        subscriptions: [sub],
+      });
+      continue;
+    }
+    current.subscriptions.push(sub);
+    current.sub_types = uniqueTypes([...current.sub_types, sub.sub_type]);
+    current.enabled = current.subscriptions.some((item) => item.enabled);
+    current.is_live = current.subscriptions.some((item) => item.is_live);
+    if (!current.face && sub.face) {
+      current.face = sub.face;
+    }
+    if (!current.username && sub.username) {
+      current.username = sub.username;
+    }
+  }
+  return Array.from(groups.values());
+}
+
 function subscriptionCard(sub) {
+  const subTypes = uniqueTypes(sub.sub_types || [sub.sub_type || "dynamic"]);
+  const primaryType = primarySubType(subTypes);
   return `
     <article class="subscription-card ${sub.enabled ? "" : "is-disabled"}">
       <div class="subscription-media">
         <img src="${escapeAttribute(sub.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
         <div class="subscription-card-badges">
-          ${mediaBadge(sub.sub_type)}
+          ${mediaBadges(subTypes)}
         </div>
         <div class="card-icon-actions">
           <button class="icon-button" type="button" data-edit="1"
-            data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
+            data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(primaryType)}"
+            data-sub-types="${escapeAttribute(subTypes.join(","))}"
             data-target-id="${escapeAttribute(sub.target_id)}" aria-label="编辑订阅">${icon("settings")}</button>
           <button class="icon-button danger" type="button" data-delete="1"
-            data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(sub.sub_type)}"
+            data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(primaryType)}"
+            data-sub-types="${escapeAttribute(subTypes.join(","))}"
             data-target-id="${escapeAttribute(sub.target_id)}" aria-label="删除订阅">${icon("trash")}</button>
         </div>
         <div class="subscription-media-overlay">
@@ -223,7 +255,7 @@ function editorPreview(item, mode, subTypes) {
     <div class="subscription-editor-preview">
       <img src="${escapeAttribute(item.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
       <div class="subscription-card-badges">
-        ${subTypes.map(mediaBadge).join("")}
+        ${mediaBadges(subTypes)}
       </div>
       <span class="editor-preview-action">${mode === "edit" ? "EDIT" : "ADD"}</span>
       <div class="subscription-media-overlay">
@@ -235,14 +267,15 @@ function editorPreview(item, mode, subTypes) {
 }
 
 function deleteModal(sub) {
-  const subType = sub.sub_type || "dynamic";
+  const subTypes = uniqueTypes(sub.sub_types || [sub.sub_type || "dynamic"]);
+  const primaryType = primarySubType(subTypes);
   return `
     <div class="manager-modal-backdrop">
       <section class="manager-modal confirm-modal" role="dialog" aria-modal="true" aria-label="删除订阅">
         <div class="subscription-editor-preview confirm-preview">
           <img src="${escapeAttribute(sub.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
           <div class="subscription-card-badges">
-            ${mediaBadge(subType)}
+            ${mediaBadges(subTypes)}
           </div>
           <span class="editor-preview-action">DELETE</span>
           <div class="subscription-media-overlay">
@@ -253,13 +286,14 @@ function deleteModal(sub) {
         <div class="confirm-copy">
           <div>
             <h2>删除订阅</h2>
-            <p>确认删除 ${escapeHtml(sub.username || sub.uid || "未命名 UP 主")} 的 ${escapeHtml(typeLabel(subType))} 订阅？</p>
+            <p>确认删除 ${escapeHtml(sub.username || sub.uid || "未命名 UP 主")} 的 ${escapeHtml(typeListLabel(subTypes))} 订阅？</p>
             <p class="modal-muted">会话: ${escapeHtml(sub.target_id || "-")}</p>
           </div>
           <div class="modal-actions">
             <button class="ghost-button" type="button" data-cancel-delete="1">取消</button>
             <button class="danger-button" type="button" data-confirm-delete="1"
-              data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(subType)}"
+              data-uid="${escapeAttribute(sub.uid)}" data-sub-type="${escapeAttribute(primaryType)}"
+              data-sub-types="${escapeAttribute(subTypes.join(","))}"
               data-target-id="${escapeAttribute(sub.target_id)}">删除</button>
           </div>
         </div>
@@ -347,7 +381,7 @@ function updateCategoryGroups(form) {
 function updatePreviewBadges(form) {
   const badges = form.querySelector(".subscription-editor-preview .subscription-card-badges");
   if (badges) {
-    badges.innerHTML = selectedTypes(form).map(mediaBadge).join("");
+    badges.innerHTML = mediaBadges(selectedTypes(form));
   }
 }
 
@@ -375,13 +409,27 @@ function mediaBadge(type) {
   return `<span class="media-badge ${type === "live" ? "live" : "dyn"}">${type === "live" ? "LIVE" : "DYNAMIC"}</span>`;
 }
 
-function typeLabel(type) {
-  return type === "live" ? "直播" : "动态";
+function mediaBadges(types) {
+  return sortBadgeTypes(types).map(mediaBadge).join("");
+}
+
+function typeListLabel(types) {
+  const labels = sortBadgeTypes(types).map((type) => type === "live" ? "直播" : "动态");
+  return labels.join("和");
 }
 
 function uniqueTypes(types) {
   const values = (types || []).filter((type) => ["dynamic", "live"].includes(type));
   return [...new Set(values.length ? values : ["dynamic"])];
+}
+
+function sortBadgeTypes(types) {
+  const selected = new Set(uniqueTypes(types));
+  return ["live", "dynamic"].filter((type) => selected.has(type));
+}
+
+function primarySubType(types) {
+  return uniqueTypes(types).includes("dynamic") ? "dynamic" : "live";
 }
 
 function clamp(value, min, max) {
