@@ -38,6 +38,8 @@ class LiveSubscriptionChecker:
         self._summary_checked = 0
         self._summary_changed = 0
         self._summary_posts = 0
+        self._summary_last_round_uids = 0
+        self._summary_max_round_uids = 0
 
     async def check(self, subs: list[Subscription]):
         await self._load_status_cache(subs)
@@ -225,6 +227,8 @@ class LiveSubscriptionChecker:
         self._summary_checked += checked
         self._summary_changed += changed
         self._summary_posts += posts
+        self._summary_last_round_uids = requested
+        self._summary_max_round_uids = max(self._summary_max_round_uids, requested)
         self._maybe_log_periodic_summary()
 
     def _maybe_log_periodic_summary(self):
@@ -239,9 +243,11 @@ class LiveSubscriptionChecker:
             "直播状态检查统计 | "
             f"窗口: {minutes} 分钟 | "
             f"轮次: {self._summary_rounds} | "
-            f"查询UID: {self._summary_checked}/{self._summary_requested} | "
-            f"无变化: {stable} | "
-            f"变动UID: {self._summary_changed} | "
+            f"当前去重UID: {self._summary_last_round_uids} | "
+            f"峰值去重UID: {self._summary_max_round_uids} | "
+            f"累计查询: {self._summary_checked}/{self._summary_requested} | "
+            f"无变化查询: {stable} | "
+            f"变动UID次数: {self._summary_changed} | "
             f"推送事件: {self._summary_posts} | "
             f"查询失败: {failed}"
         )
@@ -255,6 +261,8 @@ class LiveSubscriptionChecker:
         self._summary_checked = 0
         self._summary_changed = 0
         self._summary_posts = 0
+        self._summary_last_round_uids = 0
+        self._summary_max_round_uids = 0
 
     async def _pause_between_requests(self):
         if self.request_delay_sec > 0:
