@@ -26,10 +26,11 @@ from .workflows import (
     workflow_from_natural_language,
     workflow_from_pending_event,
 )
+from .workflows.models import WorkflowRequest
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.13"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.14"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
@@ -131,34 +132,61 @@ class BilibiliPush(Star):
         await self.runtime.start()
 
     @filter.command("添加b站订阅", alias={"bilibili 添加订阅", "add_bili_sub"})
-    async def add_sub(self, event: AstrMessageEvent, uid: str):
+    async def add_sub(self, event: AstrMessageEvent, target: str):
         """添加动态订阅"""
-        async for ret in self.sub_handler.add_subscription(event, uid, self.parser):
-            yield ret
+        yield await self._run_subscription_workflow(
+            event,
+            "add_subscription",
+            target,
+            sub_type="dynamic",
+        )
 
     @filter.command("添加b站直播", alias={"bilibili 添加直播", "add_bili_live"})
-    async def add_live(self, event: AstrMessageEvent, uid: str):
+    async def add_live(self, event: AstrMessageEvent, target: str):
         """添加直播订阅"""
-        async for ret in self.sub_handler.add_live_subscription(
-            event, uid, self.parser
-        ):
-            yield ret
+        yield await self._run_subscription_workflow(
+            event,
+            "add_subscription",
+            target,
+            sub_type="live",
+        )
 
     @filter.command("取消b站订阅", alias={"删除b站订阅", "del_bili_sub"})
-    async def del_sub(self, event: AstrMessageEvent, uid: str):
+    async def del_sub(self, event: AstrMessageEvent, target: str):
         """取消动态订阅"""
-        async for ret in self.sub_handler.remove_subscription(
-            event, uid, "dynamic", self.parser
-        ):
-            yield ret
+        yield await self._run_subscription_workflow(
+            event,
+            "remove_subscription",
+            target,
+            sub_type="dynamic",
+        )
 
     @filter.command("取消b站直播", alias={"删除b站直播", "del_bili_live"})
-    async def del_live(self, event: AstrMessageEvent, uid: str):
+    async def del_live(self, event: AstrMessageEvent, target: str):
         """取消直播提醒"""
-        async for ret in self.sub_handler.remove_subscription(
-            event, uid, "live", self.parser
-        ):
-            yield ret
+        yield await self._run_subscription_workflow(
+            event,
+            "remove_subscription",
+            target,
+            sub_type="live",
+        )
+
+    async def _run_subscription_workflow(
+        self,
+        event: AstrMessageEvent,
+        workflow: str,
+        target: str,
+        *,
+        sub_type: str,
+    ):
+        request = WorkflowRequest(
+            workflow=workflow,
+            target=target,
+            params={"query": target, "uid": target, "sub_type": sub_type},
+            source="command",
+        )
+        result = await run_bili_workflow(self, event, request)
+        return await render_workflow_result(event, self.renderer, result)
 
     @filter.command("b站订阅列表", alias={"bilibili 订阅列表", "list_bili_sub"})
     async def list_subs(self, event: AstrMessageEvent):

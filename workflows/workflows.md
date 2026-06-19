@@ -10,7 +10,7 @@
 - `semantic_dispatch.py`: 把规则候选和语义召回候选一起交给当前会话大模型，抽取 workflow、查询词和订阅类型；失败时安静回退。
 - `candidate_analysis.py`: B 站搜索返回候选后，把候选名称、排序、粉丝数和本地名称分交给大模型分析，判断是否可进入确认卡。
 - `parsing_tool.py`: LLM tool 参数解析。
-- `parsing_natural.py`: 被唤醒消息是否进入 `ai_dispatch` 的轻量判断。
+- `parsing_natural.py`: 被唤醒消息是否进入 `ai_dispatch` 的轻量判断，并识别显式命令以避免重复处理。
 - `parsing_pending.py`: 引用 pending 卡片时解析任务引用。
 - `runner.py`: workflow 分发表。
 - `runtime.py`: 事件文本、引用消息文本包、会话来源和 tool event 适配。
@@ -33,8 +33,8 @@
 
 - `ai_dispatch`: 前置分流 workflow，优先用“规则候选 + 语义召回 + LLM”协同判断自然语言意图，失败或低置信时用规则分支兜底，再转入具体 workflow。
 - `search_up`: 搜索 UP 主并返回候选；直接命令和自然语言 workflow 会展示候选卡，LLM tool 默认作为模型内部检索。
-- `add_subscription`: 按 UID 或关键词进入订阅流程；UID 和高置信候选都会先进入确认卡。
-- `remove_subscription`: 删除当前会话订阅；支持用已确认别名、当前订阅名或 AI 当前订阅候选分析解析 UID，并先进入删除确认卡。
+- `add_subscription`: 按 UID 或关键词进入订阅流程；UID 和高置信候选都会先进入确认卡，显式添加命令也走该 workflow。
+- `remove_subscription`: 删除当前会话订阅；支持用已确认别名、当前订阅名或 AI 当前订阅候选分析解析 UID，显式删除命令也走该 workflow，并先进入删除确认卡。
 - `list_subscriptions`: 列出当前会话订阅；自然语言明确直播/动态时可按订阅类型过滤。
 - `list_all_subscriptions`: 列出当前会话全部订阅，是 `list_subscriptions` 的显式分叉。
 - `list_live_subscriptions`: 列出当前会话直播订阅。
@@ -105,12 +105,14 @@ flowchart TD
 ## 自然语言入口
 
 - `BiliNaturalWorkflowFilter` 只处理已唤醒消息，且文本必须能被 `workflow_from_natural_language()` 解析为 Bilibili workflow。
+- 显式命令如“添加b站直播”“取消b站订阅”“b站搜索”由 AstrBot command 入口处理，自然语言过滤器会跳过，避免同一消息重复进入旧命令和 `ai_dispatch`。
 - 被唤醒自然语言先进入 `ai_dispatch`，再由 `branches.py` 选择搜索、添加、删除、列表、账号或诊断分支。
 - 管理类分叉会尽量保持只读：列表拆为全部/直播/动态，查找订阅限定当前会话，健康诊断和解析诊断不写库。
 - 请求型分叉目前只开放直播检查：当前群直接执行，全部群需要确认。
 - `ai_dispatch` 会先构造 `branches.py` 的确定性候选，再用 `entity_resolver.py` 对候选 query 做当前订阅、标签和历史别名召回，最后把两类证据交给当前会话大模型识别意图、UP 查询词和订阅类型。
 - LLM 不可直接写库，只能返回后续 workflow；如果 LLM 分流失败、超时、无模型或置信度低于 `ai_semantic_dispatch_confidence`，自动回退到 `branches.py` 的确定性规则。
 - 规则回退后，具体 `add_subscription` / `remove_subscription` 仍会执行 `resolve_up_reference -> Bili 搜索 -> 高置信确认/候选卡` 链路。
+- 显式添加/删除命令会构造 `WorkflowRequest(source="command")` 并进入相同链路；关键词输入不会再调用旧的 UID 直连编辑器向前台抛错。
 - 例如“添加b站直播订阅 noworld”会在前置分流中抽取 `noworld` 作为搜索关键词，`live` 作为订阅类型。
 - 搜索候选出来后，`candidate_analysis.py` 可让 LLM 结合候选名称、粉丝数、搜索排序和本地名称分判断是否进入确认卡；LLM 失败或低置信时回退到 `selection.py` 的确定性评分。
 - 删除订阅找不到明确 UID 时，`candidate_analysis.py` 会在当前会话订阅候选内代理判断；高置信只进入删除确认卡，低置信展示删除候选卡。
@@ -144,7 +146,7 @@ UP 主解析采用确定性分层，不默认依赖 embedding 或向量库：
 - `diagnose_health` 和 `diagnose_resolver` 保持纯文本，便于复制排查。
 - `check_live_current_group` 保持纯文本结果；`check_live_all_groups` 使用确认卡。
 - LLM tool 返回给模型的是文本；`handlers/ai_handler.py` 默认不主动发送卡片，避免模型快速调用多个工具时刷屏。只有参数显式包含 `present`、`foreground` 或 `show_card` 时，工具结果才会渲染到聊天侧。
-- 直接命令和被唤醒的自然语言 workflow 不经过 `AiToolHandler` 的后台策略，仍会按 `WorkflowResult.cards` 展示用户需要操作的卡片。
+- 直接命令和被唤醒的自然语言 workflow 不经过 `AiToolHandler` 的后台策略，仍会按 `WorkflowResult.cards` 展示用户需要操作的卡片。直接添加命令的搜索候选同样允许高置信进入确认卡，但不能直接写库。
 
 ## 维护说明
 
@@ -162,6 +164,7 @@ UP 主解析采用确定性分层，不默认依赖 embedding 或向量库：
 ## 前台展示策略
 
 - 当前订阅、标签和历史别名命中都属于后台证据，不直接把“历史别名命中”之类的解释抛给用户。
+- 语义分流、候选分析和别名召回异常只记录调试日志并降级，不作为聊天错误展示；真正需要用户知道的网络失败、无结果或确认边界由具体 workflow 返回。
 - `search_up` 命中历史别名时仍返回正常候选卡片；用户需要继续选择时引用卡片序号即可，不写入订阅。
 - `add_subscription` 和 `remove_subscription` 高置信命中时直接进入最终确认卡，不额外发送候选分析文本。
 - 候选分析理由保留在后端 workflow 判断中；前台只展示用户需要操作的卡片或最终结果，避免 ChatUI 刷屏。

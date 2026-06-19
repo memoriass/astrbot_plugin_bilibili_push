@@ -438,4 +438,4 @@ def _default_categories(sub_type: str) -> list[int]:
 def _can_auto_select_candidates(plugin, request: WorkflowRequest) -> bool:
     if not getattr(plugin, "enable_ai_auto_select_candidates", True):
         return False
-    return request.source in {"tool", "natural"}
+    return request.source in {"tool", "natural", "command"}
