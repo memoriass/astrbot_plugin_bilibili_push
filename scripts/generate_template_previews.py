@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
-import datetime as dt
 import io
 import json
 import random
@@ -24,6 +23,7 @@ from utils.html_renderer import (  # noqa: E402
     HtmlRenderer,
 )
 from utils.resource import get_template_path  # noqa: E402
+from utils.timezone import format_bilibili_time  # noqa: E402
 
 
 def image_data_uri(path: Path) -> str:
@@ -123,7 +123,7 @@ def count_text(value: int | None) -> str:
 def time_text(timestamp: int | None) -> str:
     if not timestamp:
         return "2026-06-14 21:30"
-    return dt.datetime.fromtimestamp(int(timestamp)).strftime("%Y-%m-%d %H:%M")
+    return format_bilibili_time(timestamp, "%Y-%m-%d %H:%M")
 
 
 def item_url(item: dict | None) -> str:

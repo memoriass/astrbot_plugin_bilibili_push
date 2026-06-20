@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 from ..core.http import HttpClient
 from ..core.network_retry import get_with_retry
 from ..utils.logger import logger
+from ..utils.timezone import format_bilibili_time
 
 
 class BilibiliParser:
@@ -12,6 +13,9 @@ class BilibiliParser:
     OPUS_PATTERN = re.compile(r"bilibili\.com/opus/(\d+)")
     LIVE_PATTERN = re.compile(r"live\.bilibili\.com/(\d+)")
     SHORT_LINK_PATTERN = re.compile(r"(b23\.tv/[A-Za-z\d]+)")
+
+    def __init__(self, display_timezone: str = "Asia/Shanghai"):
+        self.display_timezone = display_timezone
 
     async def parse_message(self, text: str) -> Optional[Dict[str, Any]]:
         if m := self.SHORT_LINK_PATTERN.search(text):
@@ -59,7 +63,10 @@ class BilibiliParser:
                     "duration": self._format_duration(v.get("duration", 0)),
                     "nickname": v.get("owner", {}).get("name", ""),
                     "avatar": v.get("owner", {}).get("face", ""),
-                    "pub_time": v.get("pubdate", 0),
+                    "pub_time": format_bilibili_time(
+                        v.get("pubdate", 0),
+                        timezone_name=self.display_timezone,
+                    ),
                     "stat": {
                         "view": v.get("stat", {}).get("view", 0),
                         "danmaku": v.get("stat", {}).get("danmaku", 0),
@@ -92,7 +99,10 @@ class BilibiliParser:
                     "cover": self._dynamic_cover(major),
                     "nickname": module_author.get("name", ""),
                     "avatar": module_author.get("face", ""),
-                    "pub_time": module_author.get("pub_ts", 0),
+                    "pub_time": format_bilibili_time(
+                        module_author.get("pub_ts", 0),
+                        timezone_name=self.display_timezone,
+                    ),
                 }
         except Exception as e:
             logger.error(f"解析动态链接失败: {e}")

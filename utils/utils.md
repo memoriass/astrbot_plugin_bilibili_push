@@ -7,6 +7,7 @@
 - `html_renderer.py`: Playwright 浏览器生命周期和 HTML 截图。
 - `resource.py`: 模板、背景图等资源路径和读取。
 - `logger.py`: AstrBot logger 适配器。
+- `timezone.py`: Bilibili 时间戳格式化，按 `display_timezone` 展示，默认 `Asia/Shanghai`。
 - `renderers/`: 推送卡片主题。
 - `resources/`: 内置模板和默认背景图。
 
@@ -19,3 +20,4 @@
 - `html_renderer.py` 是 Playwright 具体实现，业务模块不要绕过 `rendering/` 端口直接依赖它。
 - 资源路径统一通过 `resource.py` 获取，避免 Windows/Linux 路径差异。
 - 日志适配放 `logger.py`，新增模块优先使用 AstrBot logger，不使用裸 `print()`。
+- Bilibili 接口时间戳是 Unix 时间，用户可见卡片必须通过 `timezone.py` 和配置时区格式化，不要直接使用系统本地时区。

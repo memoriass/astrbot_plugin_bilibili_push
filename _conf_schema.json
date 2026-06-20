@@ -1,4 +1,10 @@
 {
+  "display_timezone": {
+    "description": "卡片显示时区",
+    "type": "string",
+    "default": "Asia/Shanghai",
+    "hint": "用于动态、直播和链接解析卡片的时间显示。默认 Asia/Shanghai；填错会回落到 Asia/Shanghai。"
+  },
   "enable_link_parser": {
     "description": "启用 Bilibili 链接自动解析",
     "type": "bool",

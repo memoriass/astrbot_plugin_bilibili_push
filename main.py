@@ -30,7 +30,7 @@ from .workflows.models import WorkflowRequest
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.15"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.16"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
@@ -52,6 +52,7 @@ class BilibiliPush(Star):
         self.bg_dir.mkdir(parents=True, exist_ok=True)
 
         config = self.config
+        self.display_timezone = config.display_timezone
         self.push_on_startup = config.push_on_startup
         self.check_interval = config.check_interval
         self.dynamic_check_interval = config.dynamic_check_interval
@@ -78,7 +79,7 @@ class BilibiliPush(Star):
         self.pending_store = PendingTaskStore(self, ttl_sec=self.ai_pending_timeout_sec)
 
         self.db = DatabaseManager(self.data_dir / "data.db")
-        self.parser = BilibiliParser()
+        self.parser = BilibiliParser(display_timezone=self.display_timezone)
         self.scheduler = BilibiliScheduler(
             db=self.db,
             check_interval=self.check_interval,
@@ -87,6 +88,7 @@ class BilibiliPush(Star):
             request_delay_sec=self.request_delay_sec,
             request_jitter_sec=self.request_jitter_sec,
             live_batch_size=self.live_batch_size,
+            display_timezone=self.display_timezone,
             push_on_startup=self.push_on_startup,
             on_new_post=self._handle_new_post,
             star=self,

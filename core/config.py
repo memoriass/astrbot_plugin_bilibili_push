@@ -3,9 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+try:
+    from ..utils.timezone import normalize_display_timezone
+except ImportError:
+    from utils.timezone import normalize_display_timezone
+
 
 @dataclass(slots=True)
 class PluginConfig:
+    display_timezone: str = "Asia/Shanghai"
     push_on_startup: bool = False
     check_interval: int = 60
     dynamic_check_interval: int = 300
@@ -36,6 +42,7 @@ def load_plugin_config(raw: dict | None) -> PluginConfig:
     raw = raw or {}
     check_interval = safe_int(raw.get("check_interval"), 60, min_value=5)
     return PluginConfig(
+        display_timezone=normalize_display_timezone(raw.get("display_timezone")),
         push_on_startup=safe_bool(raw.get("push_on_startup"), False),
         check_interval=check_interval,
         dynamic_check_interval=safe_int(

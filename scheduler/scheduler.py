@@ -30,6 +30,7 @@ class BilibiliScheduler:
         request_delay_sec: float = 1.5,
         request_jitter_sec: float = 30.0,
         live_batch_size: int = 50,
+        display_timezone: str = "Asia/Shanghai",
         push_on_startup: bool = False,
         on_new_post: Callable[[str, str, list[MessageSegment]], Awaitable[None]]
         | None = None,
@@ -42,6 +43,7 @@ class BilibiliScheduler:
         )
         self.live_check_interval = int(live_check_interval or max(check_interval, 90))
         self.request_jitter_sec = max(0.0, float(request_jitter_sec))
+        self.display_timezone = display_timezone
         self.push_on_startup = push_on_startup
         self.on_new_post = on_new_post
         self.star = star
@@ -75,9 +77,14 @@ class BilibiliScheduler:
         renderer = HtmlRenderer(get_template_path())
         return {
             "dynamic_card": DynamicCardTheme(renderer),
-            "movie_card": MovieCardTheme(renderer),
+            "movie_card": MovieCardTheme(
+                renderer,
+                display_timezone=self.display_timezone,
+            ),
             "dynamic_movie_card": MovieCardTheme(
-                renderer, template_name="dynamic_movie_card.html.jinja"
+                renderer,
+                template_name="dynamic_movie_card.html.jinja",
+                display_timezone=self.display_timezone,
             ),
         }
 

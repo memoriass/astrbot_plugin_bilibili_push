@@ -19,6 +19,7 @@
 - Bilibili API 响应字段变化时，优先更新 `models.py`，再调整 `dynamic/`、`live/` 或 `parser/` 的转换逻辑。
 - 任何跨 Pydantic v1/v2 的调用都应通过 `compat.py`，避免业务模块直接依赖版本差异。
 - 插件启动配置统一通过 `config.py` 解析；新增配置项时同步 `_conf_schema.json`、`README.md` 和 `main.py` 装配字段。
+- 用户可见卡片时间使用 `display_timezone`，默认 `Asia/Shanghai`；不要依赖服务器系统时区。
 - `enable_parser_video_download` 默认关闭，只控制聊天链接解析的视频附件，不影响订阅动态推送。
 - 长期 HTTP client 统一走 `HttpClient.get_client()`；新增网络访问时不要在 handler 或 workflow 中创建全局 client。
 - 面向 Bilibili 的新增 GET 请求如需容错，应使用 `network_retry.py` 的请求级重试；不要重跑整个 workflow，避免重复创建 pending、重复发卡或重复写库。
