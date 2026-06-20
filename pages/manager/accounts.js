@@ -9,25 +9,32 @@ import {
 
 const NO_FACE = placeholderFace("BILI");
 
-export function renderAccountManager(panel, accounts, actions, editor, deleteConfirm) {
+export function renderAccountManager(panel, accounts, actions, editor, deleteConfirm, qrLogin) {
   panel.innerHTML = `
     <section class="account-summary">
       <div>
         <h2>账号管理</h2>
         <p>当前 ${escapeHtml(accounts.length)} 个账号，Cookie 只允许写入或替换，不会在页面回显。</p>
       </div>
-      <button class="ghost-button" type="button" data-create-account="1">新增账号</button>
+      <div class="account-summary-actions">
+        <button class="ghost-button" type="button" data-qr-login="1">扫码登录</button>
+        <button class="ghost-button" type="button" data-create-account="1">新增账号</button>
+      </div>
     </section>
     ${accounts.length ? `<div class="account-grid">${accounts.map(accountCard).join("")}</div>` : emptyState("暂无登录账号")}
     ${editor ? `<div class="manager-modal-backdrop">${editorForm(editor)}</div>` : ""}
     ${deleteConfirm ? deleteModal(deleteConfirm.item || deleteConfirm) : ""}
+    ${qrLogin ? qrModal(qrLogin) : ""}
   `;
 
   panel.querySelector("[data-create-account]").addEventListener("click", actions.onCreate);
+  panel.querySelector("[data-qr-login]").addEventListener("click", actions.onQrLogin);
   bindDataset(panel, "[data-edit-account]", actions.onEdit);
   bindDataset(panel, "[data-delete-account]", actions.onDelete);
   bindDataset(panel, "[data-confirm-delete-account]", actions.onConfirmDelete);
   bindDataset(panel, "[data-cancel-delete-account]", actions.onCancelDelete);
+  bindDataset(panel, "[data-cancel-qr-login]", actions.onCancelQr);
+  bindDataset(panel, "[data-refresh-qr-login]", actions.onRefreshQr);
   const form = panel.querySelector("#accountEditorForm");
   if (form) {
     form.addEventListener("submit", (event) => {
@@ -123,6 +130,30 @@ function deleteModal(account) {
             <button class="ghost-button" type="button" data-cancel-delete-account="1">取消</button>
             <button class="danger-button" type="button" data-confirm-delete-account="1"
               data-uid="${escapeAttribute(account.uid)}">删除</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function qrModal(qrLogin) {
+  const message = qrLogin.message || "请使用 B 站 App 扫码登录。";
+  return `
+    <div class="manager-modal-backdrop">
+      <section class="manager-modal account-qr-modal" role="dialog" aria-modal="true" aria-label="扫码登录">
+        <div class="account-qr-preview">
+          ${qrLogin.image ? `<img src="${escapeAttribute(qrLogin.image)}" alt="Bilibili 登录二维码" />` : `<strong>...</strong>`}
+        </div>
+        <div class="confirm-copy">
+          <div>
+            <h2>扫码登录</h2>
+            <p>${escapeHtml(message)}</p>
+            <p class="modal-muted">成功后会自动写入账号池。</p>
+          </div>
+          <div class="modal-actions">
+            <button class="ghost-button" type="button" data-cancel-qr-login="1">取消</button>
+            <button class="ghost-button" type="button" data-refresh-qr-login="1">重新获取</button>
           </div>
         </div>
       </section>

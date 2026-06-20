@@ -43,6 +43,9 @@ flowchart LR
 - UP 解析采用可解释分层评分：明确 UID、当前会话订阅/标签、当前会话别名、全局用户名映射、跨会话共享证据、Bili 搜索兜底。分差过小或共享别名存在竞争 UID 时视为歧义，不自动推进。
 - 自然语言和 AI 入口统一走 LLM tools；pending 续跑可以渲染 HTML 图片卡片，LLM tool 只返回稳定文本，避免把图片消息组件交给模型。
 - Plugin Pages 当前落地 `pages/manager/`，用于订阅、账号、pending task 和手动直播检查管理，不承载模板预览和聊天 help。
+- WebUI 新增订阅只负责把实例、群/个人类型和号码组装成完整 AstrBot `target_id`；订阅仍按 `uid + sub_type + target_id` 单会话粒度管理。
+- WebUI 新增订阅可通过 `bilibili/user` 按 UID 拉取昵称和头像辅助确认，但仍不直接写库，保存按钮才提交订阅。
+- WebUI 扫码登录通过 `webapi/manager_login.py` 获取二维码并轮询，成功后写入账号池；页面和接口都不回显 Cookie。
 
 ## 模块边界
 

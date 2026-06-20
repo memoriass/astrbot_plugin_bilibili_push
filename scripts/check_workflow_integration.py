@@ -26,8 +26,11 @@ EXPECTED_COMMANDS = {
 PLUGIN_NAME = "astrbot_plugin_bilibili_push"
 EXPECTED_WEB_ENDPOINTS = {
     "accounts/delete",
+    "accounts/qr/poll",
+    "accounts/qr/start",
     "accounts/upsert",
     "accounts/valid",
+    "bilibili/user",
     "overview",
     "checks/live",
     "subscriptions/create",
@@ -120,6 +123,7 @@ def _check_plugin_pages() -> None:
         ROOT / "pages" / "manager" / "index.html",
         ROOT / "pages" / "manager" / "accounts.js",
         ROOT / "pages" / "manager" / "accounts.css",
+        ROOT / "pages" / "manager" / "account_qr.js",
         ROOT / "pages" / "manager" / "api.js",
         ROOT / "pages" / "manager" / "app.js",
         ROOT / "pages" / "manager" / "mock_bridge.js",
@@ -129,6 +133,7 @@ def _check_plugin_pages() -> None:
         ROOT / "pages" / "manager" / "style.css",
         ROOT / "pages" / "manager" / "subscriptions.js",
         ROOT / "pages" / "manager" / "subscriptions.css",
+        ROOT / "pages" / "manager" / "subscription_identity.js",
         ROOT / "pages" / "manager" / "utils.js",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
@@ -149,6 +154,7 @@ def _check_web_api_modules() -> None:
     required = [
         ROOT / "webapi" / "manager_api.py",
         ROOT / "webapi" / "manager_crud.py",
+        ROOT / "webapi" / "manager_login.py",
         ROOT / "webapi" / "manager_overview.py",
         ROOT / "webapi" / "manager_response.py",
         ROOT / "webapi" / "manager_serializers.py",

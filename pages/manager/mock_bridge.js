@@ -1,4 +1,5 @@
 const mockState = createMockOverview();
+let mockQrPollCount = 0;
 
 export function createLocalBridge() {
   return {
@@ -43,6 +44,9 @@ export function createLocalBridge() {
         refreshDiagnostics();
         return ok({ removed: true });
       }
+      if (endpoint === "bilibili/user") {
+        return ok(mockBiliUser(payload.uid));
+      }
       if (endpoint === "accounts/upsert") {
         const account = {
           uid: String(payload.uid || "10003"),
@@ -74,6 +78,25 @@ export function createLocalBridge() {
         refreshDiagnostics();
         return ok({ updated: true, valid: Boolean(payload.valid) });
       }
+      if (endpoint === "accounts/qr/start") {
+        mockQrPollCount = 0;
+        return ok({
+          qrcode_key: "mock-qr-key",
+          image: mockQrImage(),
+          status: "pending",
+          message: "请使用 B 站 App 扫码登录。",
+        });
+      }
+      if (endpoint === "accounts/qr/poll") {
+        mockQrPollCount += 1;
+        if (mockQrPollCount >= 4) {
+          return ok({ status: "expired", message: "二维码已失效，请重新获取。" });
+        }
+        if (mockQrPollCount >= 2) {
+          return ok({ status: "scanned", message: "已扫码，请在 B 站 App 确认。" });
+        }
+        return ok({ status: "pending", message: "等待扫码确认。" });
+      }
       if (endpoint === "checks/live") {
         if (payload.target_id === "__all__") {
           return ok({ pushed: 2, targets: 2 });
@@ -83,6 +106,28 @@ export function createLocalBridge() {
       return ok({ removed: true, updated: true, cleared: 1 });
     },
   };
+}
+
+function mockBiliUser(uid) {
+  const known = mockState.subscriptions.find((sub) => String(sub.uid) === String(uid));
+  return {
+    uid: String(uid || ""),
+    username: known?.username || `UP ${uid || "0000"}`,
+    face: known?.face || mockFace("UP", "#0f766e"),
+  };
+}
+
+function mockQrImage() {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="240" height="240">
+      <rect width="240" height="240" fill="#fff"/>
+      <rect x="28" y="28" width="48" height="48" fill="#111"/>
+      <rect x="164" y="28" width="48" height="48" fill="#111"/>
+      <rect x="28" y="164" width="48" height="48" fill="#111"/>
+      <path d="M104 40h24v24h-24zm40 24h24v24h-24zm-48 48h24v24H96zm64 8h40v24h-40zm-48 48h24v32h-24zm48-8h24v24h-24z" fill="#111"/>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 function ok(data) {

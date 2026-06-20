@@ -4,9 +4,9 @@ import {
   formatTargetId,
   formatTime,
 } from "./utils.js?v=manager-multitype-ai";
-import { renderAccountManager } from "./accounts.js?v=manager-multitype-ai";
+import { renderAccountManager } from "./accounts.js?v=manager-account-qr";
 import { pendingCandidateText, pendingSummary, pendingTitle } from "./pending_text.js?v=manager-multitype-ai";
-import { renderSubscriptionCards } from "./subscriptions.js?v=manager-dual-badges";
+import { renderSubscriptionCards } from "./subscriptions.js?v=manager-target-row";
 
 export function renderMetrics(container, diagnostics) {
   const items = [
@@ -41,6 +41,7 @@ export function renderTabs(activeTab) {
 export function renderSubscriptions(
   panel,
   subscriptions,
+  targets,
   filters,
   actions,
   editor,
@@ -50,6 +51,7 @@ export function renderSubscriptions(
   renderSubscriptionCards(
     panel,
     subscriptions,
+    targets,
     filters,
     actions,
     editor,
@@ -58,8 +60,8 @@ export function renderSubscriptions(
   );
 }
 
-export function renderAccounts(panel, accounts, actions, editor, deleteConfirm) {
-  renderAccountManager(panel, accounts, actions, editor, deleteConfirm);
+export function renderAccounts(panel, accounts, actions, editor, deleteConfirm, qrLogin) {
+  renderAccountManager(panel, accounts, actions, editor, deleteConfirm, qrLogin);
 }
 
 export function renderPending(panel, tasks, actions, clearConfirm = false) {

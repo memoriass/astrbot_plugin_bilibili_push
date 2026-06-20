@@ -1,4 +1,5 @@
-import { createApi, getBridge } from "./api.js?v=manager-multitype-ai";
+import { createApi, getBridge } from "./api.js?v=manager-target-row";
+import { createAccountQrController } from "./account_qr.js?v=manager-target-row";
 import { renderOverview } from "./overview.js?v=manager-multitype-ai";
 import {
   renderAccounts,
@@ -8,8 +9,8 @@ import {
   renderSubscriptions,
   renderTabs,
   showLoading,
-} from "./renderers.js?v=manager-dual-badges";
-import { groupSubscriptionEditorItem } from "./subscriptions.js?v=manager-dual-badges";
+} from "./renderers.js?v=manager-target-row";
+import { groupSubscriptionEditorItem } from "./subscriptions.js?v=manager-target-row";
 
 const bridge = getBridge();
 const api = createApi(bridge);
@@ -22,6 +23,7 @@ const state = {
   subscriptionPage: 1,
   accountEditor: null,
   accountDelete: null,
+  accountQr: null,
   pendingClearConfirm: false,
   liveCheckConfirm: null,
   query: "",
@@ -34,6 +36,11 @@ const metrics = document.getElementById("metrics");
 const toast = document.getElementById("toast");
 const searchInput = document.getElementById("searchInput");
 const typeFilter = document.getElementById("typeFilter");
+const accountQrController = createAccountQrController(api, state, {
+  render,
+  refreshAll,
+  showToast,
+});
 
 document.getElementById("refreshButton").addEventListener("click", refreshAll);
 searchInput.addEventListener("input", () => {
@@ -84,6 +91,7 @@ function render() {
   renderSubscriptions(
     document.getElementById("subscriptionsPanel"),
     overview.subscriptions || [],
+    overview.targets || [],
     { query: state.query, type: state.type },
     {
       onCreate: startCreateSubscription,
@@ -94,6 +102,7 @@ function render() {
       onConfirmDelete: deleteSubscription,
       onCancelDelete: cancelSubscriptionDelete,
       onPage: setSubscriptionPage,
+      onLookupUser: lookupBiliUser,
     },
     state.subscriptionEditor,
     state.subscriptionDelete,
@@ -110,9 +119,13 @@ function render() {
       onDelete: startDeleteAccount,
       onConfirmDelete: deleteAccount,
       onCancelDelete: cancelAccountDelete,
+      onQrLogin: accountQrController.start,
+      onCancelQr: accountQrController.cancel,
+      onRefreshQr: accountQrController.refresh,
     },
     state.accountEditor,
     state.accountDelete,
+    state.accountQr,
   );
   renderPending(
     document.getElementById("pendingPanel"),
@@ -137,7 +150,9 @@ function setSubscriptionPage(dataset) {
 }
 
 function startCreateSubscription() {
-  const targetId = state.overview?.subscriptions?.[0]?.target_id || "";
+  const targetId = state.overview?.targets?.[0]?.target_id
+    || state.overview?.subscriptions?.[0]?.target_id
+    || "llonebot:GroupMessage:";
   state.subscriptionEditor = {
     mode: "create",
     item: { sub_types: ["dynamic"], target_id: targetId, enabled: true },
@@ -207,6 +222,17 @@ async function submitSubscription(data) {
     await refreshAll();
   } catch (error) {
     showToast(error.message || String(error));
+  }
+}
+
+async function lookupBiliUser(uid) {
+  try {
+    const user = await api.lookupBiliUser(uid);
+    showToast(`已加载：${user.username || user.uid}`);
+    return user;
+  } catch (error) {
+    showToast(error.message || String(error));
+    return null;
   }
 }
 

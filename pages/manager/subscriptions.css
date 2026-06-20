@@ -76,6 +76,22 @@
   min-width: 0;
 }
 
+.identity-name-field {
+  min-width: 0;
+}
+
+.identity-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.identity-lookup-button {
+  min-height: 42px;
+  padding-inline: 14px;
+}
+
 .editor-grid span,
 .editor-check {
   color: var(--muted);
@@ -213,6 +229,13 @@
   gap: 14px;
 }
 
+.subscription-editor-side {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
 .subscription-editor-preview {
   aspect-ratio: 1;
   border-radius: 20px;
@@ -239,6 +262,8 @@
   min-width: 0;
 }
 
+.target-detail-panel,
+.target-binding-panel,
 .type-panel,
 .category-panel,
 .tag-field {
@@ -250,6 +275,81 @@
   padding: 12px;
 }
 
+.target-detail-panel dt,
+.target-binding-panel span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.target-detail-panel dl {
+  display: grid;
+  gap: 8px;
+}
+
+.target-detail-panel dl > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.target-detail-panel dt,
+.target-detail-panel dd {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.target-detail-panel dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.target-detail-panel dd {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.target-field {
+  display: grid;
+  gap: 5px;
+}
+
+.target-kind-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.target-kind-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.target-kind-chip span {
+  display: grid;
+  min-height: 38px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-solid);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.target-kind-chip input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.target-binding-panel p,
 .type-panel p,
 .category-panel p {
   margin-top: 4px;

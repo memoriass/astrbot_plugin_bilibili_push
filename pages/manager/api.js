@@ -1,4 +1,4 @@
-import { createLocalBridge } from "./mock_bridge.js?v=manager-multitype-ai";
+import { createLocalBridge } from "./mock_bridge.js?v=manager-target-row";
 import { unwrap } from "./utils.js?v=manager-multitype-ai";
 
 export function getBridge() {
@@ -22,6 +22,9 @@ export function createApi(bridge) {
     async deleteSubscription(payload) {
       return unwrap(await bridge.apiPost("subscriptions/delete", payload));
     },
+    async lookupBiliUser(uid) {
+      return unwrap(await bridge.apiPost("bilibili/user", { uid }));
+    },
     async clearPending() {
       return unwrap(await bridge.apiPost("pending/clear", {}));
     },
@@ -33,6 +36,12 @@ export function createApi(bridge) {
     },
     async setAccountValid(payload) {
       return unwrap(await bridge.apiPost("accounts/valid", payload));
+    },
+    async startAccountQr() {
+      return unwrap(await bridge.apiPost("accounts/qr/start", {}));
+    },
+    async pollAccountQr(qrcodeKey) {
+      return unwrap(await bridge.apiPost("accounts/qr/poll", { qrcode_key: qrcodeKey }));
     },
     async manualLiveCheck(targetId) {
       return unwrap(await bridge.apiPost("checks/live", { target_id: targetId }));

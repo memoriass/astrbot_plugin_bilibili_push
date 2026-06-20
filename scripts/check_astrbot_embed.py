@@ -85,21 +85,28 @@ def _read_simple_yaml(path: Path) -> dict[str, str]:
 
 def _check_astrbot_page_contract() -> None:
     plugin_route = ASTRBOT_ROOT / "astrbot" / "dashboard" / "routes" / "plugin.py"
+    plugin_api = ASTRBOT_ROOT / "astrbot" / "dashboard" / "api" / "plugins.py"
+    page_service = (
+        ASTRBOT_ROOT
+        / "astrbot"
+        / "dashboard"
+        / "services"
+        / "plugin_page_service.py"
+    )
     bridge = ASTRBOT_ROOT / "astrbot" / "dashboard" / "plugin_page_bridge.js"
     page_view = ASTRBOT_ROOT / "dashboard" / "src" / "views" / "PluginPagePage.vue"
     server = ASTRBOT_ROOT / "astrbot" / "dashboard" / "server.py"
     context = ASTRBOT_ROOT / "astrbot" / "core" / "star" / "context.py"
-    for path in [plugin_route, bridge, page_view, server, context]:
+    for path in [bridge, page_view, context]:
         if not path.exists():
             raise SystemExit(f"AstrBot source file is missing: {path}")
 
-    route_source = plugin_route.read_text(encoding="utf-8")
-    if '_PLUGIN_PAGE_ROOT_DIR_NAME = "pages"' not in route_source:
-        raise SystemExit("AstrBot Plugin Pages root is not pages/")
-    if '_PLUGIN_PAGE_ENTRY_FILE_NAME = "index.html"' not in route_source:
-        raise SystemExit("AstrBot Plugin Pages entry file is not index.html")
-    if "/api/plugin/page/bridge-sdk.js" not in route_source:
-        raise SystemExit("AstrBot Plugin Pages bridge injection contract changed")
+    if page_service.exists() and plugin_api.exists():
+        _check_astrbot_page_service_contract(page_service, plugin_api, page_view)
+    elif plugin_route.exists() and server.exists():
+        _check_astrbot_legacy_page_contract(plugin_route, server, page_view)
+    else:
+        raise SystemExit("AstrBot Plugin Page contract files are missing")
 
     bridge_source = bridge.read_text(encoding="utf-8")
     if "window.AstrBotPluginPage" not in bridge_source:
@@ -109,14 +116,56 @@ def _check_astrbot_page_contract() -> None:
     if "apiPost(endpoint, body)" not in bridge_source:
         raise SystemExit("AstrBot bridge apiPost is missing")
 
+    if "def register_web_api(" not in context.read_text(encoding="utf-8"):
+        raise SystemExit("AstrBot star context register_web_api is missing")
+
+
+def _check_astrbot_page_service_contract(
+    page_service: Path, plugin_api: Path, page_view: Path
+) -> None:
+    service_source = page_service.read_text(encoding="utf-8")
+    if 'PLUGIN_PAGE_ROOT_DIR_NAME = "pages"' not in service_source:
+        raise SystemExit("AstrBot Plugin Pages root is not pages/")
+    if 'PLUGIN_PAGE_ENTRY_FILE_NAME = "index.html"' not in service_source:
+        raise SystemExit("AstrBot Plugin Pages entry file is not index.html")
+    if "/api/plugin/page/bridge-sdk.js" not in service_source:
+        raise SystemExit("AstrBot Plugin Pages bridge injection contract changed")
+
+    api_source = plugin_api.read_text(encoding="utf-8")
+    if '@router.get("/plugins/{plugin_id}/pages")' not in api_source:
+        raise SystemExit("AstrBot plugin page list route is missing")
+    if '@legacy_router.get("/api/plugin/page/entry")' not in api_source:
+        raise SystemExit("AstrBot legacy plugin page entry route is missing")
+    if '@legacy_router.api_route("/api/plug/{plugin_path:path}"' not in api_source:
+        raise SystemExit("AstrBot dashboard /api/plug route is missing")
+
     view_source = page_view.read_text(encoding="utf-8")
-    if "`/api/plug/${encodeURIComponent(pluginName.value)}/${normalized}`" not in view_source:
+    expected = (
+        "`/api/v1/plugins/extensions/${encodeURIComponent(pluginName.value)}/"
+        "${normalized}`"
+    )
+    if expected not in view_source:
+        raise SystemExit("Dashboard no longer prefixes bridge requests with plugin name")
+
+
+def _check_astrbot_legacy_page_contract(
+    plugin_route: Path, server: Path, page_view: Path
+) -> None:
+    route_source = plugin_route.read_text(encoding="utf-8")
+    if '_PLUGIN_PAGE_ROOT_DIR_NAME = "pages"' not in route_source:
+        raise SystemExit("AstrBot Plugin Pages root is not pages/")
+    if '_PLUGIN_PAGE_ENTRY_FILE_NAME = "index.html"' not in route_source:
+        raise SystemExit("AstrBot Plugin Pages entry file is not index.html")
+    if "/api/plugin/page/bridge-sdk.js" not in route_source:
+        raise SystemExit("AstrBot Plugin Pages bridge injection contract changed")
+
+    view_source = page_view.read_text(encoding="utf-8")
+    expected = "`/api/plug/${encodeURIComponent(pluginName.value)}/${normalized}`"
+    if expected not in view_source:
         raise SystemExit("Dashboard no longer prefixes bridge requests with plugin name")
 
     if "/api/plug/<path:subpath>" not in server.read_text(encoding="utf-8"):
         raise SystemExit("AstrBot dashboard /api/plug route is missing")
-    if "def register_web_api(" not in context.read_text(encoding="utf-8"):
-        raise SystemExit("AstrBot star context register_web_api is missing")
 
 
 def _check_page_assets() -> None:

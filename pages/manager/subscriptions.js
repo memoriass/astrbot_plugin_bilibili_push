@@ -6,6 +6,17 @@ import {
   icon,
   placeholderFace,
 } from "./utils.js?v=manager-multitype-ai";
+import {
+  refreshTargetDetail,
+  renderTargetDetail,
+  targetBindingFields,
+  targetIdFromForm,
+  targetShortLabel,
+} from "./target_binding.js?v=manager-target-row";
+import {
+  bindIdentityLookup,
+  createIdentityFields,
+} from "./subscription_identity.js?v=manager-target-row";
 
 const NO_FACE = placeholderFace("UP");
 const CATEGORY_OPTIONS = {
@@ -25,7 +36,7 @@ const CATEGORY_OPTIONS = {
 };
 const PAGE_SIZE = 12;
 
-export function renderSubscriptionCards(panel, subscriptions, filters, actions, editor, deleteConfirm, pagination = {}) {
+export function renderSubscriptionCards(panel, subscriptions, targets, filters, actions, editor, deleteConfirm, pagination = {}) {
   const filtered = filterSubscriptions(subscriptions, filters);
   const cardItems = groupSubscriptionCards(filtered);
   const enabledCount = filtered.filter((sub) => sub.enabled).length;
@@ -46,11 +57,11 @@ export function renderSubscriptionCards(panel, subscriptions, filters, actions, 
       </div>
     </section>
     <section class="subscription-card-grid">
-      ${pageItems.length ? pageItems.map(subscriptionCard).join("") : emptyState("没有匹配的订阅")}
+      ${pageItems.length ? pageItems.map((sub) => subscriptionCard(sub, targets)).join("") : emptyState("没有匹配的订阅")}
     </section>
     ${paginationBar(page, totalPages, filtered.length)}
-    ${editor ? `<div class="manager-modal-backdrop">${editorForm(editor)}</div>` : ""}
-    ${deleteConfirm ? deleteModal(deleteConfirm.item || deleteConfirm) : ""}
+    ${editor ? `<div class="manager-modal-backdrop">${editorForm(editor, targets)}</div>` : ""}
+    ${deleteConfirm ? deleteModal(deleteConfirm.item || deleteConfirm, targets) : ""}
   `;
 
   panel.querySelector("[data-create-subscription]").addEventListener("click", actions.onCreate);
@@ -76,6 +87,11 @@ export function renderSubscriptionCards(panel, subscriptions, filters, actions, 
         updatePreviewBadges(form);
       });
     });
+    form.querySelectorAll("[name='target_platform'], [name='target_message_type'], [name='target_session_id']").forEach((input) => {
+      input.addEventListener("change", () => refreshTargetDetail(form, targets));
+      input.addEventListener("input", () => refreshTargetDetail(form, targets));
+    });
+    bindIdentityLookup(form, actions.onLookupUser);
   }
 }
 
@@ -135,7 +151,7 @@ function groupSubscriptionCards(subscriptions) {
   return Array.from(groups.values());
 }
 
-function subscriptionCard(sub) {
+function subscriptionCard(sub, targets) {
   const subTypes = uniqueTypes(sub.sub_types || [sub.sub_type || "dynamic"]);
   const primaryType = primarySubType(subTypes);
   return `
@@ -157,6 +173,7 @@ function subscriptionCard(sub) {
         </div>
         <div class="subscription-media-overlay">
           <h2>${escapeHtml(sub.username || "未命名 UP 主")}</h2>
+          <p>${escapeHtml(targetShortLabel(sub.target_id, targets))}</p>
           <p>UID: ${escapeHtml(sub.uid || "-")}</p>
         </div>
       </div>
@@ -164,7 +181,7 @@ function subscriptionCard(sub) {
   `;
 }
 
-function editorForm(editor) {
+function editorForm(editor, targets = []) {
   const item = editor.item || {};
   const isCreate = editor.mode === "create";
   const subTypes = uniqueTypes(item.sub_types || [item.sub_type || "dynamic"]);
@@ -175,7 +192,7 @@ function editorForm(editor) {
       <input type="hidden" name="original_uid" value="${escapeAttribute(item.original_uid || item.uid || "")}" />
       <input type="hidden" name="original_sub_type" value="${escapeAttribute(item.original_sub_type || item.sub_type || "")}" />
       <input type="hidden" name="original_target_id" value="${escapeAttribute(item.original_target_id || item.target_id || "")}" />
-      <input type="hidden" name="target_id" value="${escapeAttribute(item.target_id || "")}" />
+      ${isCreate ? "" : `<input type="hidden" name="target_id" value="${escapeAttribute(item.target_id || "")}" />`}
       ${isCreate ? "" : `<input type="hidden" name="uid" value="${escapeAttribute(item.uid || "")}" />`}
       ${isCreate ? "" : `<input type="hidden" name="username" value="${escapeAttribute(item.username || "")}" />`}
       <div class="editor-heading">
@@ -186,7 +203,7 @@ function editorForm(editor) {
         <button class="ghost-button" type="button" data-cancel-subscription="1">取消</button>
       </div>
       <div class="subscription-editor-layout">
-        ${editorPreview(item, editor.mode, subTypes)}
+        ${editorPreview(item, editor.mode, subTypes, targets)}
         <div class="subscription-editor-fields">
           ${isCreate ? createIdentityFields(item) : ""}
           <section class="type-panel">
@@ -222,15 +239,6 @@ function editorForm(editor) {
   `;
 }
 
-function createIdentityFields(item) {
-  return `
-    <div class="editor-grid">
-      ${field("UID", "uid", item.uid || "", "text", true)}
-      ${field("UP 主", "username", item.username || "", "text", false)}
-    </div>
-  `;
-}
-
 function typeControls(values) {
   const selected = new Set(values || ["dynamic"]);
   return `
@@ -250,25 +258,30 @@ function typeChip(value, label, selected) {
   `;
 }
 
-function editorPreview(item, mode, subTypes) {
+function editorPreview(item, mode, subTypes, targets) {
+  const isCreate = mode === "create";
   return `
-    <div class="subscription-editor-preview">
-      <img src="${escapeAttribute(item.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
-      <div class="subscription-card-badges">
-        ${mediaBadges(subTypes)}
+    <aside class="subscription-editor-side">
+      <div class="subscription-editor-preview">
+        <img data-preview-face="1" src="${escapeAttribute(item.face || NO_FACE)}" alt="" onerror="this.src='${NO_FACE}'" />
+        <div class="subscription-card-badges">
+          ${mediaBadges(subTypes)}
+        </div>
+        <span class="editor-preview-action">${mode === "edit" ? "EDIT" : "ADD"}</span>
+        <div class="subscription-media-overlay">
+          <h2 data-preview-username="1">${escapeHtml(item.username || "待选择 UP 主")}</h2>
+          <p data-preview-uid="1">UID: ${escapeHtml(item.uid || "-")}</p>
+        </div>
       </div>
-      <span class="editor-preview-action">${mode === "edit" ? "EDIT" : "ADD"}</span>
-      <div class="subscription-media-overlay">
-        <h2>${escapeHtml(item.username || "待选择 UP 主")}</h2>
-        <p>UID: ${escapeHtml(item.uid || "-")}</p>
-      </div>
-    </div>
+      ${isCreate ? targetBindingFields(item, targets) : renderTargetDetail(item.target_id || "", targets)}
+    </aside>
   `;
 }
 
-function deleteModal(sub) {
+function deleteModal(sub, targets) {
   const subTypes = uniqueTypes(sub.sub_types || [sub.sub_type || "dynamic"]);
   const primaryType = primarySubType(subTypes);
+  const targetText = targetShortLabel(sub.target_id, targets);
   return `
     <div class="manager-modal-backdrop">
       <section class="manager-modal confirm-modal" role="dialog" aria-modal="true" aria-label="删除订阅">
@@ -287,7 +300,7 @@ function deleteModal(sub) {
           <div>
             <h2>删除订阅</h2>
             <p>确认删除 ${escapeHtml(sub.username || sub.uid || "未命名 UP 主")} 的 ${escapeHtml(typeListLabel(subTypes))} 订阅？</p>
-            <p class="modal-muted">会话: ${escapeHtml(sub.target_id || "-")}</p>
+            <p class="modal-muted">会话: ${escapeHtml(targetText || sub.target_id || "-")}</p>
           </div>
           <div class="modal-actions">
             <button class="ghost-button" type="button" data-cancel-delete="1">取消</button>
@@ -299,16 +312,6 @@ function deleteModal(sub) {
         </div>
       </section>
     </div>
-  `;
-}
-
-function field(label, name, value, type, required) {
-  return `
-    <label>
-      <span>${escapeHtml(label)}</span>
-      <input name="${escapeAttribute(name)}" type="${escapeAttribute(type)}"
-        value="${escapeAttribute(value)}" ${required ? "required" : ""} />
-    </label>
   `;
 }
 
@@ -353,8 +356,12 @@ function defaultCategories(subType) {
 function editorPayload(form) {
   const formData = new FormData(form);
   const subTypes = selectedTypes(form);
+  const mode = formData.get("mode");
+  const targetId = mode === "create"
+    ? targetIdFromForm(formData)
+    : String(formData.get("target_id") || "");
   return {
-    mode: formData.get("mode"),
+    mode,
     original_uid: formData.get("original_uid"),
     original_sub_type: formData.get("original_sub_type"),
     original_target_id: formData.get("original_target_id"),
@@ -362,7 +369,7 @@ function editorPayload(form) {
     username: formData.get("username"),
     sub_type: subTypes[0] || "dynamic",
     sub_types: subTypes,
-    target_id: formData.get("target_id"),
+    target_id: targetId,
     categories: formData.getAll(`categories_${subTypes[0] || "dynamic"}`),
     categories_by_type: categoriesByType(form),
     tags: formData.get("tags"),
