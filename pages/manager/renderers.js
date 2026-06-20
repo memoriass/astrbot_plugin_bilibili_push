@@ -6,7 +6,7 @@ import {
 } from "./utils.js?v=manager-multitype-ai";
 import { renderAccountManager } from "./accounts.js?v=manager-account-qr";
 import { pendingCandidateText, pendingSummary, pendingTitle } from "./pending_text.js?v=manager-multitype-ai";
-import { renderSubscriptionCards } from "./subscriptions.js?v=manager-target-row";
+import { renderSubscriptionCards } from "./subscriptions.js?v=manager-target-offset";
 
 export function renderMetrics(container, diagnostics) {
   const items = [

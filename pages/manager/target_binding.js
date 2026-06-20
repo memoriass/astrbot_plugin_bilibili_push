@@ -22,9 +22,9 @@ export function targetDetailRows(targetId, targets = []) {
   const parsed = parseTargetId(targetId);
   const rowTarget = targets.find((target) => target.target_id === targetId);
   return [
-    ["绑定实例", parsed.platform || rowTarget?.channel || "-"],
-    ["目标类型", KIND_LABELS[parsed.kind] || parsed.kind || "-"],
-    ["会话号码", parsed.id ? escapeSessionId(parsed) : "-"],
+    ["实例", parsed.platform || rowTarget?.channel || "-"],
+    ["类型", KIND_LABELS[parsed.kind] || parsed.kind || "-"],
+    ["号码", parsed.id ? escapeSessionId(parsed) : "-"],
   ];
 }
 
@@ -74,6 +74,9 @@ export function targetIdFromForm(formData) {
 export function renderTargetDetail(targetId, targets = []) {
   return `
     <section class="target-detail-panel" data-target-detail="1">
+      <div class="target-detail-title">
+        <span>推送目标</span>
+      </div>
       <dl>
         ${targetDetailRows(targetId, targets).map(([label, value]) => `
           <div>

@@ -1,4 +1,4 @@
-import { createLocalBridge } from "./mock_bridge.js?v=manager-target-row";
+import { createLocalBridge } from "./mock_bridge.js?v=manager-target-offset";
 import { unwrap } from "./utils.js?v=manager-multitype-ai";
 
 export function getBridge() {

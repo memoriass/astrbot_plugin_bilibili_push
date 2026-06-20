@@ -12,11 +12,11 @@ import {
   targetBindingFields,
   targetIdFromForm,
   targetShortLabel,
-} from "./target_binding.js?v=manager-target-row";
+} from "./target_binding.js?v=manager-target-offset";
 import {
   bindIdentityLookup,
   createIdentityFields,
-} from "./subscription_identity.js?v=manager-target-row";
+} from "./subscription_identity.js?v=manager-target-offset";
 
 const NO_FACE = placeholderFace("UP");
 const CATEGORY_OPTIONS = {

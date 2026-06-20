@@ -76,9 +76,7 @@
   min-width: 0;
 }
 
-.identity-name-field {
-  min-width: 0;
-}
+.identity-name-field { min-width: 0; }
 
 .identity-name-row {
   display: grid;
@@ -105,10 +103,7 @@
   gap: 8px;
 }
 
-.editor-check input {
-  width: 16px;
-  height: 16px;
-}
+.editor-check input { width: 16px; height: 16px; }
 
 .subscription-card-grid {
   display: grid;
@@ -275,6 +270,34 @@
   padding: 12px;
 }
 
+.target-detail-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.target-detail-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.target-detail-title span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  min-width: 88px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #78a869, #9bc77a);
+  color: #fff;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  line-height: normal;
+}
+
 .target-detail-panel dt,
 .target-binding-panel span {
   color: var(--muted);
@@ -284,22 +307,26 @@
 
 .target-detail-panel dl {
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 2px;
+  padding-left: 14px;
 }
 
 .target-detail-panel dl > div {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
-  align-items: baseline;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
   min-width: 0;
+  padding: 0;
 }
 
 .target-detail-panel dt,
 .target-detail-panel dd {
   overflow: hidden;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -310,14 +337,11 @@
 }
 
 .target-detail-panel dd {
-  color: var(--text);
+  color: var(--muted);
   font-weight: 700;
 }
 
-.target-field {
-  display: grid;
-  gap: 5px;
-}
+.target-field { display: grid; gap: 5px; }
 
 .target-kind-switch {
   display: grid;
@@ -363,9 +387,7 @@
   gap: 8px;
 }
 
-.type-chip {
-  min-width: 0;
-}
+.type-chip { min-width: 0; }
 
 .type-chip input {
   position: absolute;

@@ -1,5 +1,5 @@
-import { createApi, getBridge } from "./api.js?v=manager-target-row";
-import { createAccountQrController } from "./account_qr.js?v=manager-target-row";
+import { createApi, getBridge } from "./api.js?v=manager-target-offset";
+import { createAccountQrController } from "./account_qr.js?v=manager-target-offset";
 import { renderOverview } from "./overview.js?v=manager-multitype-ai";
 import {
   renderAccounts,
@@ -9,8 +9,8 @@ import {
   renderSubscriptions,
   renderTabs,
   showLoading,
-} from "./renderers.js?v=manager-target-row";
-import { groupSubscriptionEditorItem } from "./subscriptions.js?v=manager-target-row";
+} from "./renderers.js?v=manager-target-offset";
+import { groupSubscriptionEditorItem } from "./subscriptions.js?v=manager-target-offset";
 
 const bridge = getBridge();
 const api = createApi(bridge);
