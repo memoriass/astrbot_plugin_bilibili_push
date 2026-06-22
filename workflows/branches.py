@@ -313,9 +313,10 @@ def _has_bili_context(raw: str, params: dict[str, Any]) -> bool:
         return True
     if "全部检查" in raw or "全部群检查" in raw:
         return True
-    if _contains_any(raw, ("插件", "账号", "别名", "解析", "命中", "歧义", "召回")) and _contains_any(
-        raw,
-        ("检查", "诊断", "统计", "状态", "情况", "健康"),
+    if (
+        _contains_any(raw, ("账号", "别名", "解析", "命中", "歧义", "召回"))
+        and _contains_any(raw, ("检查", "诊断", "统计", "状态", "情况", "健康"))
+        and _contains_any(raw, ("订阅", "直播", "动态", "推送", "UP", "up", *_BILI_TOKENS))
     ):
         return True
     if _has_subscription_context(raw):

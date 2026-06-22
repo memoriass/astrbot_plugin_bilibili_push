@@ -15,6 +15,9 @@
 ## 维护说明
 
 - 当前模板按 Playwright 渲染能力设计，使用了 flex/grid/filter 等浏览器 CSS。
+- 渲染器只等待 `DOMContentLoaded`，再用有界超时等待字体、网络空闲和图片完成；模板不要引入 Google Fonts 等生产环境可能长期阻塞的外部资源。
+- 模板字体通过 `internal_font_face_css` 和 `internal_font_family` 注入，具体字体文件维护在 `utils/resources/fonts/`。
+- 推送模板不要直接假设主图一定是原始 URL；主题渲染前可能已把直播封面或动态 hero 压缩为 data URI。
 - `sub_list.html.jinja` 是透明多卡片模板，用于订阅列表、搜索结果和登录账号状态；不要再加整页背景图。
 - workflow 专用模板只承载聊天展示提示；真实写库仍由 `workflows/` pending 确认流程控制。
 - workflow 模板不显示 task id，后台通过不可见 marker 和引用消息定位 pending task。

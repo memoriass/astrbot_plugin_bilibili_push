@@ -10,6 +10,7 @@
 - `timezone.py`: Bilibili 时间戳格式化，按 `display_timezone` 展示，默认 `Asia/Shanghai`。
 - `renderers/`: 推送卡片主题。
 - `resources/`: 内置模板和默认背景图。
+- `image_optimizer.py`: 渲染前压缩直播封面、动态 hero 和头像，降低超大主图带来的 Playwright 下载和解码负担。
 
 ## 维护说明
 

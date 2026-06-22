@@ -12,6 +12,8 @@
 - Handler 和主题渲染应依赖 `RendererPort` 或具体 theme，不直接操作 Playwright。
 - 如果未来替换渲染实现，优先在这里加适配器。
 - 当前默认输出 PNG，并启用透明背景；需要透明裁剪时优先传具体 selector。
+- HTML 渲染失败默认重试一次；重试前会回收 Playwright browser 和 driver，避免复用异常浏览器状态。
+- Playwright browser 作为进程内单例复用；每次渲染新建并关闭 context/page。browser 达到渲染次数或存活时间上限后会软回收。
 - 业务模块只关心 `render()` 输入输出，不应知道浏览器启动、页面等待或截图细节。
 - 新增渲染实现时保持 `RendererPort` 方法签名稳定，再逐步替换调用方注入。
 - 渲染失败要向调用方返回明确异常，让 handler/workflow 能给用户可读提示。

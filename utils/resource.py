@@ -4,6 +4,14 @@ import mimetypes
 from pathlib import Path
 
 
+_INTERNAL_FONT_FAMILY = "BiliPushNotoSansSC"
+_INTERNAL_FONT_BASE_URL = "https://astrbot-plugin.local/fonts"
+_INTERNAL_FONT_FILES = {
+    400: "noto-sans-sc-chinese-simplified-400-normal.woff2",
+    700: "noto-sans-sc-chinese-simplified-700-normal.woff2",
+}
+
+
 def get_random_background(folder_path: Path) -> dict:
     """随机读取背景图并转为 data URI。"""
     if not folder_path.exists():
@@ -41,6 +49,48 @@ def get_assets_path() -> Path:
     return Path(__file__).parent / "resources"
 
 
+def get_fonts_path() -> Path:
+    """获取内置字体目录。"""
+    return get_assets_path() / "fonts"
+
+
 def get_template_path() -> Path:
     """获取模板目录。"""
     return get_assets_path() / "templates"
+
+
+def get_internal_font_family() -> str:
+    return _INTERNAL_FONT_FAMILY
+
+
+def get_internal_font_routes() -> dict[str, Path]:
+    routes = {}
+    font_dir = get_fonts_path()
+    for file_name in _INTERNAL_FONT_FILES.values():
+        path = font_dir / file_name
+        if path.exists():
+            routes[f"{_INTERNAL_FONT_BASE_URL}/{file_name}"] = path
+    return routes
+
+
+def get_internal_font_face_css() -> str:
+    routes = get_internal_font_routes()
+    blocks = []
+    for weight, file_name in _INTERNAL_FONT_FILES.items():
+        url = f"{_INTERNAL_FONT_BASE_URL}/{file_name}"
+        if url not in routes:
+            continue
+        blocks.append(
+            "\n".join(
+                (
+                    "@font-face {",
+                    f"  font-family: '{_INTERNAL_FONT_FAMILY}';",
+                    "  font-style: normal;",
+                    f"  font-weight: {weight};",
+                    "  font-display: swap;",
+                    f"  src: url('{url}') format('woff2');",
+                    "}",
+                )
+            )
+        )
+    return "\n".join(blocks)

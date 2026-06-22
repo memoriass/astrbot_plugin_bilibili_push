@@ -108,6 +108,7 @@ flowchart TD
 - 显式命令如“添加b站直播”“取消b站订阅”“b站搜索”由 AstrBot command 入口处理，自然语言过滤器会跳过，避免同一消息重复进入旧命令和 `ai_dispatch`。
 - 被唤醒自然语言先进入 `ai_dispatch`，再由 `branches.py` 选择搜索、添加、删除、列表、账号或诊断分支。
 - 管理类分叉会尽量保持只读：列表拆为全部/直播/动态，查找订阅限定当前会话，健康诊断和解析诊断不写库。
+- Playwright、MCP、HTML 渲染、日志、超时等排障请求不视为 Bilibili 管理意图，避免误触 `diagnose_health`。
 - 请求型分叉目前只开放直播检查：当前群直接执行，全部群需要确认。
 - `ai_dispatch` 会先构造 `branches.py` 的确定性候选，再用 `entity_resolver.py` 对候选 query 做当前订阅、标签和历史别名召回，最后把两类证据交给当前会话大模型识别意图、UP 查询词和订阅类型。
 - LLM 不可直接写库，只能返回后续 workflow；如果 LLM 分流失败、超时、无模型或置信度低于 `ai_semantic_dispatch_confidence`，自动回退到 `branches.py` 的确定性规则。

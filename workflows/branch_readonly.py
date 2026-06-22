@@ -76,9 +76,19 @@ def _wants_account_status(raw: str) -> bool:
 
 
 def _wants_check_status(raw: str) -> bool:
-    return _contains_any(raw, ("诊断", "检查", "测试")) and _contains_any(
+    if _contains_any(
         raw,
-        ("状态", "连接", "插件", "b站", "B站"),
+        ("playwright", "Playwright", "html", "HTML", "渲染", "超时", "日志", "mcp", "MCP", "互锁"),
+    ):
+        return False
+    if _contains_any(raw, ("健康诊断", "诊断状态", "插件健康", "健康状态")):
+        return _contains_any(
+            raw,
+            ("b站", "B站", "bilibili", "Bilibili", "Bili", "插件"),
+        )
+    return _contains_any(raw, ("状态", "健康", "诊断")) and _contains_any(
+        raw,
+        ("连接", "插件", "b站", "B站", "bilibili", "Bilibili"),
     )
 
 

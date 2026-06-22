@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <style>
-@import url(https://fonts.googleapis.com/css?family=Lato:400,700);
+{{ internal_font_face_css | safe }}
 
 *, *:before, *:after {
   box-sizing: border-box;
@@ -16,11 +16,11 @@ body {
   width: fit-content;
   height: fit-content;
   display: block;
-  font-family: 'Lato', sans-serif;
+  font-family: {{ internal_font_family }}, Arial, "Microsoft YaHei", sans-serif;
 }
 
 .movie-card {
-  font: 14px/22px "Lato", Arial, sans-serif;
+  font: 14px/22px {{ internal_font_family }}, Arial, "Microsoft YaHei", sans-serif;
   color: #A9A8A3;
   width: 600px;
   background: transparent;

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
 from pathlib import Path
+import sys
+import types
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,6 +73,7 @@ def main() -> None:
     if any("帮助" in name or "help" in func.lower() for func, name in commands):
         raise SystemExit("help command residue detected")
     _check_plugin_pages()
+    _check_rendering_resources()
     _check_ai_workflow_modules()
     _check_alias_schema()
     _check_web_api_modules()
@@ -150,6 +154,30 @@ def _check_web_api_routes() -> None:
         raise SystemExit(f"missing web api endpoints: {missing}")
 
 
+def _check_rendering_resources() -> None:
+    required = [
+        ROOT / "utils" / "image_optimizer.py",
+        ROOT / "utils" / "resources" / "fonts" / "noto-sans-sc-chinese-simplified-400-normal.woff2",
+        ROOT / "utils" / "resources" / "fonts" / "noto-sans-sc-chinese-simplified-700-normal.woff2",
+        ROOT / "utils" / "resources" / "fonts" / "NotoSansSC-LICENSE.txt",
+    ]
+    missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
+    if missing:
+        raise SystemExit(f"missing rendering resources: {missing}")
+
+    renderer = (ROOT / "utils" / "html_renderer.py").read_text(encoding="utf-8")
+    resource = (ROOT / "utils" / "resource.py").read_text(encoding="utf-8")
+    movie_card = (ROOT / "utils" / "renderers" / "movie_card.py").read_text(
+        encoding="utf-8"
+    )
+    if "_RENDER_RETRIES = 1" not in renderer or "BrowserManager.recycle" not in renderer:
+        raise SystemExit("html renderer retry/recycle guard is missing")
+    if "get_internal_font_routes" not in resource or "BiliPushNotoSansSC" not in resource:
+        raise SystemExit("internal font resource wiring is missing")
+    if "optimize_template_image" not in movie_card or "DYNAMIC_HERO_POLICY" not in movie_card:
+        raise SystemExit("push card cover optimization is missing")
+
+
 def _check_web_api_modules() -> None:
     required = [
         ROOT / "webapi" / "manager_api.py",
@@ -215,6 +243,56 @@ def _check_ai_workflow_modules() -> None:
     )
     if "looks_like_standalone_pending_action" not in pending + parsing_pending:
         raise SystemExit("standalone pending continuation fallback is missing")
+    _check_natural_dispatch_boundaries()
+
+
+def _check_natural_dispatch_boundaries() -> None:
+    modules = _load_workflow_parse_modules()
+    workflow_from_natural_language = modules[
+        "parsing_natural"
+    ].workflow_from_natural_language
+    build_dispatch_branches = modules["branches"].build_dispatch_branches
+    select_dispatch_branch = modules["branches"].select_dispatch_branch
+
+    blocked = (
+        "plana检查一下本机插件使用的playwright与mcp playwright会不会互锁，本机插件html出现渲染超时",
+        "检查一下本机插件日志",
+    )
+    for text in blocked:
+        request = workflow_from_natural_language(text)
+        branches = build_dispatch_branches(text, require_context=True)
+        if request is not None or branches:
+            raise SystemExit(f"troubleshooting text entered bili dispatch: {text}")
+
+    expected_health = (
+        "b站插件健康诊断",
+        "Bilibili插件健康诊断",
+        "检查一下bilibili插件状态",
+    )
+    for text in expected_health:
+        request = workflow_from_natural_language(text)
+        branches = build_dispatch_branches(text, require_context=True)
+        selected = select_dispatch_branch(branches, {})
+        if request is None or selected is None or selected.workflow != "diagnose_health":
+            raise SystemExit(f"health diagnosis text did not select diagnose_health: {text}")
+
+
+def _load_workflow_parse_modules():
+    package = types.ModuleType("workflows")
+    package.__path__ = [str(ROOT / "workflows")]
+    sys.modules["workflows"] = package
+
+    loaded = {}
+    for name in ("utils", "models", "branch_readonly", "branches", "parsing_natural"):
+        path = ROOT / "workflows" / f"{name}.py"
+        spec = importlib.util.spec_from_file_location(f"workflows.{name}", path)
+        if spec is None or spec.loader is None:
+            raise SystemExit(f"cannot load workflow module: {name}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[f"workflows.{name}"] = module
+        spec.loader.exec_module(module)
+        loaded[name] = module
+    return loaded
 
 
 def _check_alias_schema() -> None:

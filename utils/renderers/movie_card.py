@@ -1,5 +1,13 @@
+from dataclasses import replace
+
 from .base import Theme
 from ...core.types import Post
+from ...utils.image_optimizer import (
+    AVATAR_POLICY,
+    DYNAMIC_HERO_POLICY,
+    LIVE_COVER_POLICY,
+    optimize_template_image,
+)
 from ...utils.timezone import format_bilibili_time
 import astrbot.api.message_components as Comp
 
@@ -27,9 +35,49 @@ class MovieCardTheme(Theme):
         elif post.repost and post.repost.images and len(post.repost.images) > 0:
             cover = post.repost.images[0]
 
+        template_post, cover = await self._prepare_template_images(post, cover)
         img_bytes = await self.renderer.render(
             self.template_name,
-            {"post": post, "date_str": date_str, "cover": cover},
+            {"post": template_post, "date_str": date_str, "cover": cover},
             selector=".movie-card",
         )
         return [Comp.Image.fromBytes(img_bytes)]
+
+    async def _prepare_template_images(self, post: Post, cover):
+        is_dynamic_template = self.template_name == "dynamic_movie_card.html.jinja"
+        cover_policy = DYNAMIC_HERO_POLICY if is_dynamic_template else LIVE_COVER_POLICY
+        original_cover = _original_cover(post)
+        if cover:
+            cover = await optimize_template_image(cover, cover_policy, label="cover")
+        return await _clone_post_for_template(post, original_cover, cover), cover
+
+
+def _original_cover(post: Post):
+    if post.images and len(post.images) > 0:
+        return post.images[0]
+    if post.repost and post.repost.images and len(post.repost.images) > 0:
+        return post.repost.images[0]
+    return ""
+
+
+async def _clone_post_for_template(
+    post: Post | None,
+    original_cover,
+    optimized_cover,
+) -> Post | None:
+    if post is None:
+        return None
+    avatar = await optimize_template_image(post.avatar, AVATAR_POLICY, label="avatar")
+    images = _replace_first_image(list(post.images or []), original_cover, optimized_cover)
+    repost = await _clone_post_for_template(post.repost, original_cover, optimized_cover)
+    return replace(post, avatar=avatar, images=images, repost=repost)
+
+
+def _replace_first_image(images: list, original_cover, optimized_cover) -> list:
+    if not original_cover or not optimized_cover:
+        return images
+    for index, image in enumerate(images):
+        if image == original_cover:
+            images[index] = optimized_cover
+            break
+    return images

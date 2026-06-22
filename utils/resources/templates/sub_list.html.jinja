@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        {{ internal_font_face_css | safe }}
+
         * {
             box-sizing: border-box;
         }
@@ -14,7 +16,7 @@
             width: fit-content;
             height: fit-content;
             background: transparent;
-            font-family: "Segoe UI", Arial, sans-serif;
+            font-family: {{ internal_font_family }}, "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
         }
 
         .card-board {

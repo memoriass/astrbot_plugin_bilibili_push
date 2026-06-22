@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        {{ internal_font_face_css | safe }}
+
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: {{ internal_font_family }}, 'Segoe UI', Roboto, Helvetica, Arial, "Microsoft YaHei", sans-serif;
             margin: 0;
             padding: 20px;
             background-color: transparent;
