@@ -13,8 +13,6 @@ def build_readonly_branches(branch_cls, raw: str, params: dict[str, Any], query:
         branches.append(_live_check_branch(branch_cls, raw))
     if _wants_resolver_status(raw):
         branches.append(branch_cls("diagnose_resolver", "解析诊断", "diagnose_resolver", confidence=0.95, reason="用户询问 UP 解析、别名或召回统计"))
-    elif _wants_check_status(raw):
-        branches.append(branch_cls("diagnose_health", "健康诊断", "diagnose_health", confidence=0.93, reason="用户要求检查插件健康状态"))
     if _wants_find_subscription(raw):
         branches.append(branch_cls(
             "find_subscription",
@@ -73,23 +71,6 @@ def _live_check_branch(branch_cls, raw: str):
 
 def _wants_account_status(raw: str) -> bool:
     return _contains_any(raw, ("账号", "登录")) and _contains_any(raw, ("状态", "情况", "可用"))
-
-
-def _wants_check_status(raw: str) -> bool:
-    if _contains_any(
-        raw,
-        ("playwright", "Playwright", "html", "HTML", "渲染", "超时", "日志", "mcp", "MCP", "互锁"),
-    ):
-        return False
-    if _contains_any(raw, ("健康诊断", "诊断状态", "插件健康", "健康状态")):
-        return _contains_any(
-            raw,
-            ("b站", "B站", "bilibili", "Bilibili", "Bili", "插件"),
-        )
-    return _contains_any(raw, ("状态", "健康", "诊断")) and _contains_any(
-        raw,
-        ("连接", "插件", "b站", "B站", "bilibili", "Bilibili"),
-    )
 
 
 def _wants_resolver_status(raw: str) -> bool:

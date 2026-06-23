@@ -25,7 +25,8 @@ flowchart TD
     Select --> Add["add_subscription"]
     Select --> Remove["remove_subscription"]
     Select --> Lists["list_* / find_subscription"]
-    Select --> Diagnose["diagnose_* / account_status"]
+    Select --> Diagnose["account_status / diagnose_resolver"]
+    Direct --> InternalDiag["diagnose_health / check_status"]
     Select --> LiveCheck["check_live_*"]
 
     Direct --> Search
@@ -33,6 +34,7 @@ flowchart TD
     Direct --> Remove
     Direct --> Lists
     Direct --> Diagnose
+    Direct --> InternalDiag
     Direct --> LiveCheck
     Direct --> Pending["continue_pending"]
 
@@ -47,7 +49,8 @@ flowchart TD
     RemoveAI --> RemoveConfirm["确认删除卡"]
 
     Lists --> ListCard["订阅列表卡"]
-    Diagnose --> Text["诊断文本"]
+    Diagnose --> Text["只读诊断文本"]
+    InternalDiag --> InternalText["内部调试文本"]
     LiveCheck --> CurrentLive["当前群直接检查"]
     LiveCheck --> AllLiveConfirm["全部群检查确认卡"]
 
@@ -74,7 +77,7 @@ flowchart TD
 | `list_dynamic_subscriptions` | `list_dynamic_subscriptions` | 只读 | 否 | 否 | 查看当前会话动态订阅 |
 | `find_subscription` | `find_subscription` | 只读 | 否 | 否 | 在当前会话订阅和历史别名中查找 |
 | `account_status` | `account_status` | 只读 | 否 | 否 | 查看账号池状态 |
-| `diagnose_health` | `diagnose_health` | 只读 | 否 | 否 | 检查数据库、账号池、pending、调度器和渲染器 |
+| `diagnose_health` | `diagnose_health` | 内部调试 | 否 | 否 | 检查数据库、账号池、pending、调度器和渲染器，不承接自然语言入口 |
 | `diagnose_resolver` | `diagnose_resolver` | 只读 | 否 | 否 | 查看别名命中、搜索回退和歧义统计 |
 | `check_live_current_group` | `check_live_current_group` | 请求型 | 否 | 否 | 手动检查当前会话直播订阅 |
 | `check_live_all_groups` | `check_live_all_groups` | 请求型 | 否 | 是 | 需要确认后检查全部群直播订阅 |
@@ -132,15 +135,15 @@ flowchart TD
     Dispatch --> ListDynamic["list_dynamic_subscriptions"]
     Dispatch --> Find["find_subscription"]
     Dispatch --> Account["account_status"]
-    Dispatch --> Health["diagnose_health"]
     Dispatch --> Resolver["diagnose_resolver"]
+    Direct["显式 workflow / 内部调试"] --> Health["diagnose_health / check_status"]
 
     ListAll --> SubCard["订阅卡"]
     ListLive --> SubCard
     ListDynamic --> SubCard
     Find --> SubCard
     Account --> AccountCard["账号卡"]
-    Health --> HealthText["健康诊断文本"]
+    Health --> HealthText["内部调试文本"]
     Resolver --> ResolverText["解析诊断文本"]
 ```
 
@@ -164,7 +167,7 @@ flowchart TD
 - `add_subscription` 对明确 UID 和高置信候选仍进入确认卡；低置信候选卡被用户明确引用并回复序号时，序号即视为最终确认并写库。
 - `remove_subscription` 只在当前会话订阅内定位目标，确认删除后才删除。
 - `check_live_all_groups` 会触发全局直播请求，必须先生成确认任务。
-- `search_up`、`list_*`、`find_subscription`、`account_status`、`diagnose_*` 都是只读，不需要确认。
+- `search_up`、`list_*`、`find_subscription`、`account_status`、`diagnose_resolver` 都是用户侧只读，不需要确认；`diagnose_health` 和 `check_status` 仅供内部或调试显式 workflow 使用。
 - `continue_pending` 只接受引用消息、唯一 pending 兜底或明确短词，避免普通聊天误触；只有引用添加候选卡的序号选择可跳过确认。
 - 跨会话共享别名只在至少两个会话确认同一 UID 且无竞争 UID 时自动推进；有冲突时降级到搜索或候选卡。
 

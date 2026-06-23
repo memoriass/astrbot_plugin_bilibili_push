@@ -13,7 +13,8 @@ flowchart TD
     Select --> Add["add_subscription\n添加前置"]
     Select --> Remove["remove_subscription\n删除前置"]
     Select --> Lists["list_* / find_subscription\n只读管理"]
-    Select --> Diagnose["diagnose_* / account_status\n只读诊断"]
+    Select --> Diagnose["account_status / diagnose_resolver\n只读诊断"]
+    Direct --> InternalDiag["diagnose_health / check_status\n内部调试"]
     Select --> LiveCheck["check_live_*\n请求型检查"]
 
     Direct --> Search
@@ -21,6 +22,7 @@ flowchart TD
     Direct --> Remove
     Direct --> Lists
     Direct --> Diagnose
+    Direct --> InternalDiag
     Direct --> LiveCheck
     Direct --> Pending["continue_pending\n引用续跑"]
 
@@ -40,7 +42,8 @@ flowchart TD
     RemoveAI --> RemoveCandidates["删除候选卡"]
 
     Lists --> ListCard["订阅列表卡"]
-    Diagnose --> Text["诊断文本"]
+    Diagnose --> Text["只读诊断文本"]
+    InternalDiag --> InternalText["内部调试文本"]
     LiveCheck --> CurrentLive["当前群直接检查"]
     LiveCheck --> AllLiveConfirm["全部群检查确认卡"]
 
@@ -58,7 +61,7 @@ flowchart TD
     classDef ai fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     classDef confirm fill:#fff8e1,stroke:#f9a825,color:#5d4037
     classDef danger fill:#ffebee,stroke:#c62828,color:#7f0000
-    class Search,Lists,Diagnose,ListCard,Text readonly
+    class Search,Lists,Diagnose,InternalDiag,ListCard,Text,InternalText readonly
     class Dispatch,Semantic,SearchAI,CandidateAI,RemoveAI,SharedAlias ai
     class AddConfirm,RemoveConfirm,AllLiveConfirm,Pending confirm
     class Write danger

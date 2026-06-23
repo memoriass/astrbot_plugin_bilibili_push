@@ -16,14 +16,16 @@
         <mxCell id="add" value="add_subscription&#xa;添加前置" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;fontColor=#5d4037;" vertex="1" parent="1"><mxGeometry x="370" y="280" width="180" height="70" as="geometry"/></mxCell>
         <mxCell id="remove" value="remove_subscription&#xa;删除前置" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;fontColor=#5d4037;" vertex="1" parent="1"><mxGeometry x="620" y="280" width="190" height="70" as="geometry"/></mxCell>
         <mxCell id="lists" value="list_* / find_subscription&#xa;只读管理" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontColor=#1b5e20;" vertex="1" parent="1"><mxGeometry x="880" y="280" width="210" height="70" as="geometry"/></mxCell>
-        <mxCell id="diagnose" value="diagnose_* / account_status&#xa;只读诊断" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontColor=#1b5e20;" vertex="1" parent="1"><mxGeometry x="1160" y="280" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="diagnose" value="account_status / diagnose_resolver&#xa;只读诊断" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontColor=#1b5e20;" vertex="1" parent="1"><mxGeometry x="1160" y="280" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="internaldiag" value="diagnose_health / check_status&#xa;内部调试" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontColor=#212121;" vertex="1" parent="1"><mxGeometry x="1160" y="560" width="220" height="70" as="geometry"/></mxCell>
         <mxCell id="livecheck" value="check_live_*&#xa;请求型检查" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontColor=#4a148c;" vertex="1" parent="1"><mxGeometry x="1450" y="280" width="190" height="70" as="geometry"/></mxCell>
         <mxCell id="candidate" value="候选卡 / AI 推荐" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontColor=#0d47a1;" vertex="1" parent="1"><mxGeometry x="120" y="460" width="190" height="60" as="geometry"/></mxCell>
         <mxCell id="sharedalias" value="跨会话共享证据&#xa;多群一致且无冲突" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontColor=#0d47a1;" vertex="1" parent="1"><mxGeometry x="370" y="380" width="200" height="60" as="geometry"/></mxCell>
         <mxCell id="addconfirm" value="确认订阅卡" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;fontColor=#5d4037;" vertex="1" parent="1"><mxGeometry x="400" y="460" width="160" height="60" as="geometry"/></mxCell>
         <mxCell id="removeconfirm" value="确认删除卡" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;fontColor=#5d4037;" vertex="1" parent="1"><mxGeometry x="650" y="460" width="160" height="60" as="geometry"/></mxCell>
         <mxCell id="listcard" value="订阅列表卡 / 账号卡" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontColor=#1b5e20;" vertex="1" parent="1"><mxGeometry x="910" y="460" width="190" height="60" as="geometry"/></mxCell>
-        <mxCell id="diagtext" value="诊断文本" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontColor=#1b5e20;" vertex="1" parent="1"><mxGeometry x="1190" y="460" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="diagtext" value="只读诊断文本" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontColor=#1b5e20;" vertex="1" parent="1"><mxGeometry x="1190" y="460" width="160" height="60" as="geometry"/></mxCell>
+        <mxCell id="internaltext" value="内部调试文本" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontColor=#212121;" vertex="1" parent="1"><mxGeometry x="1190" y="650" width="160" height="60" as="geometry"/></mxCell>
         <mxCell id="currentlive" value="当前群直接检查" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontColor=#1b5e20;" vertex="1" parent="1"><mxGeometry x="1400" y="440" width="180" height="60" as="geometry"/></mxCell>
         <mxCell id="allconfirm" value="全部群检查确认卡" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;fontColor=#5d4037;" vertex="1" parent="1"><mxGeometry x="1400" y="530" width="190" height="60" as="geometry"/></mxCell>
         <mxCell id="pending" value="continue_pending&#xa;引用续跑" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;fontColor=#5d4037;" vertex="1" parent="1"><mxGeometry x="660" y="690" width="190" height="70" as="geometry"/></mxCell>
@@ -58,6 +60,8 @@
         <mxCell id="e27" edge="1" parent="1" source="pending" target="cancel" style="endArrow=block;html=1;"><mxGeometry relative="1" as="geometry"/></mxCell>
         <mxCell id="e28" edge="1" parent="1" source="add" target="sharedalias" style="endArrow=block;html=1;"><mxGeometry relative="1" as="geometry"/></mxCell>
         <mxCell id="e29" edge="1" parent="1" source="sharedalias" target="addconfirm" style="endArrow=block;html=1;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e30" edge="1" parent="1" source="direct" target="internaldiag" style="endArrow=block;html=1;"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e31" edge="1" parent="1" source="internaldiag" target="internaltext" style="endArrow=block;html=1;"><mxGeometry relative="1" as="geometry"/></mxCell>
       </root>
     </mxGraphModel>
   </diagram>

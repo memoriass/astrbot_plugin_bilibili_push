@@ -41,11 +41,11 @@
 - `list_dynamic_subscriptions`: 列出当前会话动态订阅。
 - `find_subscription`: 在当前会话订阅、标签和历史别名中查找 UP。
 - `account_status`: 查看账号池状态。
-- `diagnose_health`: 输出数据库、账号池、pending、调度器和渲染器健康诊断。
+- `diagnose_health`: 输出数据库、账号池、pending、调度器和渲染器健康诊断，仅供内部或调试显式 workflow 使用。
 - `diagnose_resolver`: 输出 UP 解析、别名命中、搜索回退和歧义统计。
 - `check_live_current_group`: 手动检查当前会话直播订阅。
 - `check_live_all_groups`: 生成确认任务，用户确认后检查全部群直播订阅。
-- `check_status`: 输出插件诊断文本。
+- `check_status`: 输出插件诊断文本，仅供内部或调试显式 workflow 使用。
 - `continue_pending`: 处理引用卡片后的序号、确认或取消；添加订阅候选卡被明确引用并回复序号时，序号即视为最终确认。
 
 ## 工作图谱
@@ -70,7 +70,7 @@ flowchart TD
     Runner --> Search["search_up"]
     Runner --> Add["add_subscription"]
     Runner --> Remove["remove_subscription"]
-    Runner --> Manage["list/find/account/diagnose"]
+    Runner --> Manage["list/find/account/resolver"]
     Runner --> LiveCheck["check_live_current/all"]
     Search --> CandidateCard["候选卡 + pending marker"]
     Add --> CandidateAI["candidate_analysis.py 搜索候选分析"]
@@ -106,9 +106,9 @@ flowchart TD
 
 - `BiliNaturalWorkflowFilter` 只处理已唤醒消息，且文本必须能被 `workflow_from_natural_language()` 解析为 Bilibili workflow。
 - 显式命令如“添加b站直播”“取消b站订阅”“b站搜索”由 AstrBot command 入口处理，自然语言过滤器会跳过，避免同一消息重复进入旧命令和 `ai_dispatch`。
-- 被唤醒自然语言先进入 `ai_dispatch`，再由 `branches.py` 选择搜索、添加、删除、列表、账号或诊断分支。
-- 管理类分叉会尽量保持只读：列表拆为全部/直播/动态，查找订阅限定当前会话，健康诊断和解析诊断不写库。
-- Playwright、MCP、HTML 渲染、日志、超时等排障请求不视为 Bilibili 管理意图，避免误触 `diagnose_health`。
+- 被唤醒自然语言先进入 `ai_dispatch`，再由 `branches.py` 选择搜索、添加、删除、列表、账号或解析诊断分支。
+- 管理类分叉会尽量保持只读：列表拆为全部/直播/动态，查找订阅限定当前会话，解析诊断不写库。
+- `diagnose_health` 和 `check_status` 不承接外部自然语言入口，只保留给内部或调试显式 workflow；Playwright、MCP、HTML 渲染、日志、超时等排障请求不视为 Bilibili 管理意图。
 - 请求型分叉目前只开放直播检查：当前群直接执行，全部群需要确认。
 - `ai_dispatch` 会先构造 `branches.py` 的确定性候选，再用 `entity_resolver.py` 对候选 query 做当前订阅、标签和历史别名召回，最后把两类证据交给当前会话大模型识别意图、UP 查询词和订阅类型。
 - LLM 不可直接写库，只能返回后续 workflow；如果 LLM 分流失败、超时、无模型或置信度低于 `ai_semantic_dispatch_confidence`，自动回退到 `branches.py` 的确定性规则。
@@ -143,8 +143,8 @@ UP 主解析采用确定性分层，不默认依赖 embedding 或向量库：
 - `list_subscriptions`: 使用 `sub_list.html.jinja`。
 - `account_status`: 使用 `sub_list.html.jinja`。
 - 添加/删除成功: 使用 `sub_add.html.jinja`。
-- `check_status` 保持纯文本，避免诊断信息被卡片截断。
-- `diagnose_health` 和 `diagnose_resolver` 保持纯文本，便于复制排查。
+- `check_status` 保持纯文本，仅供内部或调试使用。
+- `diagnose_health` 仅供内部或调试使用；`diagnose_resolver` 保持纯文本，便于复制排查。
 - `check_live_current_group` 保持纯文本结果；`check_live_all_groups` 使用确认卡。
 - LLM tool 返回给模型的是文本；`handlers/ai_handler.py` 默认不主动发送卡片，避免模型快速调用多个工具时刷屏。只有参数显式包含 `present`、`foreground` 或 `show_card` 时，工具结果才会渲染到聊天侧。
 - 直接命令和被唤醒的自然语言 workflow 不经过 `AiToolHandler` 的后台策略，仍会按 `WorkflowResult.cards` 展示用户需要操作的卡片。直接添加命令的搜索候选同样允许高置信进入确认卡，但不能直接写库。
@@ -160,7 +160,7 @@ UP 主解析采用确定性分层，不默认依赖 embedding 或向量库：
 - pending 任务必须包含可恢复 payload，不能依赖一次性事件状态。
 - task id 不直接展示给用户；文本兜底可用不可见 marker 解析真实 task id，卡片路径优先依赖当前会话 pending 兜底。
 - 实体解析层必须保持可解释：当前订阅和 SQLite 别名优先，Bili 搜索兜底；如后续接向量检索，只能作为候选增强，不得直接写库。
-- `check_status` 会输出 resolver 摘要；如果命中率异常下降，优先检查别名学习、当前会话 target 和 Bili 搜索返回。
+- `check_status` 会输出 resolver 摘要，但只用于内部或调试；如果命中率异常下降，优先检查别名学习、当前会话 target 和 Bili 搜索返回。
 
 ## 前台展示策略
 

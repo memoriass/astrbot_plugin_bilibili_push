@@ -14,6 +14,12 @@ from .runtime import event_origin
 from .utils import first_text, normalize_sub_type, normalize_workflow
 
 
+_PUBLIC_SEMANTIC_WORKFLOWS = ALLOWED_NEXT_WORKFLOWS - {
+    "diagnose_health",
+    "check_status",
+}
+
+
 @dataclass(frozen=True, slots=True)
 class SemanticDispatchConfig:
     enabled: bool
@@ -103,7 +109,7 @@ def _build_prompt(
         {
             "user_text": str(text or ""),
             "params": params or {},
-            "allowed_workflows": sorted(ALLOWED_NEXT_WORKFLOWS),
+            "allowed_workflows": sorted(_PUBLIC_SEMANTIC_WORKFLOWS),
             "fallback_branches": [_branch_hint(branch) for branch in branches[:5]],
             "semantic_recall": recall_candidates,
             "output_schema": {
@@ -227,7 +233,7 @@ def _branch_from_payload(
     workflow = normalize_workflow(str(payload.get("workflow") or ""))
     if workflow in {"", "none", "ai_dispatch"}:
         return None
-    if workflow not in ALLOWED_NEXT_WORKFLOWS:
+    if workflow not in _PUBLIC_SEMANTIC_WORKFLOWS:
         return None
 
     fallback = _fallback_branch(workflow, branches)
@@ -295,7 +301,7 @@ _SYSTEM_PROMPT = """你是 Bilibili 订阅插件的前置语义分流器。
 只输出一个 JSON 对象，不要输出 Markdown，不要解释。
 
 任务：
-1. 判断用户是否要操作 Bilibili/UP 主/直播/动态/订阅/推送/账号/插件状态。
+1. 判断用户是否要操作 Bilibili/UP 主/直播/动态/订阅/推送/账号。
 2. 综合 fallback_branches 和 semantic_recall，在允许的 workflow 中选择一个。
 3. 抽取 UP 名称、简称、网络代称或 UID 到 query；如果 semantic_recall 给出可信候选，可沿用用户称呼或该候选 UID，但不要编造 UID。
 4. 判断订阅类型：直播 live，动态 dynamic，同时需要两者 both。
@@ -311,5 +317,5 @@ _SYSTEM_PROMPT = """你是 Bilibili 订阅插件的前置语义分流器。
 - “删除/取消/退订 noworld 直播订阅”是 remove_subscription，sub_type=live。
 - “查看订阅/有哪些订阅”是 list_subscriptions。
 - “账号状态/登录状态”是 account_status。
-- “插件状态/检查状态/诊断”是 check_status。
+- “插件状态/检查状态/健康诊断”不是面向聊天侧的自然语言入口，应返回 workflow=none；内部显式 workflow 另行处理。
 """

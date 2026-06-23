@@ -252,29 +252,19 @@ def _check_natural_dispatch_boundaries() -> None:
         "parsing_natural"
     ].workflow_from_natural_language
     build_dispatch_branches = modules["branches"].build_dispatch_branches
-    select_dispatch_branch = modules["branches"].select_dispatch_branch
 
     blocked = (
         "plana检查一下本机插件使用的playwright与mcp playwright会不会互锁，本机插件html出现渲染超时",
         "检查一下本机插件日志",
+        "b站插件健康诊断",
+        "Bilibili插件健康诊断",
+        "检查一下bilibili插件状态",
     )
     for text in blocked:
         request = workflow_from_natural_language(text)
         branches = build_dispatch_branches(text, require_context=True)
         if request is not None or branches:
-            raise SystemExit(f"troubleshooting text entered bili dispatch: {text}")
-
-    expected_health = (
-        "b站插件健康诊断",
-        "Bilibili插件健康诊断",
-        "检查一下bilibili插件状态",
-    )
-    for text in expected_health:
-        request = workflow_from_natural_language(text)
-        branches = build_dispatch_branches(text, require_context=True)
-        selected = select_dispatch_branch(branches, {})
-        if request is None or selected is None or selected.workflow != "diagnose_health":
-            raise SystemExit(f"health diagnosis text did not select diagnose_health: {text}")
+            raise SystemExit(f"non-public text entered bili dispatch: {text}")
 
 
 def _load_workflow_parse_modules():
