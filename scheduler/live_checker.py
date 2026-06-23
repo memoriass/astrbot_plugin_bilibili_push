@@ -127,14 +127,8 @@ class LiveSubscriptionChecker:
 
         if old_status:
             posts = self.platform.compare_status(uid, old_status, new_status)
-        elif new_status.live_status == 1:
-            posts = [self.platform._gen_current_status(new_status, 1)]
-
-        if (
-            current_is_first
-            and self.push_on_startup
-            and new_status.live_status == 1
-            and not posts
+        elif new_status.live_status == 1 and (
+            not current_is_first or self.push_on_startup
         ):
             posts = [self.platform._gen_current_status(new_status, 1)]
 

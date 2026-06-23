@@ -74,6 +74,7 @@ def main() -> None:
         raise SystemExit("help command residue detected")
     _check_plugin_pages()
     _check_rendering_resources()
+    _check_runtime_guards()
     _check_ai_workflow_modules()
     _check_alias_schema()
     _check_web_api_modules()
@@ -170,12 +171,45 @@ def _check_rendering_resources() -> None:
     movie_card = (ROOT / "utils" / "renderers" / "movie_card.py").read_text(
         encoding="utf-8"
     )
+    dynamic_card = (ROOT / "utils" / "renderers" / "dynamic_card.py").read_text(
+        encoding="utf-8"
+    )
     if "_RENDER_RETRIES = 1" not in renderer or "BrowserManager.recycle" not in renderer:
         raise SystemExit("html renderer retry/recycle guard is missing")
     if "get_internal_font_routes" not in resource or "BiliPushNotoSansSC" not in resource:
         raise SystemExit("internal font resource wiring is missing")
     if "optimize_template_image" not in movie_card or "DYNAMIC_HERO_POLICY" not in movie_card:
         raise SystemExit("push card cover optimization is missing")
+    if "dynamic_card.html.jinja" in dynamic_card:
+        raise SystemExit("dynamic card theme points to a removed template")
+    if "dynamic_movie_card.html.jinja" not in dynamic_card:
+        raise SystemExit("dynamic card theme does not reuse the existing dynamic template")
+
+
+def _check_runtime_guards() -> None:
+    avatar_cache = (ROOT / "core" / "avatar_cache.py").read_text(encoding="utf-8")
+    for required in (
+        "bili_avatar_cache",
+        "FETCH_CONCURRENCY",
+        "UNUSED_RETENTION_SEC",
+        "fetch_avatar_map",
+        "async with _fetch_semaphore",
+    ):
+        if required not in avatar_cache:
+            raise SystemExit(f"avatar cache guard missing: {required}")
+
+    live_checker = (ROOT / "scheduler" / "live_checker.py").read_text(encoding="utf-8")
+    if "not current_is_first or self.push_on_startup" not in live_checker:
+        raise SystemExit("live cold-start push guard is missing")
+
+    for path in (
+        ROOT / "webapi" / "manager_overview.py",
+        ROOT / "workflows" / "cards.py",
+        ROOT / "handlers" / "subscription_list.py",
+    ):
+        source = path.read_text(encoding="utf-8")
+        if "fetch_avatar_map" not in source:
+            raise SystemExit(f"avatar cache is not used by {path.relative_to(ROOT)}")
 
 
 def _check_web_api_modules() -> None:

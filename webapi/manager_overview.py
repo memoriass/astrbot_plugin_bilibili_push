@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
+from ..core.avatar_cache import fetch_avatar_map
 from ..core.http import HttpClient
 from .manager_serializers import (
     NO_FACE,
@@ -91,27 +92,7 @@ class ManagerOverviewService:
         return subscriptions
 
     async def _fetch_face_map(self, uids: list[str]) -> dict[str, str]:
-        if not uids:
-            return {}
-        client = await HttpClient.get_client()
-
-        async def fetch_face(uid: str) -> tuple[str, str]:
-            face = NO_FACE
-            try:
-                res = await client.get(
-                    "https://api.bilibili.com/x/web-interface/card",
-                    params={"mid": uid},
-                    timeout=5,
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    if data.get("code") == 0:
-                        face = data.get("data", {}).get("card", {}).get("face") or face
-            except Exception:
-                pass
-            return uid, face
-
-        return dict(await asyncio.gather(*[fetch_face(uid) for uid in uids]))
+        return await fetch_avatar_map(self.plugin, uids)
 
     async def _fetch_live_status_map(self, subscriptions: list[dict]) -> dict[str, bool]:
         live_uids = sorted({

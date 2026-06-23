@@ -16,6 +16,7 @@
 - 直播状态缓存使用 AstrBot KV，key 形如 `live_status_{uid}`。
 - 周期检查和手动直播检查只读取 `enabled=True` 的订阅。
 - 新订阅首次动态检查只建立基线，不推送历史动态。
+- 直播冷启动首次检查在 `push_on_startup=false` 时只写入当前状态基线，不推送已经在播的直播；插件运行中新增订阅仍会在后续检查中按当前状态提醒。
 - 网络抓取失败不能更新去重基线。
 - `scheduler.py` 是统合入口，不应重新堆入具体动态/直播检查逻辑。
 - `scheduler.py` 按 `dynamic_check_interval` 和 `live_check_interval` 分别调度动态与直播，避免两类请求固定同一时刻打出。

@@ -4,11 +4,8 @@ import asyncio
 import time
 from collections.abc import Iterable
 
-from ..core.http import HttpClient
+from ..core.avatar_cache import NO_FACE, fetch_avatar_map
 from .results import WorkflowCard
-
-
-NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg"
 
 
 def candidate_list_card(
@@ -67,7 +64,7 @@ async def subscription_list_card(plugin, subscriptions: Iterable) -> WorkflowCar
             subs_map[sub.uid]["has_live"] = True
 
     face_map, live_map = await asyncio.gather(
-        _fetch_face_map(subs_map.keys()),
+        _fetch_face_map(plugin, subs_map.keys()),
         _fetch_live_status_map(plugin, subs_map.values()),
     )
     rows = []
@@ -216,29 +213,8 @@ def _account_cooling(account: dict) -> bool:
     return int(account.get("cooldown_until") or 0) > int(time.time())
 
 
-async def _fetch_face_map(uids) -> dict[str, str]:
-    uids = [str(uid) for uid in uids if uid]
-    if not uids:
-        return {}
-    client = await HttpClient.get_client()
-
-    async def fetch(uid: str) -> tuple[str, str]:
-        face = NO_FACE
-        try:
-            response = await client.get(
-                "https://api.bilibili.com/x/web-interface/card",
-                params={"mid": uid},
-                timeout=5,
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("code") == 0:
-                    face = data.get("data", {}).get("card", {}).get("face") or face
-        except Exception:
-            pass
-        return uid, face
-
-    return dict(await asyncio.gather(*[fetch(uid) for uid in uids]))
+async def _fetch_face_map(plugin, uids) -> dict[str, str]:
+    return await fetch_avatar_map(plugin, uids)
 
 
 async def _fetch_live_status_map(plugin, rows: Iterable[dict]) -> dict[str, bool]:

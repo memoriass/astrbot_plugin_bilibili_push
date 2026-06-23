@@ -6,12 +6,13 @@
 
 - `base.py`: 主题抽象基类。
 - `movie_card.py`: 直播和类视频卡片主题。
-- `dynamic_card.py`: Markdown 风格动态卡片主题，当前主流程主要使用 `dynamic_movie_card` 模板。
+- `dynamic_card.py`: 动态卡片兼容包装，复用现有 `dynamic_movie_card.html.jinja` 模板。
 
 ## 维护说明
 
 - 新主题应只负责选择模板和组织模板数据。
 - 不要在主题里做网络抓取或订阅状态判断。
+- 主题默认模板必须存在于 `utils/resources/templates/`；不要保留指向已删除模板的默认值。
 - 主题返回 AstrBot `message_components` 列表。
 - 主题输入是内部 `Post`，新增展示字段时先扩展模型和解析器，再更新主题模板数据。
 - 推送卡片会在渲染前通过 `utils/image_optimizer.py` 处理直播封面、动态 hero 和头像，避免 10MB 级主图直接进入 Playwright；正文多图不做预压缩，压缩失败回退原图 URL，超出硬上限的主图会跳过。

@@ -1,10 +1,9 @@
-import asyncio
 from pathlib import Path
 
 import astrbot.api.message_components as Comp
 from astrbot.api import logger
 
-from ..core.http import HttpClient
+from ..core.avatar_cache import NO_FACE, fetch_avatar_map
 from ..rendering import RendererPort
 
 
@@ -22,7 +21,7 @@ class SubscriptionListPresenter:
 
         yield event.plain_result("⏳ 正在获取订阅详细信息...")
         subs_map = self._build_sub_map(subs)
-        face_map = await self._fetch_face_map(subs_map.keys())
+        face_map = await self._fetch_face_map(subs_map.keys(), scheduler)
         live_status_map = await self._fetch_live_status_map(subs_map, scheduler)
         all_subs = self._compose_rows(subs_map, face_map, live_status_map)
 
@@ -57,27 +56,8 @@ class SubscriptionListPresenter:
                 subs_map[sub.uid]["has_live"] = True
         return subs_map
 
-    async def _fetch_face_map(self, uids) -> dict:
-        client = await HttpClient.get_client()
-
-        async def fetch_info(uid):
-            face = "http://i0.hdslb.com/bfs/face/member/noface.jpg"
-            try:
-                res = await client.get(
-                    "https://api.bilibili.com/x/web-interface/card",
-                    params={"mid": uid},
-                    timeout=5,
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    if data["code"] == 0:
-                        face = data["data"]["card"]["face"]
-            except Exception:
-                pass
-            return uid, face
-
-        info_results = await asyncio.gather(*[fetch_info(uid) for uid in uids])
-        return dict(info_results)
+    async def _fetch_face_map(self, uids, scheduler) -> dict:
+        return await fetch_avatar_map(getattr(scheduler, "star", None), uids)
 
     async def _fetch_live_status_map(self, subs_map: dict, scheduler) -> dict:
         live_uids = [uid for uid, sub in subs_map.items() if sub["has_live"]]
@@ -92,7 +72,7 @@ class SubscriptionListPresenter:
     def _compose_rows(self, subs_map: dict, face_map: dict, live_status_map: dict):
         all_subs = []
         for uid, info in subs_map.items():
-            info["face"] = face_map.get(str(uid), "")
+            info["face"] = face_map.get(str(uid), NO_FACE)
             info["is_live"] = live_status_map.get(str(uid), False)
             all_subs.append(info)
         return all_subs

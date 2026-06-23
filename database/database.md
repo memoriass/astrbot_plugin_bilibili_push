@@ -36,6 +36,7 @@
 - `seen_posts_{uid}`: 动态去重窗口。
 - `live_status_{uid}`: 直播状态缓存。
 - `search_cache_{keyword}`: UP 搜索缓存。
+- `bili_avatar_cache`: UP 头像缓存。订阅和管理页展示会复用该缓存；长时间未被订阅或使用的条目会在后续访问时清理。
 
 这些数据是短期状态或缓存，适合 KV；订阅、账号、会话目标和别名是长期业务数据，必须走 SQLite。
 

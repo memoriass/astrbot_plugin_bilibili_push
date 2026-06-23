@@ -11,7 +11,6 @@ from ..dynamic.bilibili import BilibiliDynamic
 from ..live.bilibili import BilibiliLive
 from ..utils.html_renderer import BrowserManager, HtmlRenderer
 from ..utils.logger import logger
-from ..utils.renderers.dynamic_card import DynamicCardTheme
 from ..utils.renderers.movie_card import MovieCardTheme
 from ..utils.resource import get_template_path
 from .dispatcher import PostDispatcher
@@ -76,7 +75,6 @@ class BilibiliScheduler:
     def _build_themes(self):
         renderer = HtmlRenderer(get_template_path())
         return {
-            "dynamic_card": DynamicCardTheme(renderer),
             "movie_card": MovieCardTheme(
                 renderer,
                 display_timezone=self.display_timezone,
