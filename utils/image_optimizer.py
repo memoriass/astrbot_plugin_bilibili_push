@@ -18,6 +18,11 @@ _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
 )
+TRANSPARENT_IMAGE_DATA_URI = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+)
+_USE_ORIGINAL = object()
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,17 +64,24 @@ async def optimize_template_image(
     policy: ImageOptimizePolicy,
     *,
     label: str = "image",
+    fallback: Any = _USE_ORIGINAL,
 ) -> Any:
     if not image:
         return image
     try:
         return await asyncio.to_thread(_optimize_template_image_sync, image, policy)
     except ImageTooLarge as exc:
-        logger.warning(f"{label} 超出内置渲染上限，跳过该图片: {exc}")
-        return ""
+        if fallback is _USE_ORIGINAL:
+            logger.warning(f"{label} 超出内置渲染上限，跳过该图片: {exc}")
+            return ""
+        logger.warning(f"{label} 超出内置渲染上限，使用降级图片: {exc}")
+        return fallback
     except Exception as exc:
-        logger.warning(f"{label} 压缩失败，使用原图: {exc}")
-        return image
+        if fallback is _USE_ORIGINAL:
+            logger.warning(f"{label} 压缩失败，使用原图: {exc}")
+            return image
+        logger.warning(f"{label} 压缩失败，使用降级图片: {exc}")
+        return fallback
 
 
 def _optimize_template_image_sync(image: Any, policy: ImageOptimizePolicy) -> str:

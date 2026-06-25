@@ -6,6 +6,7 @@ from ...utils.image_optimizer import (
     AVATAR_POLICY,
     DYNAMIC_HERO_POLICY,
     LIVE_COVER_POLICY,
+    TRANSPARENT_IMAGE_DATA_URI,
     optimize_template_image,
 )
 from ...utils.timezone import format_bilibili_time
@@ -48,7 +49,12 @@ class MovieCardTheme(Theme):
         cover_policy = DYNAMIC_HERO_POLICY if is_dynamic_template else LIVE_COVER_POLICY
         original_cover = _original_cover(post)
         if cover:
-            cover = await optimize_template_image(cover, cover_policy, label="cover")
+            cover = await optimize_template_image(
+                cover,
+                cover_policy,
+                label="cover",
+                fallback=TRANSPARENT_IMAGE_DATA_URI,
+            )
         return await _clone_post_for_template(post, original_cover, cover), cover
 
 
@@ -67,7 +73,12 @@ async def _clone_post_for_template(
 ) -> Post | None:
     if post is None:
         return None
-    avatar = await optimize_template_image(post.avatar, AVATAR_POLICY, label="avatar")
+    avatar = await optimize_template_image(
+        post.avatar,
+        AVATAR_POLICY,
+        label="avatar",
+        fallback=TRANSPARENT_IMAGE_DATA_URI,
+    )
     images = _replace_first_image(list(post.images or []), original_cover, optimized_cover)
     repost = await _clone_post_for_template(post.repost, original_cover, optimized_cover)
     return replace(post, avatar=avatar, images=images, repost=repost)
