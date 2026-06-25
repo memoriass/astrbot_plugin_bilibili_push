@@ -36,9 +36,13 @@
 - `seen_posts_{uid}`: 动态去重窗口。
 - `live_status_{uid}`: 直播状态缓存。
 - `search_cache_{keyword}`: UP 搜索缓存。
-- `bili_avatar_cache`: UP 头像缓存。订阅和管理页展示会复用该缓存；长时间未被订阅或使用的条目会在后续访问时清理。
+- `bili_avatar_cache`: UP 头像 URL 缓存。订阅和管理页展示会复用该缓存；长时间未被订阅或使用的条目会在后续访问时清理。
 
 这些数据是短期状态或缓存，适合 KV；订阅、账号、会话目标和别名是长期业务数据，必须走 SQLite。
+
+## 文件缓存边界
+
+- `plugin_data/astrbot_plugin_bilibili_push/image_cache/avatars/`: 聊天卡片渲染用的头像图片本体缓存。缓存键包含头像 URL 和压缩策略，图片 24 小时过期，120 天未使用会自动清理。
 
 ## 维护说明
 

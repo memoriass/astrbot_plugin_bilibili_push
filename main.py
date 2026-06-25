@@ -30,7 +30,7 @@ from .workflows.models import WorkflowRequest
 
 
 @register(
-    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.21"
+    "astrbot_plugin_bilibili_push", "Aisidaka", "Bilibili 动态与直播推送", "1.2.23"
 )
 class BilibiliPush(Star):
     def __init__(self, context: Context):
@@ -50,6 +50,8 @@ class BilibiliPush(Star):
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.bg_dir = self.data_dir / "backgrounds"
         self.bg_dir.mkdir(parents=True, exist_ok=True)
+        self.avatar_cache_dir = self.data_dir / "image_cache" / "avatars"
+        self.avatar_cache_dir.mkdir(parents=True, exist_ok=True)
 
         config = self.config
         self.display_timezone = config.display_timezone
@@ -94,7 +96,10 @@ class BilibiliPush(Star):
             star=self,
         )
 
-        self.renderer = HtmlRendererAdapter(get_template_path())
+        self.renderer = HtmlRendererAdapter(
+            get_template_path(),
+            avatar_cache_dir=self.avatar_cache_dir,
+        )
         self.sub_handler = SubscriptionHandler(
             context,
             self.db,

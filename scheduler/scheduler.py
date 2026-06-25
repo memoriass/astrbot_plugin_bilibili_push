@@ -73,16 +73,22 @@ class BilibiliScheduler:
         self._next_live_at = 0.0
 
     def _build_themes(self):
-        renderer = HtmlRenderer(get_template_path())
+        avatar_cache_dir = getattr(self.star, "avatar_cache_dir", None)
+        renderer = HtmlRenderer(
+            get_template_path(),
+            avatar_cache_dir=avatar_cache_dir,
+        )
         return {
             "movie_card": MovieCardTheme(
                 renderer,
                 display_timezone=self.display_timezone,
+                avatar_cache_dir=avatar_cache_dir,
             ),
             "dynamic_movie_card": MovieCardTheme(
                 renderer,
                 template_name="dynamic_movie_card.html.jinja",
                 display_timezone=self.display_timezone,
+                avatar_cache_dir=avatar_cache_dir,
             ),
         }
 

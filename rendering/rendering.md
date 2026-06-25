@@ -14,6 +14,7 @@
 - 当前默认输出 PNG，并启用透明背景；需要透明裁剪时优先传具体 selector。
 - HTML 渲染失败默认重试一次；重试前会回收 Playwright browser 和 driver，避免复用异常浏览器状态。
 - Playwright browser 作为进程内单例复用；每次渲染新建并关闭 context/page。browser 达到渲染次数或存活时间上限后会软回收。
+- HTML 渲染前会把模板中的 `face`/`avatar` 字段转换为本地 data URI，并复用 `image_cache/avatars/` 磁盘缓存，避免订阅卡片、候选卡片和账号卡片反复让 Playwright 拉取远程头像。
 - 直播/动态卡片的头像和主封面在压缩失败时使用本地 data URI 降级图，避免已超时的外链继续进入 Playwright 并拖慢截图。
 - 业务模块只关心 `render()` 输入输出，不应知道浏览器启动、页面等待或截图细节。
 - 新增渲染实现时保持 `RendererPort` 方法签名稳定，再逐步替换调用方注入。

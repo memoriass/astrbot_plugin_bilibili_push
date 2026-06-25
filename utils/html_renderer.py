@@ -10,6 +10,7 @@ from .resource import (
     get_internal_font_family,
     get_internal_font_routes,
 )
+from .image_optimizer import localize_template_avatar_images
 
 
 _CONTENT_TIMEOUT_MS = 15000
@@ -303,8 +304,9 @@ async def render_template(
 
 
 class HtmlRenderer:
-    def __init__(self, template_path: Path):
+    def __init__(self, template_path: Path, avatar_cache_dir: Path | None = None):
         self.template_path = template_path
+        self.avatar_cache_dir = avatar_cache_dir
 
     async def render(
         self,
@@ -314,12 +316,16 @@ class HtmlRenderer:
         selector: str = "body",
     ) -> bytes:
         last_error = None
+        render_templates = await localize_template_avatar_images(
+            templates,
+            self.avatar_cache_dir,
+        )
         for attempt in range(_RENDER_RETRIES + 1):
             try:
                 image = await render_template(
                     template_path=self.template_path,
                     template_name=template_name,
-                    templates=templates,
+                    templates=render_templates,
                     viewport=viewport,
                     selector=selector,
                 )

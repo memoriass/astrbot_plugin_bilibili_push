@@ -7,8 +7,8 @@ from .renderer_port import RendererPort
 
 
 class HtmlRendererAdapter(RendererPort):
-    def __init__(self, template_path: Path):
-        self._renderer = HtmlRenderer(template_path)
+    def __init__(self, template_path: Path, avatar_cache_dir: Path | None = None):
+        self._renderer = HtmlRenderer(template_path, avatar_cache_dir=avatar_cache_dir)
 
     async def render(
         self,

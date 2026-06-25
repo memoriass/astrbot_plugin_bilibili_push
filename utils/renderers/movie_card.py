@@ -1,4 +1,7 @@
 from dataclasses import replace
+from pathlib import Path
+
+import astrbot.api.message_components as Comp
 
 from .base import Theme
 from ...core.types import Post
@@ -10,7 +13,6 @@ from ...utils.image_optimizer import (
     optimize_template_image,
 )
 from ...utils.timezone import format_bilibili_time
-import astrbot.api.message_components as Comp
 
 
 class MovieCardTheme(Theme):
@@ -19,10 +21,12 @@ class MovieCardTheme(Theme):
         renderer,
         template_name="movie_card.html.jinja",
         display_timezone="Asia/Shanghai",
+        avatar_cache_dir: Path | None = None,
     ):
         self.renderer = renderer
         self.template_name = template_name
         self.display_timezone = display_timezone
+        self.avatar_cache_dir = avatar_cache_dir
 
     async def render(self, post: Post) -> list:
         date_str = format_bilibili_time(
@@ -55,7 +59,15 @@ class MovieCardTheme(Theme):
                 label="cover",
                 fallback=TRANSPARENT_IMAGE_DATA_URI,
             )
-        return await _clone_post_for_template(post, original_cover, cover), cover
+        return (
+            await _clone_post_for_template(
+                post,
+                original_cover,
+                cover,
+                self.avatar_cache_dir,
+            ),
+            cover,
+        )
 
 
 def _original_cover(post: Post):
@@ -70,6 +82,7 @@ async def _clone_post_for_template(
     post: Post | None,
     original_cover,
     optimized_cover,
+    avatar_cache_dir: Path | None = None,
 ) -> Post | None:
     if post is None:
         return None
@@ -78,9 +91,15 @@ async def _clone_post_for_template(
         AVATAR_POLICY,
         label="avatar",
         fallback=TRANSPARENT_IMAGE_DATA_URI,
+        cache_dir=avatar_cache_dir,
     )
     images = _replace_first_image(list(post.images or []), original_cover, optimized_cover)
-    repost = await _clone_post_for_template(post.repost, original_cover, optimized_cover)
+    repost = await _clone_post_for_template(
+        post.repost,
+        original_cover,
+        optimized_cover,
+        avatar_cache_dir,
+    )
     return replace(post, avatar=avatar, images=images, repost=repost)
 
 

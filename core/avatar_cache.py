@@ -15,7 +15,7 @@ except ImportError:
 
 NO_FACE = "http://i0.hdslb.com/bfs/face/member/noface.jpg"
 KV_KEY = "bili_avatar_cache"
-REFRESH_AFTER_SEC = 7 * 24 * 3600
+REFRESH_AFTER_SEC = 24 * 3600
 UNUSED_RETENTION_SEC = 120 * 24 * 3600
 FETCH_CONCURRENCY = 4
 

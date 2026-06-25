@@ -176,9 +176,15 @@ def _check_rendering_resources() -> None:
     )
     if "_RENDER_RETRIES = 1" not in renderer or "BrowserManager.recycle" not in renderer:
         raise SystemExit("html renderer retry/recycle guard is missing")
+    if "localize_template_avatar_images" not in renderer or "avatar_cache_dir" not in renderer:
+        raise SystemExit("html renderer avatar local cache is missing")
     if "get_internal_font_routes" not in resource or "BiliPushNotoSansSC" not in resource:
         raise SystemExit("internal font resource wiring is missing")
-    if "optimize_template_image" not in movie_card or "DYNAMIC_HERO_POLICY" not in movie_card:
+    if (
+        "optimize_template_image" not in movie_card
+        or "DYNAMIC_HERO_POLICY" not in movie_card
+        or "avatar_cache_dir" not in movie_card
+    ):
         raise SystemExit("push card cover optimization is missing")
     if "dynamic_card.html.jinja" in dynamic_card:
         raise SystemExit("dynamic card theme points to a removed template")
@@ -192,6 +198,7 @@ def _check_runtime_guards() -> None:
         "bili_avatar_cache",
         "FETCH_CONCURRENCY",
         "UNUSED_RETENTION_SEC",
+        "REFRESH_AFTER_SEC = 24 * 3600",
         "fetch_avatar_map",
         "async with _fetch_semaphore",
     ):
