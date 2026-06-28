@@ -7,6 +7,7 @@ from .base import Theme
 from ...core.types import Post
 from ...utils.image_optimizer import (
     AVATAR_POLICY,
+    DEFAULT_AVATAR_DATA_URI,
     DYNAMIC_HERO_POLICY,
     LIVE_COVER_POLICY,
     TRANSPARENT_IMAGE_DATA_URI,
@@ -90,7 +91,7 @@ async def _clone_post_for_template(
         post.avatar,
         AVATAR_POLICY,
         label="avatar",
-        fallback=TRANSPARENT_IMAGE_DATA_URI,
+        fallback=DEFAULT_AVATAR_DATA_URI,
         cache_dir=avatar_cache_dir,
     )
     images = _replace_first_image(list(post.images or []), original_cover, optimized_cover)

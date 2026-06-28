@@ -30,6 +30,10 @@ TRANSPARENT_IMAGE_DATA_URI = (
     "data:image/png;base64,"
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
 )
+DEFAULT_AVATAR_DATA_URI = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAABn0lEQVR42u3dQU7DQAyF4dTq4dghcVAkdj0VCzYs4QhFIhN77O+tq8Z+f/ySdCbq7fPr++egNAULAACAAACAAACAAACAAACAAACAAACAAACAAACAAACA1ui+W8HvH4+nn3l7fdmmn9sO21L+YvquMEoD+I/xu4CICeav+L7WAFaZVRFCTDG/KoSYZH5FCDHN/GoQYqL5lSDEVPOrHN9PEZMnoEoOZ9ZhAlyEARgdP9n1mAARBAABAAABAAABAMBlqrZInlWPCRBBABzTYyizDhMwPYKypyD7+DE5AipEYEy9Daxy/YmJ9+KVnkHKXYRXm1PtAbDkXdAqkypuUS/3fsAVa7OVQJQBkLEoXgFEOoAKuyPGPgnbGWdfUHo9l0dQ1Xe1siIpmJ9bZzA/t95gfm7dwfzc+i3IHI1/C9r97L+ij2B+bj8iqGMEdTv7V/ZlArpNQNezf1V/JqDTBHQ/+1f0aQIsygNAHQBMyf+z+zUBIggAAgAAAgAAAgAAAgCAo+M/VRxF94+aABEEAHUBMOU6cGafJqBbBHWfgrP7+wXNa5xiXaYydgAAAABJRU5ErkJggg=="
+)
 _USE_ORIGINAL = object()
 
 
@@ -80,6 +84,7 @@ async def optimize_template_image(
     if not image:
         return image
     cache_path = Path(cache_dir) if cache_dir else None
+    stale_cached = ""
     if cache_path and _is_cacheable_image(image):
         cached = await asyncio.to_thread(
             _read_cached_image,
@@ -88,9 +93,19 @@ async def optimize_template_image(
             policy,
             cache_ttl_sec,
             cache_unused_retention_sec,
+            False,
         )
         if cached:
             return cached
+        stale_cached = await asyncio.to_thread(
+            _read_cached_image,
+            cache_path,
+            image,
+            policy,
+            cache_ttl_sec,
+            cache_unused_retention_sec,
+            True,
+        )
 
     try:
         optimized = await asyncio.to_thread(_optimize_template_image_sync, image, policy)
@@ -105,12 +120,18 @@ async def optimize_template_image(
             )
         return optimized
     except ImageTooLarge as exc:
+        if stale_cached:
+            logger.warning(f"{label} 超出内置渲染上限，使用过期缓存: {exc}")
+            return stale_cached
         if fallback is _USE_ORIGINAL:
             logger.warning(f"{label} 超出内置渲染上限，跳过该图片: {exc}")
             return ""
         logger.warning(f"{label} 超出内置渲染上限，使用降级图片: {exc}")
         return fallback
     except Exception as exc:
+        if stale_cached:
+            logger.warning(f"{label} 压缩失败，使用过期缓存: {exc}")
+            return stale_cached
         if fallback is _USE_ORIGINAL:
             logger.warning(f"{label} 压缩失败，使用原图: {exc}")
             return image
@@ -212,7 +233,7 @@ async def _localize_avatar_value(value: Any, cache_dir: Path, key_name: str) -> 
             value,
             AVATAR_POLICY,
             label=key_name,
-            fallback=TRANSPARENT_IMAGE_DATA_URI,
+            fallback=DEFAULT_AVATAR_DATA_URI,
             cache_dir=cache_dir,
         )
     return value
@@ -232,6 +253,7 @@ def _read_cached_image(
     policy: ImageOptimizePolicy,
     cache_ttl_sec: int,
     cache_unused_retention_sec: int,
+    allow_expired: bool,
 ) -> str:
     _cleanup_image_cache(cache_dir, cache_unused_retention_sec)
     data_path, meta_path = _cached_image_paths(cache_dir, image, policy)
@@ -246,8 +268,7 @@ def _read_cached_image(
         return ""
 
     created_at = float(meta.get("created_at") or 0)
-    if cache_ttl_sec > 0 and now - created_at > cache_ttl_sec:
-        _delete_cached_image(data_path, meta_path)
+    if cache_ttl_sec > 0 and now - created_at > cache_ttl_sec and not allow_expired:
         return ""
 
     try:

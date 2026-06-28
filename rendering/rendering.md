@@ -15,7 +15,7 @@
 - HTML 渲染失败默认重试一次；重试前会回收 Playwright browser 和 driver，避免复用异常浏览器状态。
 - Playwright browser 作为进程内单例复用；每次渲染新建并关闭 context/page。browser 达到渲染次数或存活时间上限后会软回收。
 - HTML 渲染前会把模板中的 `face`/`avatar` 字段转换为本地 data URI，并复用 `image_cache/avatars/` 磁盘缓存，避免订阅卡片、候选卡片和账号卡片反复让 Playwright 拉取远程头像。
-- 直播/动态卡片的头像和主封面在压缩失败时使用本地 data URI 降级图，避免已超时的外链继续进入 Playwright 并拖慢截图。
+- 直播/动态卡片的头像和主封面在压缩失败时使用本地 data URI 降级图，避免已超时的外链继续进入 Playwright 并拖慢截图。头像缓存过期后刷新失败时优先使用旧缓存；没有旧缓存时使用本地默认头像。
 - 业务模块只关心 `render()` 输入输出，不应知道浏览器启动、页面等待或截图细节。
 - 新增渲染实现时保持 `RendererPort` 方法签名稳定，再逐步替换调用方注入。
 - 渲染失败要向调用方返回明确异常，让 handler/workflow 能给用户可读提示。
